@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight, Check, ChevronDown, Clapperboard, CloudUpload, FileVideo, Film, Gauge, HelpCircle, Layers3, Menu, Moon, Play, Scissors, Sparkles, Sun, X, Zap } from 'lucide-react'
+import { ArrowRight, Check, Clapperboard, CloudUpload, FileVideo, Film, Gauge, Layers3, Menu, Moon, Play, Scissors, Sparkles, Sun, X, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
