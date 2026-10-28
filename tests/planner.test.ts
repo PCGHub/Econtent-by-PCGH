@@ -16,7 +16,7 @@ test('section, manual trim, compression only and fractional boundaries', () => {
   assert.equal(createCutPlan({mode:'section-split',sourceDuration:700,selectedRange:{start:300,end:600},clipDuration:120,keepRemainder:true}).length,3)
   assert.equal(createCutPlan({mode:'section-split',sourceDuration:700,selectedRange:{start:300,end:600},clipDuration:120,keepRemainder:false}).length,2)
   assert.equal(createCutPlan({mode:'compress-only',sourceDuration:6})[0].end,6)
-  assert.equal(createCutPlan({mode:'full-split',sourceDuration:0.3,clipDuration:0.1}).at(-1)?.end,0.3)
+  for (const keepRemainder of [true,false]) assert.equal(createCutPlan({mode:'full-split',sourceDuration:0.3,clipDuration:0.1,keepRemainder}).at(-1)?.end,0.3)
 })
 test('invalid inputs and resource exhaustion are rejected', () => {
   for (const value of [0,-1,NaN,Infinity]) assert.throws(()=>createCutPlan({mode:'full-split',sourceDuration:60,clipDuration:value}))

@@ -20,7 +20,7 @@ export function createCutPlan(input: CutPlanInput): PlannedClip[] {
   const clips: PlannedClip[] = []
   // Use count-based boundaries to avoid accumulated floating-point drift.
   const length = range.end - range.start
-  const fullCount = Math.floor(length / step)
+  const fullCount = Math.floor(length / step + 1e-9)
   if (Math.ceil(length / step) > 500) throw new RangeError('Limit exports to 500 clips per job; increase clip duration')
   for (let i = 0; i < fullCount; i++) {
     const start = range.start + i * step
