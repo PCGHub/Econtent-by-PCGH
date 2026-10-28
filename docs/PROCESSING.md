@@ -41,3 +41,7 @@ FFmpeg core is distributed under GPL v2-or-later; its libx264 encoder is GPL. Pr
 - Dependency installation was blocked by sandbox networking; network-permission attempts were interrupted. Local build/lint/typecheck cannot run without Next, ESLint and TypeScript.
 - Vercel project econtent-by-pcgh exists, but team access returned HTTP 403. Preview deployment requires authorizing the existing connection for that team.
 - Browser/WASM processing, UI playback/download and ZIP have not yet been verified here. CI includes those checks; adding tests is not evidence they passed.
+
+Additional direct native checks: compression Off produced a 30.000s H.264/AAC MP4 of 1,807,529 bytes, and decoded without error. A silent portrait 180×320 / 24fps input trimmed from 0.5 to 2.5 seconds produced a 2.000s H.264-only MP4, 46,069 bytes. Balanced and Off output timestamps differ by at most one source frame. No perceptual listening or actual browser playback was performed.
+
+GitHub write integration successfully published the implementation to dev/browser-processing-mvp. The first GitHub Actions run installed dependencies and passed lint, then failed on browser DOM types. Generated public FFmpeg declarations are now excluded from app typechecking, and the adapter uses an explicit worker contract to isolate worker ambient types. Subsequent CI results must be checked.

@@ -1,11 +1,22 @@
-import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import type { VideoProcessingEngine } from './engine'
 import type { ProcessOptions, ProcessedClip, ProcessingProgress } from './types'
 import { encodingArgs } from './command'
 
+// Keep worker-only ambient declarations outside the app TypeScript program.
+interface FFmpegWorker {
+  loaded: boolean
+  on(event: 'progress', callback: (event: { progress: number }) => void): void
+  load(config: { coreURL: string; wasmURL: string }): Promise<boolean>
+  terminate(): void
+  writeFile(path: string, data: Uint8Array): Promise<boolean>
+  exec(args: string[]): Promise<number>
+  readFile(path: string): Promise<Uint8Array | string>
+  deleteFile(path: string): Promise<boolean>
+}
+
 /** @ffmpeg/ffmpeg owns a dedicated Web Worker; jobs are serialized by this adapter. */
 export class BrowserVideoEngine implements VideoProcessingEngine {
-  private ffmpeg?: FFmpeg
+  private ffmpeg?: FFmpegWorker
   private busy = false
   private disposed = false
   private notify: (progress: ProcessingProgress) => void = () => {}
@@ -17,7 +28,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     this.notify({ status: 'preparing', message: 'Loading local video engine…' })
     // The public ESM distribution preserves the worker's relative module URLs.
     const moduleURL = '/ffmpeg/ffmpeg/index.js'
-    const { FFmpeg: Constructor } = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ moduleURL) as typeof import('@ffmpeg/ffmpeg')
+    const { FFmpeg: Constructor } = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ moduleURL) as { FFmpeg: new () => FFmpegWorker }
     if (this.disposed) throw new DOMException('Cancelled', 'AbortError')
     const ffmpeg = new Constructor()
     this.ffmpeg = ffmpeg
