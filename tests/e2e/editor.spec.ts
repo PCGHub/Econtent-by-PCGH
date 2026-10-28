@@ -56,6 +56,16 @@ test('browser worker trims 30 seconds, compresses, previews and downloads real M
       const duration=Number(execFileSync('ffprobe',['-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1',join(extraction,entry)],{encoding:'utf8'}))
       expect(Math.abs(duration-(index===3?5:10))).toBeLessThan(0.05)
     }
+    await page.getByRole('checkbox').nth(1).uncheck()
+    const subsetPending=page.waitForEvent('download')
+    await page.getByRole('button',{name:'Download selected ZIP (3)',exact:true}).click()
+    const subset=await subsetPending;const subsetPath=info.outputPath('subset.zip');await subset.saveAs(subsetPath)
+    expect(execFileSync('unzip',['-Z1',subsetPath],{encoding:'utf8'}).trim().split('\n')).toHaveLength(3)
+    await page.getByRole('button',{name:'Process video',exact:true}).click()
+    await page.getByRole('button',{name:'Cancel processing',exact:true}).click()
+    await expect(page.getByText('cancelled',{exact:true})).toBeVisible()
+    await expect(page.getByRole('button',{name:'Process video',exact:true})).toBeEnabled()
+
 
   } finally { rmSync(dir,{recursive:true,force:true}) }
 })

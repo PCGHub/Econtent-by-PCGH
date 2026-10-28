@@ -15,9 +15,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
-      - run: npm install
-      - name: Dependency lock transfer for restricted workspace
-        run: node -e "console.log('ECONTENT_LOCK=' + require('node:zlib').gzipSync(require('node:fs').readFileSync('package-lock.json')).toString('base64'))"
+      - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
