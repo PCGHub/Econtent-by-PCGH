@@ -4,7 +4,12 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+test.afterEach(async ({ page }, info) => {
+  if (info.status !== info.expectedStatus) console.error('EDITOR FAILURE STATE:', await page.locator('body').innerText())
+})
+
 test('browser worker trims 30 seconds, compresses, previews and downloads real MP4', async ({ page }, info) => {
+  page.on('pageerror', error => console.error('BROWSER ERROR:', error.message))
   const dir = mkdtempSync(join(tmpdir(), 'econtent-browser-'))
   try {
     const input = join(dir,'input.mp4')
@@ -34,5 +39,23 @@ test('browser worker trims 30 seconds, compresses, previews and downloads real M
     await page.getByRole('button',{name:'Download all ZIP'}).click()
     const zip=await zipPending;const zipPath=info.outputPath('clips.zip');await zip.saveAs(zipPath)
     execFileSync('unzip',['-t',zipPath])
+    await page.getByLabel('Mode',{exact:true}).selectOption('full-split')
+    await page.getByLabel('Clip length (seconds)',{exact:false}).fill('10')
+    await page.getByLabel('Compression',{exact:true}).selectOption('off')
+    await page.getByRole('button',{name:'Process video',exact:true}).click()
+    await expect(page.getByRole('button',{name:'Download MP4',exact:true})).toHaveCount(4,{timeout:150000})
+    await expect(page.getByRole('button',{name:'Download all ZIP'})).toBeEnabled()
+    const bundlePending=page.waitForEvent('download')
+    await page.getByRole('button',{name:'Download all ZIP'}).click()
+    const bundle=await bundlePending;const bundlePath=info.outputPath('split-clips.zip');await bundle.saveAs(bundlePath)
+    const entries=execFileSync('unzip',['-Z1',bundlePath],{encoding:'utf8'}).trim().split('\n')
+    expect(entries).toHaveLength(4)
+    const extraction=info.outputPath('extracted')
+    execFileSync('unzip',['-q',bundlePath,'-d',extraction])
+    for (const [index,entry] of entries.entries()) {
+      const duration=Number(execFileSync('ffprobe',['-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1',join(extraction,entry)],{encoding:'utf8'}))
+      expect(Math.abs(duration-(index===3?5:10))).toBeLessThan(0.05)
+    }
+
   } finally { rmSync(dir,{recursive:true,force:true}) }
 })

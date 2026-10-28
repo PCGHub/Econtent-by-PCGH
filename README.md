@@ -2,9 +2,9 @@
 
 **Cut. Create. Transform.**
 
-Econtent by PCGH is a planned web-based video cutting, compression and content-creation platform. The first release prioritizes **free, watermark-free video cutting, optional compression, previews and real MP4 downloads**. AI features are deliberately deferred until the basic workflow is proven.
+Econtent by PCGH is a web-based video cutting, compression and content-creation platform under development. The first release prioritizes **free, watermark-free video cutting, optional compression, previews and real MP4 downloads**. AI features are deliberately deferred until the basic workflow is proven.
 
-> **Status: planning / repository bootstrap.** This README is the product specification and execution brief for Codex. It does not claim any feature is implemented, tested or deployed.
+> **Status: browser editor implementation in development.** The `dev/browser-processing-mvp` branch implements local FFmpeg processing and export workflows. See `docs/PROCESSING.md` for exact verification evidence and limitations; the checklist below remains the product acceptance specification.
 
 ## Product principles
 
@@ -189,4 +189,4 @@ The product name and tagline are working brand choices; check domain and tradema
 
 ---
 
-**Current status:** README specification only. No implementation or deployment is asserted by this document.
+**Current status:** implementation and verification are recorded in `docs/PROCESSING.md`. Production deployment is not authorized.
