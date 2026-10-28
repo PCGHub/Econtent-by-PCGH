@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "node scripts/prepare-ffmpeg.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test-isolation=none --import ./tests/register.mjs --test tests/*.test.ts",
+    "test:media": "node --test-isolation=none --import ./tests/register.mjs --test tests/media.integration.ts",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
@@ -16,7 +21,10 @@
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@ffmpeg/core": "0.12.10",
+    "jszip": "3.10.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",
@@ -24,6 +32,10 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.7.0"
-  }
+    "typescript": "^5.7.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.0.0",
+    "@playwright/test": "^1.56.0"
+  },
+  "type": "module"
 }
