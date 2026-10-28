@@ -7,3 +7,7 @@ public/ffmpeg/
 next-env.d.ts
 test-results/
 playwright-report/
+
+!.env.example
+supabase/.temp/
+supabase/.branches/

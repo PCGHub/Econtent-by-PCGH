@@ -11,31 +11,38 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test-isolation=none --import ./tests/register.mjs --test tests/*.test.ts",
     "test:media": "node --test-isolation=none --import ./tests/register.mjs --test tests/media.integration.ts",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:account:setup": "node scripts/account-test-stack.mjs && node scripts/account-test-env.mjs",
+    "test:account": "playwright test -c tests/account/playwright.config.ts",
+    "test:account:stop": "node scripts/account-test-stack.mjs stop"
   },
   "dependencies": {
+    "@ffmpeg/core": "0.12.10",
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@noble/hashes": "2.2.0",
     "@radix-ui/react-slot": "^1.2.3",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.118.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jszip": "3.10.1",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^2.6.0",
-    "@ffmpeg/ffmpeg": "0.12.15",
-    "@ffmpeg/core": "0.12.10",
-    "jszip": "3.10.1"
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "tailwindcss": "^4.1.0",
-    "typescript": "^5.7.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
-    "@playwright/test": "^1.56.0"
+    "supabase": "2.118.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.0"
   },
   "type": "module"
 }

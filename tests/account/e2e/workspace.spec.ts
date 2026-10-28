@@ -1,0 +1,300 @@
+import {createClient} from "@supabase/supabase-js";
+import { test, expect, type Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+test.afterEach(async ({page},info)=>{if(info.status!==info.expectedStatus)console.error('ACCOUNT FAILURE:',await page.locator('body').innerText())})
+const password = "Econtent-local-only-123!";
+async function emailLink(email: string, after = 0) {
+  let link = "";
+  await expect
+    .poll(
+      async () => {
+        const list = await (
+          await fetch("http://localhost:55324/api/v1/messages")
+        ).json();
+        const message = list.messages?.find(
+          (item: { To: { Address: string }[]; ID: string; Created: string }) =>
+            item.To.some((to) => to.Address === email) &&
+            new Date(item.Created).getTime() >= after,
+        );
+        if (!message) return false;
+        const detail = await (
+          await fetch("http://localhost:55324/api/v1/message/" + message.ID)
+        ).json();
+        link =
+          String(detail.HTML)
+            .match(
+              /href="(http:\/\/localhost:55321\/auth\/v1\/verify[^\"]*)"/,
+            )?.[1]
+            ?.replaceAll("&amp;", "&") ?? "";
+        return !!link;
+      },
+      { timeout: 20000 },
+    )
+    .toBe(true);
+  return link;
+}
+async function register(page: Page, email: string) {
+  await page.goto("/signup");
+  await page.getByLabel("Full name").fill("Local Creator");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm password").fill(password);
+  await page
+    .getByRole("button", { name: "Create account", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Check your inbox");
+  await page.goto(await emailLink(email));
+  await expect(page).toHaveURL(/\/dashboard$/);
+}
+test("real email verification, sessions, recovery, project CRUD, autosave, reconnect and user isolation", async ({
+  page,
+  browser,
+}) => {
+  page.on("pageerror",error=>console.error("Account browser error:",error.message));
+  page.on("response",response=>{if(new URL(response.url()).pathname.startsWith("/api/projects")&&response.status()>=400)void response.json().then(value=>console.error("Account API failure:",response.status(),value.error)).catch(()=>{})});
+  const dir = mkdtempSync(join(tmpdir(), "econtent-account-"));
+  const email = "creator-" + randomUUID() + "@example.test";
+  const input = join(dir, "source.mp4");
+  const wrong = join(dir, "wrong.mp4");
+  let other: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+  try {
+    await page.goto("/projects");
+    await expect(page).toHaveURL(/\/login\?next=/);
+    const guest = await page.request.get("/api/projects");
+    expect(guest.status()).toBe(401);
+    await register(page, email);
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Welcome back, Local Creator" }),
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Create new project", exact: true })
+      .click();
+    await page.getByLabel("Project title").fill("Saved integration footage");
+    await page
+      .getByRole("button", { name: "Create project", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+$/);
+    const projectURL = page.url();
+    const id = projectURL.split("/").pop()!;
+    execFileSync("ffmpeg", [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=320x180:rate=30",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440",
+      "-t",
+      "6",
+      "-c:v",
+      "libx264",
+      "-g",
+      "30",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      input,
+    ]);
+    writeFileSync(wrong, "wrong file");
+    await page.getByLabel("Choose video", { exact: true }).setInputFiles(input);
+    await expect(
+      page.getByText("6.000 seconds", { exact: false }),
+    ).toBeVisible();
+    await page.getByLabel("Start (seconds)", { exact: false }).fill("1");
+    await page.getByLabel("End (seconds)", { exact: false }).fill("4");
+    await page
+      .getByLabel("Compression", { exact: true })
+      .selectOption("balanced");
+    await expect(page.getByRole("status").first()).toContainText("Saved", {
+      timeout: 10000,
+    });
+    await expect
+      .poll(async () => {
+        const response = await page.request.get("/api/projects/" + id);
+        return (await response.json()).project.settings.range;
+      })
+      .toEqual({ start: 1, end: 4 });
+    const saved = (await (await page.request.get("/api/projects/" + id)).json())
+      .project;
+    const stale = await page.request.patch("/api/projects/" + id, {
+      data: { revision: saved.revision - 1, title: "stale" },
+      headers: { Origin: "http://localhost:3000" },
+    });
+    expect(stale.status()).toBe(409);
+    const csrf = await page.request.patch("/api/projects/" + id, {
+      data: { revision: saved.revision, title: "csrf" },
+      headers: { Origin: "https://unrelated.invalid" },
+    });
+    expect(csrf.status()).toBe(403);
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Reconnect original video" }),
+    ).toBeVisible();
+    await page.getByLabel("Reconnect video").setInputFiles(wrong);
+    await expect(page.locator("main").getByRole("alert")).toContainText("File size differs");
+    await expect(
+      page.getByLabel("Start (seconds)", { exact: false }),
+    ).toHaveCount(0);
+    const mutated=readFileSync(input);mutated[100]^=1;const sameSize=join(dir,'different-same-size.mp4');writeFileSync(sameSize,mutated);
+    await page.getByLabel('Reconnect video').setInputFiles(sameSize);
+    await expect(page.locator('main').getByRole('alert')).toContainText('different video');
+    await page.getByLabel("Reconnect video").setInputFiles(input);
+    await expect(
+      page.getByLabel("Start (seconds)", { exact: false }),
+    ).toHaveValue("1");
+    await expect(
+      page.getByLabel("End (seconds)", { exact: false }),
+    ).toHaveValue("4");
+    await expect(page.getByLabel("Compression", { exact: true })).toHaveValue(
+      "balanced",
+    );
+    await page
+      .getByRole("button", { name: "Process video", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Completed", exact: true }),
+    ).toBeVisible();
+    const download = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "Download MP4", exact: true })
+      .click();
+    await (await download).saveAs(join(dir, "saved-project-output.mp4"));
+    const probe = JSON.parse(
+      execFileSync(
+        "ffprobe",
+        [
+          "-v",
+          "error",
+          "-show_format",
+          "-show_streams",
+          "-of",
+          "json",
+          join(dir, "saved-project-output.mp4"),
+        ],
+        { encoding: "utf8" },
+      ),
+    );
+    expect(Number(probe.format.duration)).toBeGreaterThan(2.9);
+    expect(Number(probe.format.duration)).toBeLessThan(3.2);
+    expect(
+      probe.streams.some(
+        (s: { codec_type: string }) => s.codec_type === "audio",
+      ),
+    ).toBe(true);
+    // Another real verified account cannot read, mutate, duplicate or delete the first user's project.
+    other = await browser.newContext();
+    const otherPage = await other.newPage();
+    const otherEmail="other-"+randomUUID()+"@example.test";
+    await register(otherPage,otherEmail);
+    for (const method of ["get", "patch", "delete"] as const) {
+      const response = await otherPage.request[method]("/api/projects/" + id, {
+        data: { revision: saved.revision, title: "not mine" },
+        headers: { Origin: "http://localhost:3000" },
+      });
+      expect(response.status()).toBe(404);
+    }
+    const duplicateForbidden = await otherPage.request.post(
+      "/api/projects/" + id + "/duplicate",
+      { data: {}, headers: { Origin: "http://localhost:3000" } },
+    );
+    expect(duplicateForbidden.status()).toBe(404);
+    const localEnv=readFileSync('.env.local','utf8');
+    expect(localEnv).toContain('NEXT_PUBLIC_SUPABASE_URL=http://localhost:55321');
+    const anon=localEnv.match(/^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(.+)$/m)![1];
+    const firstClient=createClient('http://localhost:55321',anon,{auth:{persistSession:false,autoRefreshToken:false}});
+    const secondClient=createClient('http://localhost:55321',anon,{auth:{persistSession:false,autoRefreshToken:false}});
+    const ownerLogin=await firstClient.auth.signInWithPassword({email,password});expect(ownerLogin.error).toBeNull();
+    const secondLogin=await secondClient.auth.signInWithPassword({email:otherEmail,password});expect(secondLogin.error).toBeNull();
+    const own=await firstClient.from('projects').select('id,owner_id').eq('id',id).single();expect(own.error).toBeNull();expect(own.data!.id).toBe(id);
+    const foreignRead=await secondClient.from('projects').select('id').eq('id',id);expect(foreignRead.error).toBeNull();expect(foreignRead.data).toEqual([]);
+    const foreignUpdate=await secondClient.from('projects').update({title:'RLS bypass attempt'}).eq('id',id).select('id');expect(foreignUpdate.error).toBeNull();expect(foreignUpdate.data).toEqual([]);
+    const foreignDelete=await secondClient.from('projects').delete().eq('id',id).select('id');expect(foreignDelete.error).toBeNull();expect(foreignDelete.data).toEqual([]);
+    const ownerMutation=await firstClient.from('projects').update({owner_id:secondLogin.data.user!.id}).eq('id',id);expect(ownerMutation.error).not.toBeNull();
+    const ownerSpoof=await secondClient.from('projects').insert({title:'Spoofed owner',owner_id:own.data!.owner_id});expect(ownerSpoof.error).not.toBeNull();
+    const otherList = await otherPage.request.get("/api/projects");
+    expect((await otherList.json()).projects).toHaveLength(0);
+    await otherPage.goto(projectURL);
+    await expect(
+      otherPage.getByText("This page could not be found."),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "My projects", exact: true }).click();
+    await page.getByRole("button", { name: "Rename", exact: true }).click();
+    await page.getByLabel("New project title").fill("Renamed footage");
+    await page
+      .getByRole("button", { name: "Rename project", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Renamed footage" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Duplicate", exact: true }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Renamed footage (copy)",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByLabel("Search projects").fill("(copy)");
+    await expect(page.locator("article")).toHaveCount(1);
+    await page.getByLabel("Sort projects").selectOption("name");
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.locator("article")).toHaveCount(1);
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm delete" }).click();
+    await expect(
+      page.getByRole("heading", { name: "No projects found" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.goto("/forgot-password");
+    const after = Date.now() - 1000;
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Send recovery link" }).click();
+    await expect(page.getByRole("status")).toContainText(
+      "If an account exists",
+    );
+    await page.goto(await emailLink(email, after));
+    await expect(page).toHaveURL(/\/reset-password$/);
+    await page
+      .getByLabel("New password", { exact: true })
+      .fill(password + "changed");
+    await page.getByLabel("Confirm password").fill(password + "changed");
+    await page
+      .getByRole("button", { name: "Reset password", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await page.getByLabel("Email address").fill(email);
+    await page
+      .getByLabel("Password", { exact: true })
+      .fill(password + "changed");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  } finally {
+    await other?.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('browser renews an expiring session and protected pages remain accessible',async({page})=>{
+ const refreshed=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname==='/auth/v1/token'&&url.searchParams.get('grant_type')==='refresh_token'&&response.status()===200},{timeout:95000});
+ await register(page,'refresh-'+randomUUID()+'@example.test');
+ await refreshed;
+ await page.reload();await expect(page.getByRole('heading',{name:'Welcome back, Local Creator'})).toBeVisible();
+});

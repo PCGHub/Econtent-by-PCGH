@@ -192,3 +192,10 @@ The product name and tagline are working brand choices; check domain and tradema
 ---
 
 **Current status:** implementation and verification are recorded in `docs/PROCESSING.md`. Production deployment is not authorized.
+
+## Accounts and saved projects (integration Preview)
+
+Email authentication, owner-only saved editing settings, autosave and original-video
+reconnection are integrated without requiring an account for guest editing. See
+[Account workspace setup and verification](docs/ACCOUNT-WORKSPACE.md) for development
+Supabase configuration, migrations, privacy boundaries and real Auth/database tests.
