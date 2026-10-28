@@ -1,0 +1,675 @@
+{
+  "date": "2026-10-28",
+  "baselineCommit": "d481927f7b4cb14478f533811eb677ad1acdb1e5",
+  "platform": {
+    "cpuQuotaCores": 2,
+    "memoryLimitGiB": 8,
+    "browser": "Chromium 154.0.8037.57 Linux",
+    "ffmpegWasmCore": "0.12.10",
+    "wrapper": "0.12.15"
+  },
+  "source": {
+    "name": "Sintel trailer",
+    "url": "https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4",
+    "license": "CC BY 3.0, Blender Foundation",
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "durationSeconds": 52.208333,
+    "sizeBytes": 7608204
+  },
+  "longFixture": {
+    "description": "Sintel trailer repeated and re-encoded locally with fixed 10-second GOPs, H264/AAC",
+    "durationSeconds": 720.641333,
+    "videoDurationSeconds": 720.625,
+    "sizeBytes": 71163858,
+    "requestedCuts": "8 x 90 seconds plus final 0.641333 seconds"
+  },
+  "methodology": [
+    "One measured run per case, same host; no overlapping media benchmarks",
+    "Processing time is the sum of actual engine.process calls including source preparation and output verification; excludes core download/load and ZIP",
+    "Cold worker initialized against local static assets; real network first-load latency is not measured",
+    "CPU ps time has one-second granularity and includes controller/inspection processes; zero is below resolution",
+    "RSS sums browser process-tree resident pages sampled every 500ms, including shared pages counted more than once; not JS or WASM heap",
+    "Fast Cut has different boundaries/codec work from Precision; these are not equivalent-accuracy workloads",
+    "Long original user footage was not provided; the long test is repeated licensed 720p footage, not that exact user file"
+  ],
+  "cases": [
+    {
+      "case": "baseline-precision-off",
+      "method": "precision",
+      "compression": "off",
+      "multithreaded": false,
+      "processingSeconds": 198.0119,
+      "wallSecondsIncludingDownloadsAndInspection": 198.2746,
+      "engineLoadSeconds": 0.3195,
+      "processTreeCPUSecondsApprox": 198,
+      "peakProcessTreeRSSMiB": 928.5,
+      "sourceIO": {
+        "writes": 3,
+        "writeBytes": 22824612,
+        "mounts": 0
+      },
+      "outputBytes": 11554898,
+      "clips": [
+        {
+          "requested": {
+            "start": 0,
+            "end": 20
+          },
+          "keyframeTarget": null,
+          "duration": 20,
+          "bytes": 4593151
+        },
+        {
+          "requested": {
+            "start": 20,
+            "end": 40
+          },
+          "keyframeTarget": null,
+          "duration": 20,
+          "bytes": 6153299
+        },
+        {
+          "requested": {
+            "start": 40,
+            "end": 52.208333
+          },
+          "keyframeTarget": null,
+          "duration": 12.208333,
+          "bytes": 808448
+        }
+      ]
+    },
+    {
+      "case": "optimized-precision-off-short",
+      "method": "precision",
+      "compression": "off",
+      "multithreaded": false,
+      "processingSeconds": 191.654,
+      "wallSecondsIncludingDownloadsAndInspection": 191.8912,
+      "engineLoadSeconds": 0.28,
+      "processTreeCPUSecondsApprox": 195,
+      "peakProcessTreeRSSMiB": 941.36,
+      "sourceIO": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1
+      },
+      "outputBytes": 11554880,
+      "clips": [
+        {
+          "requested": {
+            "start": 0,
+            "end": 20
+          },
+          "keyframeTarget": null,
+          "duration": 20.010667,
+          "bytes": 4593133
+        },
+        {
+          "requested": {
+            "start": 20,
+            "end": 40
+          },
+          "keyframeTarget": null,
+          "duration": 20,
+          "bytes": 6153299
+        },
+        {
+          "requested": {
+            "start": 40,
+            "end": 52.208333
+          },
+          "keyframeTarget": null,
+          "duration": 12.208333,
+          "bytes": 808448
+        }
+      ]
+    },
+    {
+      "case": "optimized-fast-off-packet-scan-short",
+      "method": "fast",
+      "compression": "off",
+      "multithreaded": false,
+      "processingSeconds": 0.486,
+      "wallSecondsIncludingDownloadsAndInspection": 0.7123,
+      "engineLoadSeconds": 0.1994,
+      "processTreeCPUSecondsApprox": 0,
+      "peakProcessTreeRSSMiB": 774.42,
+      "sourceIO": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1
+      },
+      "outputBytes": 7729441,
+      "clips": [
+        {
+          "requested": {
+            "start": 0,
+            "end": 20
+          },
+          "keyframeTarget": {
+            "start": 0,
+            "end": 13.916667
+          },
+          "duration": 14.000008,
+          "bytes": 2095927
+        },
+        {
+          "requested": {
+            "start": 20,
+            "end": 40
+          },
+          "keyframeTarget": {
+            "start": 13.916667,
+            "end": 32.166667
+          },
+          "duration": 18.425293,
+          "bytes": 4033818
+        },
+        {
+          "requested": {
+            "start": 40,
+            "end": 52.208333
+          },
+          "keyframeTarget": {
+            "start": 32.166667,
+            "end": 52.209
+          },
+          "duration": 20.143636,
+          "bytes": 1599696
+        }
+      ]
+    },
+    {
+      "case": "baseline-precision-balanced-balanced-case",
+      "method": "precision",
+      "compression": "balanced",
+      "multithreaded": false,
+      "processingSeconds": 87.4415,
+      "wallSecondsIncludingDownloadsAndInspection": 87.5228,
+      "engineLoadSeconds": 0.2141,
+      "processTreeCPUSecondsApprox": 89,
+      "peakProcessTreeRSSMiB": 928.56,
+      "sourceIO": {
+        "writes": 1,
+        "writeBytes": 7608204,
+        "mounts": 0
+      },
+      "outputBytes": 3024387,
+      "clips": [
+        {
+          "requested": {
+            "start": 20,
+            "end": 40
+          },
+          "keyframeTarget": null,
+          "duration": 20,
+          "bytes": 3024387
+        }
+      ]
+    },
+    {
+      "case": "optimized-precision-balanced-balanced-case",
+      "method": "precision",
+      "compression": "balanced",
+      "multithreaded": false,
+      "processingSeconds": 86.7108,
+      "wallSecondsIncludingDownloadsAndInspection": 86.7965,
+      "engineLoadSeconds": 0.2526,
+      "processTreeCPUSecondsApprox": 88,
+      "peakProcessTreeRSSMiB": 925.93,
+      "sourceIO": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1
+      },
+      "outputBytes": 3024387,
+      "clips": [
+        {
+          "requested": {
+            "start": 20,
+            "end": 40
+          },
+          "keyframeTarget": null,
+          "duration": 20,
+          "bytes": 3024387
+        }
+      ]
+    },
+    {
+      "case": "optimized-precision-balanced-mt-2threads",
+      "method": "precision",
+      "compression": "balanced",
+      "multithreaded": true,
+      "processingSeconds": 47.6256,
+      "wallSecondsIncludingDownloadsAndInspection": 47.7061,
+      "engineLoadSeconds": 0.696,
+      "processTreeCPUSecondsApprox": 92,
+      "peakProcessTreeRSSMiB": 1178.59,
+      "sourceIO": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1
+      },
+      "outputBytes": 3025357,
+      "clips": [
+        {
+          "requested": {
+            "start": 20,
+            "end": 40
+          },
+          "keyframeTarget": null,
+          "duration": 20,
+          "bytes": 3025357
+        }
+      ]
+    },
+    {
+      "case": "optimized-fast-off-packet-scan",
+      "method": "fast",
+      "compression": "off",
+      "multithreaded": false,
+      "processingSeconds": 3.2163,
+      "wallSecondsIncludingDownloadsAndInspection": 3.9792,
+      "engineLoadSeconds": 0.2212,
+      "processTreeCPUSecondsApprox": 4,
+      "peakProcessTreeRSSMiB": 951.32,
+      "sourceIO": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1
+      },
+      "outputBytes": 71354805,
+      "clips": [
+        {
+          "requested": {
+            "start": 0,
+            "end": 90
+          },
+          "keyframeTarget": {
+            "start": 0,
+            "end": 90
+          },
+          "duration": 90.083341,
+          "bytes": 9227818
+        },
+        {
+          "requested": {
+            "start": 90,
+            "end": 180
+          },
+          "keyframeTarget": {
+            "start": 90,
+            "end": 180
+          },
+          "duration": 90.177327,
+          "bytes": 8478966
+        },
+        {
+          "requested": {
+            "start": 180,
+            "end": 270
+          },
+          "keyframeTarget": {
+            "start": 180,
+            "end": 270
+          },
+          "duration": 90.180338,
+          "bytes": 8624400
+        },
+        {
+          "requested": {
+            "start": 270,
+            "end": 360
+          },
+          "keyframeTarget": {
+            "start": 270,
+            "end": 360
+          },
+          "duration": 90.183349,
+          "bytes": 9105691
+        },
+        {
+          "requested": {
+            "start": 360,
+            "end": 450
+          },
+          "keyframeTarget": {
+            "start": 360,
+            "end": 450
+          },
+          "duration": 90.171305,
+          "bytes": 9444735
+        },
+        {
+          "requested": {
+            "start": 450,
+            "end": 540
+          },
+          "keyframeTarget": {
+            "start": 450,
+            "end": 540
+          },
+          "duration": 90.17334,
+          "bytes": 8018804
+        },
+        {
+          "requested": {
+            "start": 540,
+            "end": 630
+          },
+          "keyframeTarget": {
+            "start": 540,
+            "end": 630
+          },
+          "duration": 90.176351,
+          "bytes": 8705566
+        },
+        {
+          "requested": {
+            "start": 630,
+            "end": 720
+          },
+          "keyframeTarget": {
+            "start": 630,
+            "end": 720
+          },
+          "duration": 90.179362,
+          "bytes": 9704973
+        },
+        {
+          "requested": {
+            "start": 720,
+            "end": 720.641333
+          },
+          "keyframeTarget": {
+            "start": 720,
+            "end": 720.642
+          },
+          "duration": 0.725333,
+          "bytes": 43852
+        }
+      ]
+    }
+  ],
+  "outputValidation": [
+    {
+      "report": "optimized-fast-off-packet-scan-short.json",
+      "clip": 1,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.008000000002006402,
+      "matchedPackets": 987,
+      "requested": {
+        "start": 0,
+        "end": 20
+      },
+      "keyframeTarget": {
+        "start": 0,
+        "end": 13.916667
+      },
+      "outputDuration": 14.000008,
+      "bytes": 2095927
+    },
+    {
+      "report": "optimized-fast-off-packet-scan-short.json",
+      "clip": 2,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.7070000000055643,
+      "matchedPackets": 1298,
+      "requested": {
+        "start": 20,
+        "end": 40
+      },
+      "keyframeTarget": {
+        "start": 13.916667,
+        "end": 32.166667
+      },
+      "outputDuration": 18.425293,
+      "bytes": 4033818
+    },
+    {
+      "report": "optimized-fast-off-packet-scan-short.json",
+      "clip": 3,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.6980000000069708,
+      "matchedPackets": 1413,
+      "requested": {
+        "start": 40,
+        "end": 52.208333
+      },
+      "keyframeTarget": {
+        "start": 32.166667,
+        "end": 52.209
+      },
+      "outputDuration": 20.143636,
+      "bytes": 1599696
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 1,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.008000000008223651,
+      "matchedPackets": 3856,
+      "requested": {
+        "start": 0,
+        "end": 90
+      },
+      "keyframeTarget": {
+        "start": 0,
+        "end": 90
+      },
+      "outputDuration": 90.083341,
+      "bytes": 9227818
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 2,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.6730000000345626,
+      "matchedPackets": 2458,
+      "requested": {
+        "start": 90,
+        "end": 180
+      },
+      "keyframeTarget": {
+        "start": 90,
+        "end": 180
+      },
+      "outputDuration": 90.177327,
+      "bytes": 8478966
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 3,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.32900000007884955,
+      "matchedPackets": 2247,
+      "requested": {
+        "start": 180,
+        "end": 270
+      },
+      "keyframeTarget": {
+        "start": 180,
+        "end": 270
+      },
+      "outputDuration": 90.180338,
+      "bytes": 8624400
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 4,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.017000000070765964,
+      "matchedPackets": 2369,
+      "requested": {
+        "start": 270,
+        "end": 360
+      },
+      "keyframeTarget": {
+        "start": 270,
+        "end": 360
+      },
+      "outputDuration": 90.183349,
+      "bytes": 9105691
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 5,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.028000000042993634,
+      "matchedPackets": 2251,
+      "requested": {
+        "start": 360,
+        "end": 450
+      },
+      "keyframeTarget": {
+        "start": 360,
+        "end": 450
+      },
+      "outputDuration": 90.171305,
+      "bytes": 9444735
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 6,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.6610000000932814,
+      "matchedPackets": 2340,
+      "requested": {
+        "start": 450,
+        "end": 540
+      },
+      "keyframeTarget": {
+        "start": 450,
+        "end": 540
+      },
+      "outputDuration": 90.17334,
+      "bytes": 8018804
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 7,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.3169999999954598,
+      "matchedPackets": 2244,
+      "requested": {
+        "start": 540,
+        "end": 630
+      },
+      "keyframeTarget": {
+        "start": 540,
+        "end": 630
+      },
+      "outputDuration": 90.176351,
+      "bytes": 8705566
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 8,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.029000000154155714,
+      "matchedPackets": 2523,
+      "requested": {
+        "start": 630,
+        "end": 720
+      },
+      "keyframeTarget": {
+        "start": 630,
+        "end": 720
+      },
+      "outputDuration": 90.179362,
+      "bytes": 9704973
+    },
+    {
+      "report": "optimized-fast-off-packet-scan.json",
+      "clip": 9,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "timestampOffsetSpreadMs": 0.01600000007329072,
+      "matchedPackets": 41,
+      "requested": {
+        "start": 720,
+        "end": 720.641333
+      },
+      "keyframeTarget": {
+        "start": 720,
+        "end": 720.642
+      },
+      "outputDuration": 0.725333,
+      "bytes": 43852
+    },
+    {
+      "report": "optimized-precision-off-short.json",
+      "clip": 1,
+      "decoded": true,
+      "firstFramePSNRdB": "identical",
+      "requested": {
+        "start": 0,
+        "end": 20
+      },
+      "outputDuration": 20.010667,
+      "bytes": 4593133
+    },
+    {
+      "report": "optimized-precision-off-short.json",
+      "clip": 2,
+      "decoded": true,
+      "firstFramePSNRdB": 45.308,
+      "requested": {
+        "start": 20,
+        "end": 40
+      },
+      "outputDuration": 20,
+      "bytes": 6153299
+    },
+    {
+      "report": "optimized-precision-off-short.json",
+      "clip": 3,
+      "decoded": true,
+      "firstFramePSNRdB": 51.835,
+      "requested": {
+        "start": 40,
+        "end": 52.208333
+      },
+      "outputDuration": 12.208333,
+      "bytes": 808448
+    },
+    {
+      "report": "optimized-precision-balanced-balanced-case.json",
+      "clip": 1,
+      "decoded": true,
+      "firstFramePSNRdB": 39.781,
+      "requested": {
+        "start": 20,
+        "end": 40
+      },
+      "outputDuration": 20,
+      "bytes": 3024387
+    },
+    {
+      "report": "optimized-precision-balanced-mt-2threads.json",
+      "clip": 1,
+      "decoded": true,
+      "firstFramePSNRdB": 39.781,
+      "requested": {
+        "start": 20,
+        "end": 40
+      },
+      "outputDuration": 20,
+      "bytes": 3025357
+    }
+  ]
+}

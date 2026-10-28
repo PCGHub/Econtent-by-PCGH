@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createCutPlan } from '../lib/video/planner'
-import { encodingArgs } from '../lib/video/command'
+import { alignFastRange, encodingArgs } from '../lib/video/command'
 import { assertValidRange } from '../lib/video/validation'
 
 test('full splits, exact multiples, keep/discard and short sources', () => {
@@ -26,6 +26,15 @@ test('invalid inputs and resource exhaustion are rejected', () => {
 test('accurate encode uses output seek, optional audio and H264/AAC', () => {
   for(const compression of ['off','high','balanced','small'] as const) {
     const args=encodingArgs({range:{start:1.25,end:31.25},compression,outputName:'clip.mp4'})
-    assert.ok(args.indexOf('-ss')>args.indexOf('-i'));assert.ok(args.includes('libx264'));assert.ok(args.includes('0:a:0?'));assert.equal(args[args.indexOf('-t')+1],'30')
+    assert.ok(args.indexOf('-ss')<args.indexOf('-i'));assert.ok(args.includes('libx264'));assert.ok(args.includes('0:a:0?'));assert.equal(args[args.indexOf('-t')+1],'30')
   }
+})
+
+test('Fast Cut is stream copy only and uses deterministic preceding keyframes', () => {
+  const args = encodingArgs({ range: { start: 10, end: 20 }, cutStrategy: 'fast', compression: 'off', outputName: 'clip.mp4' })
+  assert.ok(args.includes('copy')); assert.ok(!args.includes('libx264'))
+  assert.deepEqual(alignFastRange({ start: 12, end: 29 }, [0,10,20,30], 40), { start:10,end:20 })
+  assert.deepEqual(alignFastRange({ start:30,end:35.5 },[0,10,20,30],35.5),{start:30,end:35.5})
+  assert.throws(()=>alignFastRange({start:1,end:2},[0,10],20),/Precision/)
+  assert.throws(()=>encodingArgs({range:{start:0,end:10},compression:'balanced',cutStrategy:'fast',outputName:'x.mp4'}),/Off/)
 })

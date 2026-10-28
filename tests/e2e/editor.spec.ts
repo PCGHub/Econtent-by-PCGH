@@ -1,3 +1,4 @@
+import { assertStreamCopySync } from '../media-assertions'
 import { test, expect } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -18,10 +19,13 @@ test('browser worker trims 30 seconds, compresses, previews and downloads real M
     await page.getByRole('button',{name:'Start editing free'}).click()
     await page.getByLabel('Choose video',{exact:true}).setInputFiles(input)
     await expect(page.getByText(/35.000 seconds/)).toBeVisible()
+    await page.getByLabel('Cut method',{exact:true}).selectOption('precision')
     await page.getByLabel('Start (seconds)',{exact:false}).fill('1.25')
     await page.getByLabel('End (seconds)',{exact:false}).fill('31.25')
     await page.getByLabel('Compression',{exact:true}).selectOption('balanced')
     await page.getByRole('button',{name:'Process video',exact:true}).click()
+    await expect(page.getByRole('heading',{name:'Completed',exact:true})).toBeVisible({timeout:150000})
+    await expect(page.getByTestId('overall-percentage')).toHaveText('100%')
     await expect(page.getByText('MP4 exports ready.',{exact:false})).toBeVisible({timeout:150000})
     const preview = page.getByLabel('Preview econtent-001.mp4')
     await expect.poll(() => preview.evaluate((video: HTMLVideoElement) => video.duration)).toBeCloseTo(30,0)
@@ -42,9 +46,25 @@ test('browser worker trims 30 seconds, compresses, previews and downloads real M
     await page.getByLabel('Mode',{exact:true}).selectOption('full-split')
     await page.getByLabel('Clip length (seconds)',{exact:false}).fill('10')
     await page.getByLabel('Compression',{exact:true}).selectOption('off')
+    await page.getByLabel('Cut method',{exact:true}).selectOption('precision')
+    await page.evaluate(() => {
+      const state = window as unknown as { measuredProgress: { value: number | null; state: string }[] }
+      state.measuredProgress = []
+      const panel = document.querySelector('[aria-label="Processing status"]')!
+      new MutationObserver(() => {
+        const bar = panel.querySelector('progress')!
+        state.measuredProgress.push({ value: bar.hasAttribute('value') ? Number(bar.getAttribute('value')) : null, state: panel.querySelector('h2')?.textContent ?? '' })
+      }).observe(panel, { subtree: true, attributes: true, childList: true, characterData: true })
+    })
     await page.getByRole('button',{name:'Process video',exact:true}).click()
     await expect(page.getByRole('button',{name:'Download MP4',exact:true})).toHaveCount(4,{timeout:150000})
     await expect(page.getByRole('button',{name:'Download all ZIP'})).toBeEnabled()
+    const progressSamples = await page.evaluate(() => (window as unknown as { measuredProgress: { value: number | null; state: string }[] }).measuredProgress)
+    const measured = progressSamples.filter(sample => sample.value !== null)
+    expect(measured.some(sample => sample.value! > 0 && sample.value! < 1)).toBe(true)
+    expect(measured.every((sample, i) => !i || sample.value! >= measured[i - 1].value!)).toBe(true)
+    expect(measured.filter(sample => sample.value === 1).every(sample => sample.state === 'Completed')).toBe(true)
+
     const bundlePending=page.waitForEvent('download')
     await page.getByRole('button',{name:'Download all ZIP'}).click()
     const bundle=await bundlePending;const bundlePath=info.outputPath('split-clips.zip');await bundle.saveAs(bundlePath)
@@ -63,9 +83,53 @@ test('browser worker trims 30 seconds, compresses, previews and downloads real M
     expect(execFileSync('unzip',['-Z1',subsetPath],{encoding:'utf8'}).trim().split('\n')).toHaveLength(3)
     await page.getByRole('button',{name:'Process video',exact:true}).click()
     await page.getByRole('button',{name:'Cancel processing',exact:true}).click()
-    await expect(page.getByText('cancelled',{exact:true})).toBeVisible()
+    await expect(page.getByRole('heading',{name:'Cancelled',exact:true})).toBeVisible()
     await expect(page.getByRole('button',{name:'Process video',exact:true})).toBeEnabled()
 
 
   } finally { rmSync(dir,{recursive:true,force:true}) }
+})
+
+test('Fast Cut progress, compatible exports, source reuse and mobile cancellation controls', async ({page},info) => {
+  const dir=mkdtempSync(join(tmpdir(),'econtent-fast-browser-'))
+  try {
+    const input=join(dir,'fast.mp4')
+    execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=320x180:rate=30','-f','lavfi','-i','anoisesrc=color=pink:sample_rate=48000:seed=1','-t','35','-c:v','libx264','-g','300','-keyint_min','300','-sc_threshold','0','-pix_fmt','yuv420p','-c:a','aac',input])
+    await page.setViewportSize({width:390,height:844})
+    await page.goto('/')
+    await page.getByRole('button',{name:'Start editing free'}).click()
+    await page.getByLabel('Choose video',{exact:true}).setInputFiles(input)
+    await expect(page.getByText(/35.000 seconds/)).toBeVisible()
+    await expect(page.getByLabel('Cut method',{exact:true})).toHaveValue('fast')
+    await page.getByLabel('Mode',{exact:true}).selectOption('full-split')
+    await page.getByLabel('Clip length (seconds)',{exact:false}).fill('10')
+    await page.getByRole('button',{name:'Process video',exact:true}).click()
+    await expect(page.getByRole('button',{name:'Cancel processing',exact:true})).toBeVisible()
+    await expect(page.getByRole('progressbar',{name:'Overall job progress',exact:true})).toBeVisible()
+    await expect(page.getByRole('button',{name:'Download MP4',exact:true})).toHaveCount(4,{timeout:150000})
+    await expect(page.getByRole('heading',{name:'Completed',exact:true})).toBeVisible()
+    await expect(page.getByTestId('overall-percentage')).toHaveText('100%')
+    await expect(page.locator('article').getByText('Stream copy',{exact:false})).toHaveCount(4)
+    const pending=page.waitForEvent('download')
+    await page.getByRole('button',{name:'Download all ZIP',exact:true}).click()
+    const zip=await pending;const path=info.outputPath('fast-clips.zip');await zip.saveAs(path)
+    execFileSync('unzip',['-t',path])
+    const extracted=info.outputPath('fast-extracted');execFileSync('unzip',['-q',path,'-d',extracted])
+    const names=execFileSync('unzip',['-Z1',path],{encoding:'utf8'}).trim().split('\n')
+    expect(names).toHaveLength(4)
+    for(const [i,name]of names.entries()){
+      const data=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',join(extracted,name)],{encoding:'utf8'}))
+      expect(Math.abs(Number(data.format.duration)-(i===3?5:10))).toBeLessThan(0.5)
+      expect(data.streams[0].codec_name).toBe('h264');expect(data.streams[1].codec_name).toBe('aac')
+      expect(assertStreamCopySync(input,join(extracted,name))).toBeLessThan(0.003)
+    }
+    await page.getByLabel('Compression',{exact:true}).selectOption('balanced')
+    await expect(page.getByLabel('Cut method',{exact:true})).toHaveValue('precision')
+    await expect(page.getByLabel('Cut method',{exact:true})).toBeDisabled()
+    await page.getByRole('button',{name:'Process video',exact:true}).click()
+    const cancel=page.getByRole('button',{name:'Cancel processing',exact:true})
+    await expect(cancel).toBeInViewport()
+    await cancel.click()
+    await expect(page.getByRole('heading',{name:'Cancelled',exact:true})).toBeVisible()
+  }finally{rmSync(dir,{recursive:true,force:true})}
 })

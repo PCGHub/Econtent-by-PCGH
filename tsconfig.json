@@ -37,6 +37,8 @@
   ],
   "exclude": [
     "node_modules",
-    "public/ffmpeg"
+    "public/ffmpeg",
+    "test-results",
+    "playwright-report"
   ]
 }

@@ -34,6 +34,8 @@ Creators, podcasters, educators, small businesses and everyday users who need to
 
 Duration presets: **30, 45, 60, 90, 120, 190 seconds**, plus positive custom seconds. Validate all inputs and ranges. Users choose whether to **keep or discard the final shorter remainder**. Name clips in sequence and show their actual time ranges. Never pad or invent missing footage.
 
+Choose **Fast Cut** for compatible H.264/AAC MP4 stream copying with compression Off. Its boundaries follow source keyframes and may differ from requested times; exported targets and durations are displayed. Choose **Precision Cut** for frame-accurate re-encoding. Compression selects Precision Cut. See [measured performance and progress behavior](docs/PERFORMANCE.md).
+
 ### Compression (optional, independent of cutting)
 - Offer **Off**, **High quality**, **Balanced**, **Smaller file**.
 - Permit compressing the original video **without cutting**, and compressing clips when cutting.
