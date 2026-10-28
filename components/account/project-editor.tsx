@@ -36,7 +36,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   const dirtyRef = useRef(false);
   const queue = useRef<SaveQueue | null>(null);
   const abort = useRef<AbortController | null>(null);
-  
+
   const digestRef = useRef("");
   const snapshotFile = useRef<File | null>(null);
   const firstSnapshot = useRef(true);
