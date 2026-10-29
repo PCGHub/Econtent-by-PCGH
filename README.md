@@ -199,3 +199,7 @@ Email authentication, owner-only saved editing settings, autosave and original-v
 reconnection are integrated without requiring an account for guest editing. See
 [Account workspace setup and verification](docs/ACCOUNT-WORKSPACE.md) for development
 Supabase configuration, migrations, privacy boundaries and real Auth/database tests.
+
+See [mobile workload handling and measured performance](docs/MOBILE-PERFORMANCE.md)
+for Fast/Precision defaults, mobile safeguards, before/after desktop benchmarks and
+unverified Android limits.

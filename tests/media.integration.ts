@@ -15,7 +15,7 @@ test('real 30-second cuts from non-keyframe start; compression presets and silen
   try {
     run(['-f','lavfi','-i','testsrc2=size=320x180:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','35','-c:v','libx264','-g','300','-pix_fmt','yuv420p','-c:a','aac','-f','mp4','input'])
     for (const compression of ['off','high','balanced','small'] as const) {
-      run(encodingArgs({range:{start:1.25,end:31.25},compression,outputName:'clip.mp4'}))
+      run(encodingArgs({range:{start:1.25,end:31.25},compression,cutStrategy:'precision',outputName:'clip.mp4'}))
       const info=probe();const video=info.streams.find((s:{codec_type:string})=>s.codec_type==='video');const audio=info.streams.find((s:{codec_type:string})=>s.codec_type==='audio')
       assert.equal(video.codec_name,'h264');assert.equal(audio.codec_name,'aac');assert.ok(Math.abs(Number(info.format.duration)-30)<1/30+0.01)
       assert.ok(Math.abs(Number(video.start_time)-Number(audio.start_time))<0.05)

@@ -140,15 +140,18 @@ test("real email verification, sessions, recovery, project CRUD, autosave, recon
     await expect(
       page.getByRole("heading", { name: "Reconnect original video" }),
     ).toBeVisible();
-    await page.getByLabel("Reconnect video").setInputFiles(wrong);
+    // Next can briefly retain an inert hidden page during hydration; operate on the live input.
+    const reconnect=page.locator('input[aria-label="Reconnect video"]:visible');
+    await expect(reconnect).toBeEnabled();
+    await reconnect.setInputFiles(wrong);
     await expect(page.locator("main").getByRole("alert")).toContainText("File size differs");
     await expect(
       page.getByLabel("Start (seconds)", { exact: false }),
     ).toHaveCount(0);
     const mutated=readFileSync(input);mutated[100]^=1;const sameSize=join(dir,'different-same-size.mp4');writeFileSync(sameSize,mutated);
-    await page.getByLabel('Reconnect video').setInputFiles(sameSize);
+    await reconnect.setInputFiles(sameSize);
     await expect(page.locator('main').getByRole('alert')).toContainText('different video');
-    await page.getByLabel("Reconnect video").setInputFiles(input);
+    await reconnect.setInputFiles(input);
     await expect(
       page.getByLabel("Start (seconds)", { exact: false }),
     ).toHaveValue("1");
@@ -191,6 +194,17 @@ test("real email verification, sessions, recovery, project CRUD, autosave, recon
         (s: { codec_type: string }) => s.codec_type === "audio",
       ),
     ).toBe(true);
+    // Defaults must not overwrite an explicitly saved Precision/Off choice on resume.
+    await page.getByLabel('Compression',{exact:true}).selectOption('off');
+    await expect(page.getByLabel('Cut method',{exact:true})).toHaveValue('fast');
+    await page.getByLabel('Cut method',{exact:true}).selectOption('precision');
+    await expect.poll(async()=>{const result=await (await page.request.get('/api/projects/'+id)).json();return {compression:result.project.settings.compression,method:result.project.settings.cutStrategy}}).toEqual({compression:'off',method:'precision'});
+    await expect(page.getByRole('status').first()).toContainText('Saved');
+    await page.reload();
+    const resumed=page.locator('input[aria-label="Reconnect video"]:visible');await expect(resumed).toBeEnabled();await resumed.setInputFiles(input);
+    await expect(page.locator('select[aria-label="Compression"]:visible')).toHaveValue('off');
+    await expect(page.locator('select[aria-label="Cut method"]:visible')).toHaveValue('precision');
+    await expect(page.locator('p:visible').filter({hasText:'This saved project restored Precision Cut.'})).toBeVisible();
     // Another real verified account cannot read, mutate, duplicate or delete the first user's project.
     other = await browser.newContext();
     const otherPage = await other.newPage();

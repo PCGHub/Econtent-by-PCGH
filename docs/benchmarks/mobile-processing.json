@@ -1,0 +1,931 @@
+{
+  "baselineCommit": "3de6253c8c17281e8730c6dccf154ad3daa3d08c",
+  "browser": "154.0.8037.57",
+  "platform": "linux",
+  "architecture": "x64",
+  "cpuQuota": "2 cores",
+  "memoryLimitGiB": 8,
+  "realAndroidTested": false,
+  "trialsPerCase": 1,
+  "precisionOffBefore": "CRF18/fast",
+  "precisionOffAfter": "CRF18/ultrafast",
+  "compressionPresetsChanged": false,
+  "measurement": "process calls including prepare/probe/read; excludes initial load, downloads and ZIP; RSS sums shared pages across processes",
+  "rows": [
+    {
+      "fixture": "10mb",
+      "input": {
+        "bytes": 9995317,
+        "duration": 52.209333,
+        "width": 1280,
+        "height": 720,
+        "frameRate": "24/1",
+        "video": "h264",
+        "audio": "aac"
+      },
+      "runs": [
+        {
+          "version": "baseline",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              52.209333
+            ]
+          ],
+          "clips": 2,
+          "loadMs": 230.59999999997672,
+          "processingMs": 523.5999999999767,
+          "cpuSeconds": 0,
+          "peakSummedRSSMiB": 784.7265625,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 10027819,
+          "outputDurations": [
+            30.083341,
+            22.3
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              52.209333
+            ]
+          ],
+          "clips": 2,
+          "loadMs": 302.30000000004657,
+          "processingMs": 582.8000000000466,
+          "cpuSeconds": 0,
+          "peakSummedRSSMiB": 858.03515625,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 10027819,
+          "outputDurations": [
+            30.083341,
+            22.3
+          ]
+        },
+        {
+          "version": "baseline",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 208.60000000009313,
+          "processingMs": 117064.09999999998,
+          "cpuSeconds": 118,
+          "peakSummedRSSMiB": 892.37890625,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 7343107,
+          "outputDurations": [
+            30
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 230.39999999990687,
+          "processingMs": 17700.300000000047,
+          "cpuSeconds": 18,
+          "peakSummedRSSMiB": 881.44140625,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 19777177,
+          "outputDurations": [
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "30mb",
+      "input": {
+        "bytes": 30069381,
+        "duration": 210.138667,
+        "width": 1280,
+        "height": 720,
+        "frameRate": "24/1",
+        "video": "h264",
+        "audio": "aac"
+      },
+      "runs": [
+        {
+          "version": "baseline",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              60
+            ],
+            [
+              60,
+              90
+            ],
+            [
+              90,
+              120
+            ],
+            [
+              120,
+              150
+            ],
+            [
+              150,
+              180
+            ],
+            [
+              180,
+              210
+            ],
+            [
+              210,
+              210.138667
+            ]
+          ],
+          "clips": 8,
+          "loadMs": 350.4000000000233,
+          "processingMs": 1469.2000000001863,
+          "cpuSeconds": 2,
+          "peakSummedRSSMiB": 860.41796875,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 30317821,
+          "outputDurations": [
+            30.083341,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            0.234667
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              60
+            ],
+            [
+              60,
+              90
+            ],
+            [
+              90,
+              120
+            ],
+            [
+              120,
+              150
+            ],
+            [
+              150,
+              180
+            ],
+            [
+              180,
+              210
+            ],
+            [
+              210,
+              210.138667
+            ]
+          ],
+          "clips": 8,
+          "loadMs": 202.69999999995343,
+          "processingMs": 1463.0000000004657,
+          "cpuSeconds": 2,
+          "peakSummedRSSMiB": 828.24609375,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 30317821,
+          "outputDurations": [
+            30.083341,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            0.234667
+          ]
+        },
+        {
+          "version": "baseline",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 229.30000000004657,
+          "processingMs": 116875.90000000002,
+          "cpuSeconds": 118,
+          "peakSummedRSSMiB": 891.62109375,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 6799082,
+          "outputDurations": [
+            30
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 219.19999999995343,
+          "processingMs": 16915,
+          "cpuSeconds": 18,
+          "peakSummedRSSMiB": 905.86328125,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 19378120,
+          "outputDurations": [
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "70mb",
+      "input": {
+        "bytes": 70314800,
+        "duration": 480.145333,
+        "width": 1280,
+        "height": 720,
+        "frameRate": "24/1",
+        "video": "h264",
+        "audio": "aac"
+      },
+      "runs": [
+        {
+          "version": "baseline",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              60
+            ],
+            [
+              60,
+              90
+            ],
+            [
+              90,
+              120
+            ],
+            [
+              120,
+              150
+            ],
+            [
+              150,
+              180
+            ],
+            [
+              180,
+              210
+            ],
+            [
+              210,
+              240
+            ],
+            [
+              240,
+              270
+            ],
+            [
+              270,
+              300
+            ],
+            [
+              300,
+              330
+            ],
+            [
+              330,
+              360
+            ],
+            [
+              360,
+              390
+            ],
+            [
+              390,
+              420
+            ],
+            [
+              420,
+              450
+            ],
+            [
+              450,
+              480
+            ],
+            [
+              480,
+              480.145333
+            ]
+          ],
+          "clips": 17,
+          "loadMs": 332.69999999995343,
+          "processingMs": 3373.1999999994878,
+          "cpuSeconds": 4,
+          "peakSummedRSSMiB": 935.69921875,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 70771141,
+          "outputDurations": [
+            30.083341,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            30.179362,
+            30.184326,
+            30.183349,
+            30.167317,
+            30.187337,
+            30.171305,
+            30.169352,
+            30.168294,
+            30.17334,
+            0.234667
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              60
+            ],
+            [
+              60,
+              90
+            ],
+            [
+              90,
+              120
+            ],
+            [
+              120,
+              150
+            ],
+            [
+              150,
+              180
+            ],
+            [
+              180,
+              210
+            ],
+            [
+              210,
+              240
+            ],
+            [
+              240,
+              270
+            ],
+            [
+              270,
+              300
+            ],
+            [
+              300,
+              330
+            ],
+            [
+              330,
+              360
+            ],
+            [
+              360,
+              390
+            ],
+            [
+              390,
+              420
+            ],
+            [
+              420,
+              450
+            ],
+            [
+              450,
+              480
+            ],
+            [
+              480,
+              480.145333
+            ]
+          ],
+          "clips": 17,
+          "loadMs": 199.4000000001397,
+          "processingMs": 3132.899999999674,
+          "cpuSeconds": 3,
+          "peakSummedRSSMiB": 919.43359375,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 70771141,
+          "outputDurations": [
+            30.083341,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            30.179362,
+            30.184326,
+            30.183349,
+            30.167317,
+            30.187337,
+            30.171305,
+            30.169352,
+            30.168294,
+            30.17334,
+            0.234667
+          ]
+        },
+        {
+          "version": "baseline",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 239.70000000006985,
+          "processingMs": 116126.59999999998,
+          "cpuSeconds": 117,
+          "peakSummedRSSMiB": 893.50390625,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 6819355,
+          "outputDurations": [
+            30
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 232.19999999995343,
+          "processingMs": 17343,
+          "cpuSeconds": 18,
+          "peakSummedRSSMiB": 907.1484375,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 19409062,
+          "outputDurations": [
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "110mb",
+      "input": {
+        "bytes": 110444012,
+        "duration": 720.129333,
+        "width": 1280,
+        "height": 720,
+        "frameRate": "24/1",
+        "video": "h264",
+        "audio": "aac"
+      },
+      "runs": [
+        {
+          "version": "baseline",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              60
+            ],
+            [
+              60,
+              90
+            ],
+            [
+              90,
+              120
+            ],
+            [
+              120,
+              150
+            ],
+            [
+              150,
+              180
+            ],
+            [
+              180,
+              210
+            ],
+            [
+              210,
+              240
+            ],
+            [
+              240,
+              270
+            ],
+            [
+              270,
+              300
+            ],
+            [
+              300,
+              330
+            ],
+            [
+              330,
+              360
+            ],
+            [
+              360,
+              390
+            ],
+            [
+              390,
+              420
+            ],
+            [
+              420,
+              450
+            ],
+            [
+              450,
+              480
+            ],
+            [
+              480,
+              510
+            ],
+            [
+              510,
+              540
+            ],
+            [
+              540,
+              570
+            ],
+            [
+              570,
+              600
+            ],
+            [
+              600,
+              630
+            ],
+            [
+              630,
+              660
+            ],
+            [
+              660,
+              690
+            ],
+            [
+              690,
+              720
+            ],
+            [
+              720,
+              720.129333
+            ]
+          ],
+          "clips": 25,
+          "loadMs": 293,
+          "processingMs": 4809.899999999558,
+          "cpuSeconds": 6,
+          "peakSummedRSSMiB": 928.765625,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 111233914,
+          "outputDurations": [
+            30.083341,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            30.179362,
+            30.184326,
+            30.183349,
+            30.167317,
+            30.187337,
+            30.171305,
+            30.169352,
+            30.168294,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            30.179362,
+            30.184326,
+            30.183349,
+            0.213333
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "fast",
+          "rangeType": "full-source-30-second-targets",
+          "ranges": [
+            [
+              0,
+              30
+            ],
+            [
+              30,
+              60
+            ],
+            [
+              60,
+              90
+            ],
+            [
+              90,
+              120
+            ],
+            [
+              120,
+              150
+            ],
+            [
+              150,
+              180
+            ],
+            [
+              180,
+              210
+            ],
+            [
+              210,
+              240
+            ],
+            [
+              240,
+              270
+            ],
+            [
+              270,
+              300
+            ],
+            [
+              300,
+              330
+            ],
+            [
+              330,
+              360
+            ],
+            [
+              360,
+              390
+            ],
+            [
+              390,
+              420
+            ],
+            [
+              420,
+              450
+            ],
+            [
+              450,
+              480
+            ],
+            [
+              480,
+              510
+            ],
+            [
+              510,
+              540
+            ],
+            [
+              540,
+              570
+            ],
+            [
+              570,
+              600
+            ],
+            [
+              600,
+              630
+            ],
+            [
+              630,
+              660
+            ],
+            [
+              660,
+              690
+            ],
+            [
+              690,
+              720
+            ],
+            [
+              720,
+              720.129333
+            ]
+          ],
+          "clips": 25,
+          "loadMs": 228.0999999998603,
+          "processingMs": 4824.799999999348,
+          "cpuSeconds": 6,
+          "peakSummedRSSMiB": 924.9609375,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 111233914,
+          "outputDurations": [
+            30.083341,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            30.179362,
+            30.184326,
+            30.183349,
+            30.167317,
+            30.187337,
+            30.171305,
+            30.169352,
+            30.168294,
+            30.17334,
+            30.172363,
+            30.177327,
+            30.176351,
+            30.181315,
+            30.180338,
+            30.179362,
+            30.184326,
+            30.183349,
+            0.213333
+          ]
+        },
+        {
+          "version": "baseline",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 256.70000000006985,
+          "processingMs": 116038.70000000007,
+          "cpuSeconds": 117,
+          "peakSummedRSSMiB": 893.51171875,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 6836324,
+          "outputDurations": [
+            30
+          ]
+        },
+        {
+          "version": "optimized",
+          "mode": "precision",
+          "rangeType": "one-30-second-range",
+          "ranges": [
+            [
+              1.25,
+              31.25
+            ]
+          ],
+          "clips": 1,
+          "loadMs": 269.5,
+          "processingMs": 17257.399999999907,
+          "cpuSeconds": 18,
+          "peakSummedRSSMiB": 883.86328125,
+          "mounts": 1,
+          "fullSourceWrites": 0,
+          "outputBytes": 19440494,
+          "outputDurations": [
+            30
+          ]
+        }
+      ]
+    }
+  ],
+  "fullSevenClipPrecision": {
+    "inputBytes": 30069381,
+    "processingMs": 105519.00000000047,
+    "loadMs": 283.80000000004657,
+    "peakSummedRSSMiB": 938.7578125,
+    "cpuSeconds": 108,
+    "outputBytes": 106760834,
+    "outputDurations": [
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30
+    ]
+  },
+  "outputVerification": {
+    "decodedOutputs": 126,
+    "precisionOutputs": 15,
+    "precisionMaxDurationError": 0,
+    "precisionFirstFrameMinPSNRdB": 49.832,
+    "fastOutputs": 111,
+    "fastFirstFramesIdentical": true,
+    "fastMaxPacketOffsetSpreadMs": 0.6860000000870059,
+    "rawDetails": "test-results/performance/output-verification.json (reproducible; not committed)"
+  }
+}

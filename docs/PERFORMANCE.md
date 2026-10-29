@@ -74,3 +74,11 @@ For the optional isolated MT experiment only, unpack `@ffmpeg/core-mt@0.12.10`'s
 Unit tests cover progress weighting/monotonicity/100% gating/stalls/ETA, source/worker reuse and fallback cleanup, cancellation, keyframe selection and ZIP worker cancellation. Native tests cover all compression presets, silent portrait footage, exact cuts, copy frame identity and packet sync. Browser tests cover Precision Balanced and Off, Fast Off, multiple clips, output playback, MP4 and full/selected ZIP downloads, actual progress transitions, small-screen Cancel visibility and cancellation. See CI for final revision results.
 
 Safari, Firefox, mobile processing, unusual timestamps/VFR, fragmented MP4, huge GOPs, corrupt media and low-memory devices need more evidence. The 256 MiB source / ZIP and 512 MiB output safety caps are conservative guards, not proven device capacities. Long Precision encoding remains slow. Fast Cut's speed must always be presented alongside its keyframe/compatibility limitations.
+
+## Follow-up: mobile workload investigation
+
+The subsequent performance branch investigates the reported Android Precision/Off
+slowdown, adds explicit workload handling, and benchmarks a speed-focused Precision
+preset. See [MOBILE-PERFORMANCE.md](MOBILE-PERFORMANCE.md) for the current changes and
+measurement boundaries. The CRF/preset statements above describe the earlier upgrade;
+High/Balanced/Small remain unchanged, while Precision/Off now uses ultrafast.

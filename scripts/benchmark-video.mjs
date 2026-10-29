@@ -67,6 +67,6 @@ try{
  }
  const wallMs=performance.now()-wallStart
  const telemetry=await page.evaluate(()=>({io:window.io,events:window.events,jsHeap:performance.memory?.usedJSHeapSize}));await page.evaluate(()=>window.engine.dispose());sample()
- const report={version,mode,compression,fixture,ranges,...setup,wallMs,processingMs:clips.reduce((s,c)=>s+c.ms,0),clips,io:telemetry.io,peakProcessTreeRSSKiB:peakRSSKiB,processTreeCPUSeconds:[...ticks.values()].reduce((s,n)=>s+n,0),controllerCPU:process.cpuUsage(startCPU),jsHeapBytes:telemetry.jsHeap,events:telemetry.events}
+ const report={browserVersion:browser.version(),platform:process.platform,architecture:process.arch,version,mode,compression,fixture,ranges,...setup,wallMs,processingMs:clips.reduce((s,c)=>s+c.ms,0),clips,io:telemetry.io,peakProcessTreeRSSKiB:peakRSSKiB,processTreeCPUSeconds:[...ticks.values()].reduce((s,n)=>s+n,0),controllerCPU:process.cpuUsage(startCPU),jsHeapBytes:telemetry.jsHeap,events:telemetry.events}
  const reportPath=join(root,`test-results/performance/${version}-${mode}-${compression}-${label}.json`);await writeFile(reportPath,JSON.stringify(report,null,2));console.log(JSON.stringify({report:reportPath,wallMs,processingMs:report.processingMs,io:report.io,peakProcessTreeRSSKiB:peakRSSKiB}))
 }finally{clearInterval(interval);await browser.close();await new Promise(r=>server.close(r))}

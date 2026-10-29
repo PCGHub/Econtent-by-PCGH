@@ -23,9 +23,9 @@ test('invalid inputs and resource exhaustion are rejected', () => {
   for (const range of [{start:-1,end:5},{start:5,end:5},{start:8,end:7},{start:0,end:61},{start:NaN,end:6}]) assert.throws(()=>assertValidRange(range,60))
   assert.throws(()=>createCutPlan({mode:'full-split',sourceDuration:60,clipDuration:0.00001}))
 })
-test('accurate encode uses output seek, optional audio and H264/AAC', () => {
+test('accurate encode uses input seek, optional audio and H264/AAC', () => {
   for(const compression of ['off','high','balanced','small'] as const) {
-    const args=encodingArgs({range:{start:1.25,end:31.25},compression,outputName:'clip.mp4'})
+    const args=encodingArgs({range:{start:1.25,end:31.25},compression,cutStrategy:'precision',outputName:'clip.mp4'})
     assert.ok(args.indexOf('-ss')<args.indexOf('-i'));assert.ok(args.includes('libx264'));assert.ok(args.includes('0:a:0?'));assert.equal(args[args.indexOf('-t')+1],'30')
   }
 })
