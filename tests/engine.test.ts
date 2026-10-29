@@ -394,3 +394,47 @@ test("an output hitting the explicit file budget is rejected rather than returne
   assert.equal(worker.loaded, false);
   await engine.dispose();
 });
+
+test("lost worker replies during load, mount, probe, copy, encode or output read fail and terminate instead of hanging", async () => {
+  for (const stage of ["load", "mount", "probe", "copy", "encode", "read"] as const) {
+    const { worker, calls } = fixture();
+    const pending = () => new Promise<never>(() => {});
+    if (stage === "load") worker.load = pending;
+    if (stage === "mount") worker.mount = pending;
+    if (stage === "probe") worker.ffprobe = pending;
+    const exec = worker.exec.bind(worker);
+    if (stage === "copy" || stage === "encode")
+      worker.exec = args => args.includes("output.mp4") ? pending() : exec(args);
+    const read = worker.readFile.bind(worker);
+    if (stage === "read") worker.readFile = path => path === "output.mp4" ? pending() : read(path);
+    const engine = new BrowserVideoEngine(async () => worker, 25);
+    await assert.rejects(async () => {
+      await engine.initialize();
+      await engine.process(new File(["video"], "source.mp4"), {
+        range: { start: 0, end: 10 }, compression: "off",
+        cutStrategy: stage === "encode" ? "precision" : "fast", outputName: "clip.mp4",
+      });
+    }, /no response or advancing media timestamps.*Retry the job/);
+    assert.ok(calls.includes("terminate"), stage);
+    assert.equal(worker.loaded, false);
+    await engine.dispose();
+  }
+});
+
+test("cancellation settles a lost worker request immediately and a fresh worker can recover", async () => {
+  const first = fixture(), second = fixture();
+  first.worker.ffprobe = () => new Promise<never>(() => {});
+  let loads = 0;
+  const engine = new BrowserVideoEngine(async () => ++loads === 1 ? first.worker : second.worker);
+  await engine.initialize();
+  const abort = new AbortController();
+  const source = new File(["video"], "source.mp4");
+  const inspecting = engine.inspect(source, abort.signal);
+  setTimeout(() => abort.abort(), 10);
+  await assert.rejects(inspecting, { name: "AbortError" });
+  assert.equal(first.worker.loaded, false);
+  await engine.initialize();
+  const info = await engine.inspect(source);
+  assert.equal(info.compatible, true);
+  await engine.dispose();
+});

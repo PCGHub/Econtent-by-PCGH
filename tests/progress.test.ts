@@ -62,3 +62,36 @@ test('invalid planned work and stale clip callbacks cannot corrupt job percentag
   const zip=new JobProgressTracker([])
   assert.equal(zip.update(0,{status:'packaging',fraction:2}).indeterminate,true)
 })
+
+test('timestamp callbacks preserve the stage description without inventing percentages', () => {
+  const job = new JobProgressTracker([30])
+  job.update(0, { status: 'processing', message: 'Copying streams at source keyframes…' })
+  const progress = job.update(0, { status: 'processing', fraction: 0.25 })
+  assert.equal(progress.message, 'Copying streams at source keyframes…')
+  assert.equal(progress.overallFraction, 0.25)
+  assert.equal(job.update(0, { status: 'finalizing' }).message, undefined)
+})
+
+test('operation diagnostics use elapsed clocks and only advancing measured media timestamps', () => {
+  let now = 100
+  const job = new JobProgressTracker([30], () => now)
+  job.update(0, {status:'preparing', operation:'Inspect source metadata'})
+  now = 1100
+  assert.equal(job.snapshot().operationElapsedSeconds, 1)
+  job.update(0, {status:'processing', operation:'Copy selected streams to MP4'})
+  now = 2100
+  job.update(0, {status:'processing', fraction:0.5})
+  now = 4100
+  const repeated = job.update(0, {status:'processing', fraction:0.5})
+  assert.equal(repeated.lastMediaAdvanceSeconds, 2)
+  assert.equal(repeated.operation, 'Copy selected streams to MP4')
+  assert.equal(repeated.operationElapsedSeconds, 3)
+  now = 7100
+  const stalled = job.update(0, {status:'processing', fraction:0.5})
+  assert.equal(stalled.indeterminate, true)
+  assert.equal(stalled.etaSeconds, undefined)
+  assert.equal(stalled.lastMediaAdvanceSeconds, 5)
+  const failed = job.finish('failed')
+  now = 8100
+  assert.equal(job.snapshot().operationElapsedSeconds, failed.operationElapsedSeconds)
+})

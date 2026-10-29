@@ -744,3 +744,36 @@ test("codec inspection distinguishes MP3/MOV/Matroska remux from unsupported MP4
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("a lost FFmpeg worker response fails clearly and retry loads a fresh worker", async ({ page }) => {
+  const dir = mkdtempSync(join(tmpdir(), "econtent-worker-failure-"));
+  try {
+    const source = join(dir, "input.mp4");
+    execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440", "-t", "8", "-c:v", "libx264", "-g", "24", "-pix_fmt", "yuv420p", "-c:a", "aac", source]);
+    await page.goto('/editor');
+    await page.getByLabel('Choose video', {exact:true}).setInputFiles(source);
+    await expect(page.getByText(/8.000 seconds/)).toBeVisible();
+    await page.getByLabel('End (seconds)', {exact:false}).fill('4');
+    await expect(page.getByRole('button', {name:'Process video',exact:true})).toBeEnabled();
+    await page.clock.install();
+    let blocked = 0;
+    await page.route('**/ffmpeg/ffmpeg/worker.js', async route => { blocked++; await route.abort('failed'); });
+    await page.getByRole('button', {name:'Process video',exact:true}).click();
+    await expect.poll(() => blocked).toBe(1);
+    await expect(page.getByRole('heading', {name:'Loading FFmpeg',exact:true})).toBeVisible();
+    await page.clock.fastForward(120_001);
+    await expect(page.getByRole('heading', {name:'Failed',exact:true})).toBeVisible();
+    await expect(page.getByText(/Loading FFmpeg: FFmpeg returned no response/)).toBeVisible();
+    await expect(page.getByTestId('processing-operation')).toBeVisible();
+    await expect(page.getByTestId('processing-operation')).toContainText('Load FFmpeg worker and WASM');
+    await expect(page.getByTestId('completed-clips')).toHaveText('Completed clips: 0 of 1');
+    await expect(page.locator('article')).toHaveCount(0);
+    await page.unroute('**/ffmpeg/ffmpeg/worker.js');
+    await page.clock.resume();
+    await page.getByRole('button', {name:'Process video',exact:true}).click();
+    await expect(page.getByRole('heading', {name:'Completed',exact:true})).toBeVisible({timeout:60000});
+    await expect(page.getByTestId('processing-method')).toContainText('Fast Cut · stream copy');
+    await expect(page.getByTestId('processing-operation')).toContainText('Read verified MP4 output bytes');
+    await expect(page.locator('article')).toHaveCount(1);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});

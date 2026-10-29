@@ -1,0 +1,807 @@
+{
+  "environment": "Desktop Linux x64, Chromium 154, single-thread FFmpeg core 0.12.10, 2-core quota, 8 GiB host cap; no Android device",
+  "method": "Single trials, sequential idle-host runs. Startup plus source/keyframe preparation, processing, MP4 metadata verification and Blob read included. Locally served assets; page navigation, upload selection, account fingerprint, downloads and ZIP excluded. Real Preview click-to-completion checks reported separately. RSS sums can double-count shared memory; not private WASM heap or phone capacity.",
+  "results": [
+    {
+      "version": "regression-previous",
+      "baselineCommit": "9f075e7a12eda22d6b721c09bb0f022233876998",
+      "case": "30mb-seven",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 30069381,
+      "ranges": [
+        [
+          0,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          90
+        ],
+        [
+          90,
+          120
+        ],
+        [
+          120,
+          150
+        ],
+        [
+          150,
+          180
+        ],
+        [
+          180,
+          210
+        ]
+      ],
+      "clipCount": 7,
+      "loadMs": 253.20000000298023,
+      "startupAndProcessingMs": 1807.300000011921,
+      "processingMs": 1554.1000000089407,
+      "sourceProbeMs": 71,
+      "keyframeProbeMs": 659.4999999850988,
+      "commandMs": 629.1000000089407,
+      "outputProbeMs": 138.30000000447035,
+      "outputBytes": 30245434,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 902352,
+      "processTreeCPUSeconds": 2,
+      "outputDurations": [
+        30.083341,
+        30.17334,
+        30.172363,
+        30.177327,
+        30.176351,
+        30.181315,
+        30.180338
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-previous",
+      "baselineCommit": "9f075e7a12eda22d6b721c09bb0f022233876998",
+      "case": "70mb-full",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 70314800,
+      "ranges": [
+        [
+          0,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          90
+        ],
+        [
+          90,
+          120
+        ],
+        [
+          120,
+          150
+        ],
+        [
+          150,
+          180
+        ],
+        [
+          180,
+          210
+        ],
+        [
+          210,
+          240
+        ],
+        [
+          240,
+          270
+        ],
+        [
+          270,
+          300
+        ],
+        [
+          300,
+          330
+        ],
+        [
+          330,
+          360
+        ],
+        [
+          360,
+          390
+        ],
+        [
+          390,
+          420
+        ],
+        [
+          420,
+          450
+        ],
+        [
+          450,
+          480
+        ]
+      ],
+      "clipCount": 16,
+      "loadMs": 250.59999999403954,
+      "startupAndProcessingMs": 4120.999999977648,
+      "processingMs": 3870.3999999836087,
+      "sourceProbeMs": 56,
+      "keyframeProbeMs": 1768.3999999761581,
+      "commandMs": 1604.0,
+      "outputProbeMs": 292.3999999985099,
+      "outputBytes": 70749829,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 938192,
+      "processTreeCPUSeconds": 4,
+      "outputDurations": [
+        30.083341,
+        30.17334,
+        30.172363,
+        30.177327,
+        30.176351,
+        30.181315,
+        30.180338,
+        30.179362,
+        30.184326,
+        30.183349,
+        30.167317,
+        30.187337,
+        30.171305,
+        30.169352,
+        30.168294,
+        30.17334
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-previous",
+      "baselineCommit": "9f075e7a12eda22d6b721c09bb0f022233876998",
+      "case": "long-30s",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 239281832,
+      "ranges": [
+        [
+          5400,
+          5430
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 246.89999999850988,
+      "startupAndProcessingMs": 613.2000000029802,
+      "processingMs": 366.30000000447035,
+      "sourceProbeMs": 126.89999999850988,
+      "keyframeProbeMs": 111.5,
+      "commandMs": 105.69999999552965,
+      "outputProbeMs": 11.799999997019768,
+      "outputBytes": 1059153,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 808544,
+      "processTreeCPUSeconds": 0,
+      "outputDurations": [
+        30.042667
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-previous",
+      "baselineCommit": "9f075e7a12eda22d6b721c09bb0f022233876998",
+      "case": "hevc-30s",
+      "mode": "precision",
+      "compression": "off",
+      "sourceBytes": 238333231,
+      "ranges": [
+        [
+          5400,
+          5430
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 255.10000000149012,
+      "startupAndProcessingMs": 9347,
+      "processingMs": 9091.89999999851,
+      "sourceProbeMs": 169.40000000596046,
+      "keyframeProbeMs": 0,
+      "commandMs": 8874.29999999702,
+      "outputProbeMs": 17.69999999552965,
+      "outputBytes": 15455411,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 880392,
+      "processTreeCPUSeconds": 10,
+      "outputDurations": [
+        30
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-previous",
+      "baselineCommit": "9f075e7a12eda22d6b721c09bb0f022233876998",
+      "case": "vp9-30s",
+      "mode": "precision",
+      "compression": "off",
+      "sourceBytes": 7691864,
+      "ranges": [
+        [
+          1.25,
+          31.25
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 242.5,
+      "startupAndProcessingMs": 19802.5,
+      "processingMs": 19560,
+      "sourceProbeMs": 39.899999998509884,
+      "keyframeProbeMs": 0,
+      "commandMs": 19467.10000000149,
+      "outputProbeMs": 22.899999998509884,
+      "outputBytes": 19551259,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 892720,
+      "processTreeCPUSeconds": 20,
+      "outputDurations": [
+        30
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-current",
+      "baselineCommit": "ca760fb055985b8186ad2de55b8c4359437d55e1",
+      "case": "30mb-seven",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 30069381,
+      "ranges": [
+        [
+          0,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          90
+        ],
+        [
+          90,
+          120
+        ],
+        [
+          120,
+          150
+        ],
+        [
+          150,
+          180
+        ],
+        [
+          180,
+          210
+        ]
+      ],
+      "clipCount": 7,
+      "loadMs": 259.79999999701977,
+      "startupAndProcessingMs": 1842.8999999910593,
+      "processingMs": 1583.0999999940395,
+      "sourceProbeMs": 49.29999999701977,
+      "keyframeProbeMs": 739.1000000014901,
+      "commandMs": 663.1000000014901,
+      "outputProbeMs": 77.19999999552965,
+      "outputBytes": 30245434,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 869580,
+      "processTreeCPUSeconds": 2,
+      "outputDurations": [
+        30.083341,
+        30.17334,
+        30.172363,
+        30.177327,
+        30.176351,
+        30.181315,
+        30.180338
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-current",
+      "baselineCommit": "ca760fb055985b8186ad2de55b8c4359437d55e1",
+      "case": "70mb-full",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 70314800,
+      "ranges": [
+        [
+          0,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          90
+        ],
+        [
+          90,
+          120
+        ],
+        [
+          120,
+          150
+        ],
+        [
+          150,
+          180
+        ],
+        [
+          180,
+          210
+        ],
+        [
+          210,
+          240
+        ],
+        [
+          240,
+          270
+        ],
+        [
+          270,
+          300
+        ],
+        [
+          300,
+          330
+        ],
+        [
+          330,
+          360
+        ],
+        [
+          360,
+          390
+        ],
+        [
+          390,
+          420
+        ],
+        [
+          420,
+          450
+        ],
+        [
+          450,
+          480
+        ]
+      ],
+      "clipCount": 16,
+      "loadMs": 291.3999999985099,
+      "startupAndProcessingMs": 4006.7999999970198,
+      "processingMs": 3715.39999999851,
+      "sourceProbeMs": 53.20000000298023,
+      "keyframeProbeMs": 1698.1000000089407,
+      "commandMs": 1671.2999999895692,
+      "outputProbeMs": 148.40000000596046,
+      "outputBytes": 70749829,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 947056,
+      "processTreeCPUSeconds": 5,
+      "outputDurations": [
+        30.083341,
+        30.17334,
+        30.172363,
+        30.177327,
+        30.176351,
+        30.181315,
+        30.180338,
+        30.179362,
+        30.184326,
+        30.183349,
+        30.167317,
+        30.187337,
+        30.171305,
+        30.169352,
+        30.168294,
+        30.17334
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-current",
+      "baselineCommit": "ca760fb055985b8186ad2de55b8c4359437d55e1",
+      "case": "long-30s",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 239281832,
+      "ranges": [
+        [
+          5400,
+          5430
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 283.59999999403954,
+      "startupAndProcessingMs": 598.9999999925494,
+      "processingMs": 315.3999999985099,
+      "sourceProbeMs": 112.80000000447035,
+      "keyframeProbeMs": 85.90000000596046,
+      "commandMs": 98.89999999850988,
+      "outputProbeMs": 3,
+      "outputBytes": 1059153,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 775924,
+      "processTreeCPUSeconds": 0,
+      "outputDurations": [
+        30.042667
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-current",
+      "baselineCommit": "ca760fb055985b8186ad2de55b8c4359437d55e1",
+      "case": "hevc-30s",
+      "mode": "precision",
+      "compression": "off",
+      "sourceBytes": 238333231,
+      "ranges": [
+        [
+          5400,
+          5430
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 280.80000000447035,
+      "startupAndProcessingMs": 9712.30000000447,
+      "processingMs": 9431.5,
+      "sourceProbeMs": 121.19999999552965,
+      "keyframeProbeMs": 0,
+      "commandMs": 9260.60000000149,
+      "outputProbeMs": 17.19999999552965,
+      "outputBytes": 15440490,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 886256,
+      "processTreeCPUSeconds": 10,
+      "outputDurations": [
+        30
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-current",
+      "baselineCommit": "ca760fb055985b8186ad2de55b8c4359437d55e1",
+      "case": "vp9-30s",
+      "mode": "precision",
+      "compression": "off",
+      "sourceBytes": 7691864,
+      "ranges": [
+        [
+          1.25,
+          31.25
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 278.79999999701977,
+      "startupAndProcessingMs": 19913.89999999851,
+      "processingMs": 19635.10000000149,
+      "sourceProbeMs": 36.5,
+      "keyframeProbeMs": 0,
+      "commandMs": 19544.39999999851,
+      "outputProbeMs": 27.899999998509884,
+      "outputBytes": 19551259,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 890788,
+      "processTreeCPUSeconds": 20,
+      "outputDurations": [
+        30
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-fixed",
+      "baselineCommit": null,
+      "case": "30mb-seven",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 30069381,
+      "ranges": [
+        [
+          0,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          90
+        ],
+        [
+          90,
+          120
+        ],
+        [
+          120,
+          150
+        ],
+        [
+          150,
+          180
+        ],
+        [
+          180,
+          210
+        ]
+      ],
+      "clipCount": 7,
+      "loadMs": 248.30000000447035,
+      "startupAndProcessingMs": 1709.0999999940395,
+      "processingMs": 1460.7999999895692,
+      "sourceProbeMs": 80.40000000596046,
+      "keyframeProbeMs": 631.6999999955297,
+      "commandMs": 621.6000000014901,
+      "outputProbeMs": 75.0,
+      "outputBytes": 30245434,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 918200,
+      "processTreeCPUSeconds": 2,
+      "outputDurations": [
+        30.083341,
+        30.17334,
+        30.172363,
+        30.177327,
+        30.176351,
+        30.181315,
+        30.180338
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-fixed",
+      "baselineCommit": null,
+      "case": "70mb-full",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 70314800,
+      "ranges": [
+        [
+          0,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          90
+        ],
+        [
+          90,
+          120
+        ],
+        [
+          120,
+          150
+        ],
+        [
+          150,
+          180
+        ],
+        [
+          180,
+          210
+        ],
+        [
+          210,
+          240
+        ],
+        [
+          240,
+          270
+        ],
+        [
+          270,
+          300
+        ],
+        [
+          300,
+          330
+        ],
+        [
+          330,
+          360
+        ],
+        [
+          360,
+          390
+        ],
+        [
+          390,
+          420
+        ],
+        [
+          420,
+          450
+        ],
+        [
+          450,
+          480
+        ]
+      ],
+      "clipCount": 16,
+      "loadMs": 280.3999999985099,
+      "startupAndProcessingMs": 3918.3999999910593,
+      "processingMs": 3637.9999999925494,
+      "sourceProbeMs": 44.100000001490116,
+      "keyframeProbeMs": 1760.699999988079,
+      "commandMs": 1554.2999999895692,
+      "outputProbeMs": 149.70000000298023,
+      "outputBytes": 70749829,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 935736,
+      "processTreeCPUSeconds": 4,
+      "outputDurations": [
+        30.083341,
+        30.17334,
+        30.172363,
+        30.177327,
+        30.176351,
+        30.181315,
+        30.180338,
+        30.179362,
+        30.184326,
+        30.183349,
+        30.167317,
+        30.187337,
+        30.171305,
+        30.169352,
+        30.168294,
+        30.17334
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-fixed",
+      "baselineCommit": null,
+      "case": "long-30s",
+      "mode": "fast",
+      "compression": "off",
+      "sourceBytes": 239281832,
+      "ranges": [
+        [
+          5400,
+          5430
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 266.19999999552965,
+      "startupAndProcessingMs": 575.8999999985099,
+      "processingMs": 309.70000000298023,
+      "sourceProbeMs": 85.90000000596046,
+      "keyframeProbeMs": 101.60000000149012,
+      "commandMs": 107.29999999701977,
+      "outputProbeMs": 3.7000000029802322,
+      "outputBytes": 1059153,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 775248,
+      "processTreeCPUSeconds": 0,
+      "outputDurations": [
+        30.042667
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-fixed",
+      "baselineCommit": null,
+      "case": "hevc-30s",
+      "mode": "precision",
+      "compression": "off",
+      "sourceBytes": 238333231,
+      "ranges": [
+        [
+          5400,
+          5430
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 311.6000000014901,
+      "startupAndProcessingMs": 9208.79999999702,
+      "processingMs": 8897.19999999553,
+      "sourceProbeMs": 134.30000000447035,
+      "keyframeProbeMs": 0,
+      "commandMs": 8716.09999999404,
+      "outputProbeMs": 13.899999998509884,
+      "outputBytes": 15440490,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 882932,
+      "processTreeCPUSeconds": 9,
+      "outputDurations": [
+        30
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    },
+    {
+      "version": "regression-fixed",
+      "baselineCommit": null,
+      "case": "vp9-30s",
+      "mode": "precision",
+      "compression": "off",
+      "sourceBytes": 7691864,
+      "ranges": [
+        [
+          1.25,
+          31.25
+        ]
+      ],
+      "clipCount": 1,
+      "loadMs": 295.59999999403954,
+      "startupAndProcessingMs": 19933.89999999851,
+      "processingMs": 19638.30000000447,
+      "sourceProbeMs": 63.100000001490116,
+      "keyframeProbeMs": 0,
+      "commandMs": 19533.39999999851,
+      "outputProbeMs": 21.200000002980232,
+      "outputBytes": 19551259,
+      "mounts": 1,
+      "sourceWriteBytes": 0,
+      "peakProcessTreeRSSKiB": 887504,
+      "processTreeCPUSeconds": 20,
+      "outputDurations": [
+        30
+      ],
+      "videoCodec": "h264",
+      "audioCodec": "aac"
+    }
+  ],
+  "verification": {
+    "outputsFullyDecoded": 78,
+    "fastFirstFramesIdentical": 72,
+    "maxCopiedTimestampOffsetSpreadMs": 0.6860000000017408,
+    "minConversionFirstFramePSNRdB": 53.704
+  }
+}

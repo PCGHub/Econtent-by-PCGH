@@ -240,3 +240,6 @@ packets/frames after copy work, and verified rejection of a file-size-limited pa
 export. All four long HEVC conversion outputs fully decoded; first-frame PSNR was at
 least 54.06 dB against source references (a boundary/fidelity check, not a whole-video
 perceptual score). No original customer media or credentials are committed.
+
+For the follow-up stall investigation, paired Fast/convert benchmarks, worker inactivity
+recovery and visible processing diagnostics, see [FAST-CUT-REGRESSION.md](FAST-CUT-REGRESSION.md).

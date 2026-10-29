@@ -4,11 +4,13 @@ import {
   conversionCapability,
   type CoreCapabilities,
 } from "./capabilities";
+import { WorkerGuard, WorkerUnresponsiveError } from "./worker-guard";
 import type { VideoProcessingEngine } from "./engine";
 import type {
   ProcessOptions,
   ProcessedClip,
   ProcessingProgress,
+  ProcessingStatus,
   TimeRange,
 } from "./types";
 import {
@@ -70,11 +72,18 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
   private probeLog = "";
   private capabilityLog?: string[];
   private capabilities?: CoreCapabilities;
-  private notify: (progress: ProcessingProgress) => void = () => {};
+  private onProgress: (progress: ProcessingProgress) => void = () => {};
+  private stage: ProcessingStatus = "idle";
+  private notify = (progress: ProcessingProgress) => {
+    this.stage = progress.status;
+    this.onProgress(progress);
+  };
   sourceAccess?: "workerfs" | "memfs";
   private factory?: () => Promise<FFmpegWorker>;
-  constructor(factory?: () => Promise<FFmpegWorker>) {
+  private guard: WorkerGuard;
+  constructor(factory?: () => Promise<FFmpegWorker>, responseTimeoutMs?: number) {
     this.factory = factory;
+    this.guard = new WorkerGuard(responseTimeoutMs);
   }
 
   private emitTime = (time: number) => {
@@ -85,10 +94,13 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       return;
     }
     if (fraction < this.lastFraction) return;
+    // Repeated timestamps/log messages are not evidence of advancing work.
+    if (fraction > this.lastFraction) this.guard.progress();
     this.lastFraction = fraction;
     this.notify({ status: "processing", fraction });
   };
   private stop = () => {
+    this.guard.cancel();
     this.ffmpeg?.terminate();
     this.ffmpeg = undefined;
     this.source = undefined;
@@ -105,7 +117,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
   ): Promise<void> {
     if (this.disposed) throw new Error("Engine disposed");
     signal?.throwIfAborted();
-    this.notify = onProgress ?? (() => {});
+    this.onProgress = onProgress ?? (() => {});
     if (this.ffmpeg?.loaded) return;
     this.notify({ status: "loading", message: "Loading FFmpeg…" });
     signal?.addEventListener("abort", this.stop, { once: true });
@@ -114,15 +126,49 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       if (this.factory) ffmpeg = await this.factory();
       else {
         const moduleURL = "/ffmpeg/ffmpeg/index.js";
-        const { FFmpeg: Constructor } = (await import(
-          /* webpackIgnore: true */ /* turbopackIgnore: true */ moduleURL
-        )) as { FFmpeg: new () => FFmpegWorker };
+        this.notify({ status: "loading", operation: "Load FFmpeg module", message: "Loading FFmpeg…" });
+        const { FFmpeg: Constructor } = await this.guard.run(
+          async () => (await import(
+            /* webpackIgnore: true */ /* turbopackIgnore: true */ moduleURL
+          )) as { FFmpeg: new () => FFmpegWorker },
+          "Loading FFmpeg module", this.stop,
+        );
         ffmpeg = new Constructor();
       }
       if (this.disposed || signal?.aborted) {
         ffmpeg.terminate();
         throw new DOMException("Cancelled", "AbortError");
       }
+      const guard = this.guard;
+      // The upstream wrapper does not reject pending requests on Worker.onerror.
+      // Guard filesystem/probe/load requests too, not just encoding commands.
+      ffmpeg = new Proxy(ffmpeg, {
+        get: (target, property) => {
+          const value = Reflect.get(target, property, target);
+          if (typeof value !== "function") return value;
+          if (property === "on" || property === "terminate")
+            return value.bind(target);
+          const stage = property === "load" ? "Loading FFmpeg"
+            : property === "ffprobe" ? "Inspecting media"
+            : property === "exec" ? "Processing media"
+            : "Preparing or reading media";
+          return (...args: unknown[]) => {
+            const command = Array.isArray(args[0]) ? args[0] as string[] : [];
+            const operation = property === "load" ? "Load FFmpeg worker and WASM"
+              : property === "mount" ? "Mount source read-only (WORKERFS)"
+              : property === "writeFile" ? "Copy source once into memory (MEMFS)"
+              : property === "ffprobe" ? command.includes("source.json") ? "Inspect source metadata"
+                : command.includes("keyframes.txt") ? "Read keyframes in selected window" : "Verify exported MP4 metadata"
+              : property === "exec" ? command.includes("output.mp4")
+                ? command.includes("libx264") ? "Encode selected range to H.264/AAC" : command.includes("aac") ? "Copy video and convert selected audio" : "Copy selected streams to MP4"
+                : "Check loaded codec capabilities"
+              : property === "readFile" && args[0] === "output.mp4" ? "Read verified MP4 output bytes"
+              : undefined;
+            if (operation) this.notify({ status: this.stage, operation });
+            return guard.run(async () => Reflect.apply(value, target, args), stage, this.stop);
+          };
+        },
+      });
       this.ffmpeg = ffmpeg;
       ffmpeg.on("progress", ({ time }) => this.emitTime(time));
       ffmpeg.on("log", ({ message }) => {
@@ -199,6 +245,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         typeof data === "string" ? data : new TextDecoder().decode(data),
       );
     } catch (error) {
+      if (error instanceof WorkerUnresponsiveError) throw error;
       if (
         /moov atom not found|invalid atom|partial file|invalid data found|error reading header/i.test(
           this.probeLog,
@@ -314,7 +361,8 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
           throw new Error("WORKERFS unavailable");
         this.input = "/source/input";
         this.sourceAccess = "workerfs";
-      } catch {
+      } catch (error) {
+        if (error instanceof WorkerUnresponsiveError || !ffmpeg.loaded) throw error;
         await ffmpeg.unmount("/source").catch(() => {});
         await ffmpeg.deleteDir("/source").catch(() => {});
         this.input = "input";

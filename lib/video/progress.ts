@@ -14,6 +14,9 @@ export class JobProgressTracker {
   private started: number
   private ended?: number
   private lastEvent = 0
+  private operation?: string
+  private operationStarted?: number
+  private lastAdvance?: number
   private samples: { at: number; work: number }[] = []
   private lastOverall = 0
   private durations: number[]
@@ -26,16 +29,25 @@ export class JobProgressTracker {
     if (terminal(this.status) || index < this.index) return this.snapshot()
     if (index !== this.index) { this.clipFraction = undefined; this.samples = []; this.index = index }
     const previousStatus = this.status
-    this.status = progress.status; this.message = progress.message
+    this.status = progress.status
+    // Timestamp-only callbacks must not erase the current stage description.
+    if (progress.message !== undefined || previousStatus !== this.status) this.message = progress.message
+    if (progress.operation !== undefined && progress.operation !== this.operation) {
+      this.operation = progress.operation; this.operationStarted = this.now()
+    }
+    if (previousStatus !== 'processing' && this.status === 'processing') this.lastAdvance = undefined
     if (previousStatus !== this.status) this.samples = []
     if (this.status === 'packaging') this.stageFraction = Number.isFinite(progress.fraction) && progress.fraction! >= 0 && progress.fraction! <= 1 ? progress.fraction : undefined
     else if (this.status === 'processing') {
       if (Number.isFinite(progress.fraction) && progress.fraction! >= 0 && progress.fraction! <= 1) {
+        if (progress.fraction! > (this.clipFraction ?? 0)) {
+          this.lastAdvance = this.now(); this.lastEvent = this.lastAdvance
+        }
         this.clipFraction = Math.max(this.clipFraction ?? 0, progress.fraction!)
-        this.lastEvent = this.now()
         const work = this.completedDuration() + this.clipFraction * (this.durations[index] ?? 0)
         const previous = this.samples.at(-1)
-        if (!previous || (this.lastEvent - previous.at >= 200 && work > previous.work)) this.samples.push({ at: this.lastEvent, work })
+        const sampleAt = this.now()
+        if (!previous || (sampleAt - previous.at >= 200 && work > previous.work)) this.samples.push({ at: sampleAt, work })
         this.samples = this.samples.slice(-16)
       } else { this.lastEvent = 0; this.samples = [] }
     }
@@ -74,6 +86,8 @@ export class JobProgressTracker {
     return { status: this.status, message: this.message, overallFraction: this.lastOverall, clipFraction: this.clipFraction,
       clipIndex: this.durations.length ? Math.min(this.index + 1, this.durations.length) : undefined,
       clipCount: this.durations.length || undefined, completedClips: this.done, elapsedSeconds: Math.max(0, (at - this.started) / 1000), etaSeconds, indeterminate,
+      operation: this.operation, operationElapsedSeconds: this.operationStarted === undefined ? undefined : Math.max(0, (at - this.operationStarted) / 1000),
+      lastMediaAdvanceSeconds: this.lastAdvance === undefined ? undefined : Math.max(0, (at - this.lastAdvance) / 1000),
       fraction: this.status === 'packaging' ? this.stageFraction : this.clipFraction }
   }
 }

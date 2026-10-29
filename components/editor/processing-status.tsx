@@ -153,6 +153,24 @@ export default function ProcessingStatus({
       {progress.message && (
         <p className="mt-2 text-sm text-slate-500">{progress.message}</p>
       )}
+      {progress.status !== "idle" && progress.operation && (
+        <div className="mt-3 text-xs text-slate-600">
+          <p data-testid="processing-operation" className="mt-2">
+            {active ? "Current step" : "Last step"}: {progress.operation} · step elapsed {formatTime(progress.operationElapsedSeconds ?? 0)}
+          </p>
+          <details className="mt-2">
+          <summary className="cursor-pointer font-semibold">Processing diagnostics</summary>
+          {progress.status === "processing" && (
+            <p className="mt-1">
+              {progress.lastMediaAdvanceSeconds === undefined
+                ? "No advancing media timestamp received yet."
+                : `Last measured media advance: ${formatTime(progress.lastMediaAdvanceSeconds)} ago.`}
+            </p>
+          )}
+          <p className="mt-1">An operation without a response or advancing media timestamps for two minutes stops with a recovery error. This is a safety limit, not a completion estimate. Keep this tab in the foreground.</p>
+          </details>
+        </div>
+      )}
       {active && progress.indeterminate && (
         <p className="mt-1 text-xs text-slate-500">
           This stage has no reliable percentage yet. Progress resumes when

@@ -45,7 +45,8 @@ try{
   }
   window.engine=new BrowserVideoEngine(factory);window.events=[];const start=performance.now()
   await window.engine.initialize(p=>{window.events.push({...p,at:performance.now()});if(window.events.length>5000)window.events.shift()})
-  const ff=window.engine.ffmpeg;window.io={writes:0,writeBytes:0,mounts:0,probes:[],keyframeBytes:0}
+  const ff=window.engine.ffmpeg;window.io={writes:0,writeBytes:0,mounts:0,probes:[],keyframeBytes:0,commands:[]}
+  const exec=ff.exec.bind(ff);ff.exec=async args=>{const start=performance.now();const result=await exec(args);window.io.commands.push({ms:performance.now()-start,video:args.includes('-c')?args[args.indexOf('-c')+1]:args[args.lastIndexOf('-c:v')+1],selectedSeconds:args.includes('-t')?Number(args[args.indexOf('-t')+1]):null});return result}
   const probe=ff.ffprobe.bind(ff);ff.ffprobe=async args=>{const start=performance.now();const result=await probe(args);window.io.probes.push({interval:args.includes('-read_intervals')?args[args.indexOf('-read_intervals')+1]:null,output:args[args.indexOf('-o')+1],ms:performance.now()-start});return result}
   const read=ff.readFile.bind(ff);ff.readFile=async path=>{const result=await read(path);if(path==='keyframes.txt')window.io.keyframeBytes+=typeof result==='string'?result.length:result.byteLength;return result}
   const write=ff.writeFile.bind(ff);ff.writeFile=(path,data)=>{if(!path.endsWith('.json')){window.io.writes++;window.io.writeBytes+=data.byteLength??0}return write(path,data)}
@@ -69,6 +70,6 @@ try{
  }
  const wallMs=performance.now()-wallStart
  const telemetry=await page.evaluate(()=>({io:window.io,events:window.events,jsHeap:performance.memory?.usedJSHeapSize}));await page.evaluate(()=>window.engine.dispose());sample()
- const report={browserVersion:browser.version(),platform:process.platform,architecture:process.arch,version,mode,compression,fixture,ranges,...setup,wallMs,processingMs:clips.reduce((s,c)=>s+c.ms,0),clips,io:telemetry.io,peakProcessTreeRSSKiB:peakRSSKiB,processTreeCPUSeconds:[...ticks.values()].reduce((s,n)=>s+n,0),controllerCPU:process.cpuUsage(startCPU),jsHeapBytes:telemetry.jsHeap,events:telemetry.events}
+ const report={browserVersion:browser.version(),platform:process.platform,architecture:process.arch,version,mode,compression,fixture,ranges,...setup,wallMs,processingMs:clips.reduce((s,c)=>s+c.ms,0),startupAndProcessingMs:setup.loadMs+clips.reduce((s,c)=>s+c.ms,0),clips,io:telemetry.io,peakProcessTreeRSSKiB:peakRSSKiB,processTreeCPUSeconds:[...ticks.values()].reduce((s,n)=>s+n,0),controllerCPU:process.cpuUsage(startCPU),jsHeapBytes:telemetry.jsHeap,events:telemetry.events}
  const reportPath=join(root,`test-results/performance/${version}-${mode}-${compression}-${label}.json`);await writeFile(reportPath,JSON.stringify(report,null,2));console.log(JSON.stringify({report:reportPath,wallMs,processingMs:report.processingMs,io:report.io,peakProcessTreeRSSKiB:peakRSSKiB}))
 }finally{clearInterval(interval);await browser.close();await new Promise(r=>server.close(r))}

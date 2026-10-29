@@ -2,12 +2,13 @@ import {readFileSync,writeFileSync} from 'node:fs'
 import {basename,join} from 'node:path'
 import {execFileSync,spawnSync} from 'node:child_process'
 const sourceCache=new Map()
-const packets=path=>JSON.parse(execFileSync('ffprobe',['-v','error','-show_packets','-show_data_hash','sha256','-show_entries','packet=codec_type,pts_time,data_hash','-of','json',path],{encoding:'utf8',maxBuffer:20*1024*1024})).packets
-const sourceMap=path=>{
- if(sourceCache.has(path))return sourceCache.get(path)
+const packets=(path,range)=>JSON.parse(execFileSync('ffprobe',['-v','error',...(range?['-read_intervals',`${Math.max(0,range.start-10)}%${range.end+2}`]:[]),'-show_packets','-show_data_hash','sha256','-show_entries','packet=codec_type,pts_time,data_hash','-of','json',path],{encoding:'utf8',maxBuffer:20*1024*1024})).packets
+const sourceMap=(path,range)=>{
+ const key=path+JSON.stringify(range)
+ if(sourceCache.has(key))return sourceCache.get(key)
  const map=new Map()
- for(const packet of packets(path)){const key=packet.codec_type+':'+packet.data_hash;const values=map.get(key)??[];values.push(Number(packet.pts_time));map.set(key,values)}
- sourceCache.set(path,map);return map
+ for(const packet of packets(path,range)){const key=packet.codec_type+':'+packet.data_hash;const values=map.get(key)??[];values.push(Number(packet.pts_time));map.set(key,values)}
+ sourceCache.set(key,map);return map
 }
 const frame=(path,start)=>execFileSync('ffmpeg',['-v','error',...(start===undefined?[]:['-ss',String(Math.max(0,start))]),'-i',path,'-frames:v','1','-pix_fmt','gray','-f','rawvideo','-'],{maxBuffer:4*1024*1024})
 const results=[]
@@ -27,7 +28,7 @@ for(const filename of process.argv.slice(2)){
   if(report.mode!=='fast'&&psnr<28)throw new Error(`Precision first frame PSNR too low (${psnr}): ${path}`)
   let timestampOffsetSpreadMs,matchedPackets
   if(report.mode==='fast'){
-   const map=sourceMap(report.fixture);const offsets=[]
+   const map=sourceMap(report.fixture,target);const offsets=[]
    const kinds=new Set()
    for(const packet of packets(path)){
     const times=map.get(packet.codec_type+':'+packet.data_hash)

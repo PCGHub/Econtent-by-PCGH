@@ -68,6 +68,8 @@ export interface ProcessingProgress {
   status: ProcessingStatus;
   fraction?: number;
   message?: string;
+  /** Actual pending worker operation, without filenames or source contents. */
+  operation?: string;
 }
 export interface JobProgress extends ProcessingProgress {
   overallFraction: number;
@@ -78,4 +80,6 @@ export interface JobProgress extends ProcessingProgress {
   elapsedSeconds: number;
   etaSeconds?: number;
   indeterminate: boolean;
+  operationElapsedSeconds?: number;
+  lastMediaAdvanceSeconds?: number;
 }
