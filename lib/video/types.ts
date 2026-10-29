@@ -63,6 +63,12 @@ export interface ProcessedClip {
   audioConverted?: boolean;
   outputDuration?: number;
 }
+export interface StartupProgress {
+  phase: string;
+  label?: string;
+  receivedBytes?: number;
+  totalBytes?: number;
+}
 /** Fraction is the measured progress of the active stage, never an estimated timer. */
 export interface ProcessingProgress {
   status: ProcessingStatus;
@@ -70,6 +76,7 @@ export interface ProcessingProgress {
   message?: string;
   /** Actual pending worker operation, without filenames or source contents. */
   operation?: string;
+  startup?: StartupProgress;
 }
 export interface JobProgress extends ProcessingProgress {
   overallFraction: number;

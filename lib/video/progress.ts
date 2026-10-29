@@ -14,6 +14,7 @@ export class JobProgressTracker {
   private started: number
   private ended?: number
   private lastEvent = 0
+  private startup?: ProcessingProgress['startup']
   private operation?: string
   private operationStarted?: number
   private lastAdvance?: number
@@ -28,6 +29,7 @@ export class JobProgressTracker {
   update(index: number, progress: ProcessingProgress): JobProgress {
     if (terminal(this.status) || index < this.index) return this.snapshot()
     if (index !== this.index) { this.clipFraction = undefined; this.samples = []; this.index = index }
+    if (progress.startup) this.startup = progress.startup
     const previousStatus = this.status
     this.status = progress.status
     // Timestamp-only callbacks must not erase the current stage description.
@@ -86,7 +88,7 @@ export class JobProgressTracker {
     return { status: this.status, message: this.message, overallFraction: this.lastOverall, clipFraction: this.clipFraction,
       clipIndex: this.durations.length ? Math.min(this.index + 1, this.durations.length) : undefined,
       clipCount: this.durations.length || undefined, completedClips: this.done, elapsedSeconds: Math.max(0, (at - this.started) / 1000), etaSeconds, indeterminate,
-      operation: this.operation, operationElapsedSeconds: this.operationStarted === undefined ? undefined : Math.max(0, (at - this.operationStarted) / 1000),
+      startup: this.startup, operation: this.operation, operationElapsedSeconds: this.operationStarted === undefined ? undefined : Math.max(0, (at - this.operationStarted) / 1000),
       lastMediaAdvanceSeconds: this.lastAdvance === undefined ? undefined : Math.max(0, (at - this.lastAdvance) / 1000),
       fraction: this.status === 'packaging' ? this.stageFraction : this.clipFraction }
   }

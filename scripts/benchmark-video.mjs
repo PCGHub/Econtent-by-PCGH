@@ -14,7 +14,7 @@ const server=createServer(async(req,res)=>{
   const path=resolve(dir,'.'+pathname)
   if(!path.startsWith(dir+'/'))throw new Error('Invalid path')
   const body=await readFile(path)
-  res.setHeader('content-type',({'.js':'application/javascript','.wasm':'application/wasm'})[extname(path)]??'application/octet-stream');res.end(body)
+  res.setHeader('content-type',({'.js':'application/javascript','.wasm':'application/wasm','.json':'application/json'})[extname(path)]??'application/octet-stream');res.end(body)
  }catch{res.statusCode=404;res.end()}
 })
 await new Promise(r=>server.listen(0,'127.0.0.1',r))

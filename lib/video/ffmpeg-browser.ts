@@ -1,3 +1,4 @@
+import { FFmpegTransport } from "./ffmpeg-transport";
 import {
   parseCodecs,
   parseMuxers,
@@ -32,6 +33,7 @@ import {
 // Keep worker-only ambient declarations outside the app TypeScript program.
 export interface FFmpegWorker {
   loaded: boolean;
+  readonly managedStartup?: boolean;
   on(
     event: "progress",
     callback: (event: { progress: number; time: number }) => void,
@@ -119,21 +121,18 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     signal?.throwIfAborted();
     this.onProgress = onProgress ?? (() => {});
     if (this.ffmpeg?.loaded) return;
+    // Native worker loss can happen between jobs. A replacement has no source mount/cache.
+    if (this.ffmpeg) this.stop();
     this.notify({ status: "loading", message: "Loading FFmpeg…" });
     signal?.addEventListener("abort", this.stop, { once: true });
     try {
       let ffmpeg: FFmpegWorker;
       if (this.factory) ffmpeg = await this.factory();
       else {
-        const moduleURL = "/ffmpeg/ffmpeg/index.js";
-        this.notify({ status: "loading", operation: "Load FFmpeg module", message: "Loading FFmpeg…" });
-        const { FFmpeg: Constructor } = await this.guard.run(
-          async () => (await import(
-            /* webpackIgnore: true */ /* turbopackIgnore: true */ moduleURL
-          )) as { FFmpeg: new () => FFmpegWorker },
-          "Loading FFmpeg module", this.stop,
-        );
-        ffmpeg = new Constructor();
+        ffmpeg = new FFmpegTransport(startup => this.notify({
+          status: "loading", operation: startup.label, startup,
+          message: "FFmpeg startup: " + startup.label,
+        }));
       }
       if (this.disposed || signal?.aborted) {
         ffmpeg.terminate();
@@ -146,7 +145,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         get: (target, property) => {
           const value = Reflect.get(target, property, target);
           if (typeof value !== "function") return value;
-          if (property === "on" || property === "terminate")
+          if (property === "on" || property === "terminate" || (property === "load" && target.managedStartup))
             return value.bind(target);
           const stage = property === "load" ? "Loading FFmpeg"
             : property === "ffprobe" ? "Inspecting media"

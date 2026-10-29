@@ -243,3 +243,6 @@ perceptual score). No original customer media or credentials are committed.
 
 For the follow-up stall investigation, paired Fast/convert benchmarks, worker inactivity
 recovery and visible processing diagnostics, see [FAST-CUT-REGRESSION.md](FAST-CUT-REGRESSION.md).
+
+Startup failures before encoding now have independent download/worker/WASM/runtime
+diagnostics and limits. See [FFMPEG-STARTUP.md](FFMPEG-STARTUP.md).

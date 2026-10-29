@@ -29,7 +29,7 @@ const server = createServer(async (req, res) => {
     if (!file.startsWith(base + "/")) throw Error();
     res.setHeader(
       "content-type",
-      extname(file) === ".wasm" ? "application/wasm" : "application/javascript",
+      extname(file) === ".wasm" ? "application/wasm" : extname(file) === ".json" ? "application/json" : "application/javascript",
     );
     res.end(await readFile(file));
   } catch {

@@ -95,3 +95,12 @@ test('operation diagnostics use elapsed clocks and only advancing measured media
   now = 8100
   assert.equal(job.snapshot().operationElapsedSeconds, failed.operationElapsedSeconds)
 })
+
+test('measured startup bytes do not advance video percentage or invent an ETA', () => {
+  const job = new JobProgressTracker([30])
+  const progress = job.update(0, {status:'loading',operation:'Download FFmpeg WASM',startup:{phase:'download',receivedBytes:1024,totalBytes:4096}})
+  assert.equal(progress.startup?.receivedBytes,1024)
+  assert.equal(progress.overallFraction,0)
+  assert.equal(progress.indeterminate,true)
+  assert.equal(progress.etaSeconds,undefined)
+})

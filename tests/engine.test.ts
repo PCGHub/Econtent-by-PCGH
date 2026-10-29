@@ -438,3 +438,16 @@ test("cancellation settles a lost worker request immediately and a fresh worker 
   assert.equal(info.compatible, true);
   await engine.dispose();
 });
+
+test('worker loss between jobs invalidates cached source metadata before rebuilding', async () => {
+  const first=fixture(), second=fixture();let count=0
+  const engine=new BrowserVideoEngine(async()=> ++count===1?first.worker:second.worker)
+  const file=new File(['video'],'source.mp4')
+  await engine.initialize();await engine.inspect(file)
+  first.worker.loaded=false // Simulate an idle native worker error/background termination.
+  await engine.initialize();await engine.inspect(file)
+  assert.equal(second.calls.filter(call=>call==='mount').length,1)
+  assert.equal(second.calls.filter(call=>call==='probe').length,1)
+  assert.ok(first.calls.includes('terminate'))
+  await engine.dispose()
+})

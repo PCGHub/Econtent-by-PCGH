@@ -153,6 +153,15 @@ export default function ProcessingStatus({
       {progress.message && (
         <p className="mt-2 text-sm text-slate-500">{progress.message}</p>
       )}
+      {(progress.status === "loading" || progress.status === "failed") && progress.startup?.phase === "download" && (
+        <div className="mt-3 text-sm text-slate-600" data-testid="startup-download">
+          <p>{active ? "FFmpeg download" : "Last measured download"}: {((progress.startup.receivedBytes ?? 0) / 1000000).toFixed(1)} MB
+            {progress.startup.totalBytes ? ` of ${(progress.startup.totalBytes / 1000000).toFixed(1)} MB` : ""}</p>
+          <progress aria-label="FFmpeg download progress" className="h-2 w-full accent-blue-500"
+            max={progress.startup.totalBytes ?? 1} value={progress.startup.totalBytes ? progress.startup.receivedBytes ?? 0 : undefined} />
+          <p className="text-xs">Measured asset bytes; video processing has not started.</p>
+        </div>
+      )}
       {progress.status !== "idle" && progress.operation && (
         <div className="mt-3 text-xs text-slate-600">
           <p data-testid="processing-operation" className="mt-2">
@@ -167,7 +176,7 @@ export default function ProcessingStatus({
                 : `Last measured media advance: ${formatTime(progress.lastMediaAdvanceSeconds)} ago.`}
             </p>
           )}
-          <p className="mt-1">An operation without a response or advancing media timestamps for two minutes stops with a recovery error. This is a safety limit, not a completion estimate. Keep this tab in the foreground.</p>
+          <p className="mt-1">Startup limits: worker handshake 15s; download without new bytes 30s (five-minute total per asset phase); WASM compilation and runtime initialization 60s each. Processing stops after two minutes without a response or advancing media timestamps. These are safety limits, not completion estimates. Keep this tab foregrounded.</p>
           </details>
         </div>
       )}
