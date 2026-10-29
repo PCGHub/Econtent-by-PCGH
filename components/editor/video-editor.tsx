@@ -193,7 +193,7 @@ export default function VideoEditor({
     setError("");
     if (
       !file.size ||
-      (!file.type.startsWith("video/") && !/\.mp4$/i.test(file.name))
+      (!file.type.startsWith("video/") && !/\.(mp4|mov|mkv)$/i.test(file.name))
     ) {
       setError(
         "Choose a non-empty video file. H.264/AAC MP4 is the initial target.",
@@ -285,6 +285,51 @@ export default function VideoEditor({
     metadata,
     onSnapshot,
   ]);
+  async function inspectVideo() {
+    if (!source || busy || zipping || checking) return;
+    player.current?.pause();
+    const abort = new AbortController();
+    controller.current = abort;
+    const worker = engine.current ?? new BrowserVideoEngine();
+    engine.current = worker;
+    setBusy(true);
+    setError("");
+    const job = new JobProgressTracker([]);
+    tracker.current = job;
+    try {
+      await worker.initialize((p) => {
+        if (mounted.current) setProgress(job.update(0, p));
+      }, abort.signal);
+      const info = await worker.inspect(source, abort.signal);
+      if (!mounted.current) return;
+      setInspection(info);
+      setMetadata({
+        duration: info.duration,
+        width: info.width,
+        height: info.height,
+      });
+      if (!metadata.duration && !restoreRange.current) setEnd(info.duration);
+      setModeNotice(
+        "Source inspected locally. Review codec compatibility before processing. Inspection does not create outputs.",
+      );
+      setProgress(new JobProgressTracker([]).snapshot());
+    } catch (cause) {
+      if (mounted.current) {
+        setInspection(undefined);
+        setError(
+          abort.signal.aborted
+            ? "Inspection cancelled"
+            : cause instanceof Error
+              ? cause.message
+              : "Media probe failed; compatibility is unknown.",
+        );
+        setProgress(job.finish(abort.signal.aborted ? "cancelled" : "failed"));
+      }
+    } finally {
+      tracker.current = null;
+      if (mounted.current) setBusy(false);
+    }
+  }
   async function processVideo(confirmPrecision = false) {
     if (!source || !plan.length || busy || zipping || planError) return;
     // Avoid continuing the source preview's decoder alongside mobile encoding/copying.
@@ -300,6 +345,7 @@ export default function VideoEditor({
       if (mounted.current && !abort.signal.aborted)
         setProgress(job.update(currentClip, p));
     };
+    setModeNotice("");
     setJobMethod(effectiveStrategy);
     setAwaitingPrecision(false);
     setBusy(true);
@@ -480,7 +526,7 @@ export default function VideoEditor({
           aria-label="Choose video"
           className="mt-3 block w-full"
           type="file"
-          accept="video/*,.mp4"
+          accept="video/*,.mp4,.mov,.mkv"
           disabled={busy || zipping || checking}
           onChange={(event) => {
             const file = event.target.files?.[0];
@@ -489,8 +535,9 @@ export default function VideoEditor({
           }}
         />
         <p className="mt-2 text-sm text-slate-500">
-          Initial target: H.264/AAC MP4. 256 MB safety cap; actual capacity
-          depends on your device. Other formats may fail to preview or encode.
+          Fast Cut: H.264 with AAC/MP3 or no audio in MP4, MOV or Matroska. 256
+          MB safety cap; actual capacity depends on your device. Other formats
+          may fail to preview or encode.
         </p>
       </label>
       {checking && (
@@ -504,6 +551,24 @@ export default function VideoEditor({
             className="font-semibold text-blue-700"
           >
             Cancel verification
+          </button>
+        </div>
+      )}
+      {source && (
+        <div className="space-y-2">
+          {!inspection && (
+            <p className="text-sm text-slate-600">
+              Codecs and container have not been inspected yet. Check locally
+              before processing.
+            </p>
+          )}
+          <button
+            type="button"
+            className={action}
+            disabled={busy || zipping || checking}
+            onClick={() => void inspectVideo()}
+          >
+            Check codec compatibility
           </button>
         </div>
       )}
@@ -525,6 +590,12 @@ export default function VideoEditor({
             {(inspection.sizeBytes / 1000000).toFixed(1)} MB source ·{" "}
             {inspection.duration.toFixed(1)} seconds
           </p>
+          <p className="mt-2 break-words">
+            Container: {inspection.container} · Fast Cut:{" "}
+            {inspection.compatible
+              ? "compatible for MP4 stream copy"
+              : `unavailable (${inspection.compatibilityIssue ?? "unknown"})`}
+          </p>
           <p className="mt-2">
             {workloadDescription(
               inspection,
@@ -533,7 +604,22 @@ export default function VideoEditor({
             )}
           </p>
           {inspection.incompatibility && (
-            <p className="mt-2 text-amber-900">{inspection.incompatibility}</p>
+            <div className="mt-2 text-amber-900">
+              <p>{inspection.incompatibility}</p>
+              <button
+                type="button"
+                className="mt-2 font-semibold underline"
+                disabled={busy || zipping}
+                onClick={() => {
+                  setStrategy("precision");
+                  setModeNotice(
+                    "Precision Cut selected explicitly. It re-encodes; decoding support is not guaranteed. Press Process video when ready.",
+                  );
+                }}
+              >
+                Choose Precision Cut explicitly
+              </button>
+            </div>
           )}
         </aside>
       )}
@@ -620,9 +706,8 @@ export default function VideoEditor({
                 if (!restoreRange.current) setEnd(video.duration);
               }}
               onError={() => {
-                setMetadata({ duration: 0, width: 0, height: 0 });
                 setError(
-                  "Your browser cannot preview this video. Try an H.264/AAC MP4.",
+                  "Your browser cannot preview this source. Use Check codec compatibility to inspect it locally; preview support and MP4 remux support can differ.",
                 );
               }}
             />
@@ -632,11 +717,11 @@ export default function VideoEditor({
               {metadata.height}
             </p>
             <p className="mt-3 text-sm text-slate-500">
-              Fast Cut copies compatible H.264/AAC MP4 streams without
-              re-encoding. Precision Cut uses CRF 18 / ultrafast with
-              compression Off (larger files are possible), or CRF 20/25/30 with
-              compression selected. Precision audio is AAC 128 kbps. Output size
-              may increase.
+              Fast Cut remuxes compatible H.264 with AAC/MP3 or no audio from
+              MP4, MOV or Matroska without re-encoding. Precision Cut uses CRF
+              18 / ultrafast with compression Off (larger files are possible),
+              or CRF 20/25/30 with compression selected. Precision audio is AAC
+              128 kbps. Output size may increase.
             </p>
           </div>
           <fieldset

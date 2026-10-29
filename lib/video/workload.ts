@@ -10,6 +10,7 @@ export interface SourceInspection {
   container: string;
   compatible: boolean;
   incompatibility?: string;
+  compatibilityIssue?: import("./compatibility").CompatibilityIssue;
 }
 export interface DeviceProfile {
   mobile: boolean;

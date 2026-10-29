@@ -544,3 +544,176 @@ test("Android-like UI defaults to Fast Cut, confirms Precision and never falls b
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("codec inspection distinguishes MP3/MOV/Matroska remux from unsupported MP4 codecs", async ({
+  page,
+}, info) => {
+  const dir = mkdtempSync(join(tmpdir(), "econtent-codecs-"));
+  const run = (args: string[]) =>
+    execFileSync("ffmpeg", [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-y",
+      ...args,
+    ]);
+  try {
+    const source = join(dir, "source.mp4");
+    run([
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=320x180:rate=24",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:sample_rate=48000",
+      "-t",
+      "8",
+      "-c:v",
+      "libx264",
+      "-g",
+      "48",
+      "-keyint_min",
+      "48",
+      "-sc_threshold",
+      "0",
+      "-c:a",
+      "aac",
+      source,
+    ]);
+    const cases = [
+      ["mp3.mp4", "libmp3lame", "mp3"],
+      ["sample.mov", "copy", "aac"],
+      ["sample.mkv", "copy", "aac"],
+    ] as const;
+    await page.goto("/editor");
+    for (const [name, audio, codec] of cases) {
+      const input = join(dir, name);
+      run(["-i", source, "-c:v", "copy", "-c:a", audio, input]);
+      await page
+        .getByLabel("Choose video", { exact: true })
+        .setInputFiles(input);
+      await page
+        .getByRole("button", { name: "Check codec compatibility", exact: true })
+        .click();
+      const details = page.getByRole("complementary", {
+        name: "Video workload",
+      });
+      await expect(details).toContainText("compatible for MP4 stream copy", {
+        timeout: 60000,
+      });
+      await expect(details).toContainText(`H264 / ${codec.toUpperCase()}`);
+      await expect(details).toContainText(
+        name.endsWith(".mkv") ? "matroska" : "mov,mp4",
+      );
+      await expect(page.locator("article")).toHaveCount(0);
+      await page.getByLabel("End (seconds)", { exact: false }).fill("6.5");
+      await page
+        .getByRole("button", { name: "Process video", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Completed", exact: true }),
+      ).toBeVisible({ timeout: 60000 });
+      const pending = page.waitForEvent("download");
+      await page
+        .getByRole("button", { name: "Download MP4", exact: true })
+        .click();
+      const output = info.outputPath(name + ".mp4");
+      await (await pending).saveAs(output);
+      const data = JSON.parse(
+        execFileSync(
+          "ffprobe",
+          [
+            "-v",
+            "error",
+            "-show_streams",
+            "-show_format",
+            "-of",
+            "json",
+            output,
+          ],
+          { encoding: "utf8" },
+        ),
+      );
+      expect(
+        data.streams.map((s: { codec_name: string }) => s.codec_name),
+      ).toEqual(["h264", codec]);
+      expect(Math.abs(Number(data.format.duration) - 6)).toBeLessThan(0.5);
+      expect(assertStreamCopySync(input, output)).toBeLessThan(0.005);
+      run([
+        "-xerror",
+        "-i",
+        output,
+        "-fps_mode",
+        "passthrough",
+        "-enc_time_base:v",
+        "1:1000000",
+        "-f",
+        "null",
+        "-",
+      ]);
+      const preview = page.getByLabel("Preview econtent-001.mp4");
+      await preview.evaluate((v: HTMLVideoElement) => v.load());
+      await expect
+        .poll(() => preview.evaluate((v: HTMLVideoElement) => v.readyState))
+        .toBeGreaterThan(1);
+      await preview.evaluate((v: HTMLVideoElement) => v.play());
+      await expect
+        .poll(() => preview.evaluate((v: HTMLVideoElement) => v.currentTime))
+        .toBeGreaterThan(0);
+    }
+    for (const [name, vcodec, acodec, reason] of [
+      ["ac3.mp4", "copy", "ac3", "audio codec ac3"],
+      ["mpeg4.mp4", "mpeg4", "copy", "video codec mpeg4"],
+    ] as const) {
+      const input = join(dir, name);
+      run(["-i", source, "-c:v", vcodec, "-c:a", acodec, input]);
+      await page
+        .getByLabel("Choose video", { exact: true })
+        .setInputFiles(input);
+      await page
+        .getByRole("button", { name: "Check codec compatibility", exact: true })
+        .click();
+      const details = page.getByRole("complementary", {
+        name: "Video workload",
+      });
+      await expect(details).toContainText("unavailable (unsupported-codec)");
+      await expect(details).toContainText(reason);
+      await expect(page.getByLabel("Cut method", { exact: true })).toHaveValue(
+        "fast",
+      );
+      await expect(page.locator("article")).toHaveCount(0);
+      await expect(
+        details.getByRole("button", {
+          name: "Choose Precision Cut explicitly",
+        }),
+      ).toBeVisible();
+    }
+    await page.screenshot({
+      path: info.outputPath("codec-compatibility.png"),
+      fullPage: true,
+    });
+    // A truncated MP4 is not classified as a codec rejection.
+    await page.getByLabel("Choose video", { exact: true }).setInputFiles({
+      name: "truncated.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from([
+        0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0, 105,
+        115, 111, 109, 109, 112, 52, 49,
+      ]),
+    });
+    await page
+      .getByRole("button", { name: "Check codec compatibility", exact: true })
+      .click();
+    await expect(page.locator("section").getByRole("alert")).toContainText(
+      "Malformed or incomplete media metadata",
+      { timeout: 60000 },
+    );
+    await expect(
+      page.getByRole("complementary", { name: "Video workload" }),
+    ).toHaveCount(0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

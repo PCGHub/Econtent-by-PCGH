@@ -45,7 +45,9 @@ try{
   }
   window.engine=new BrowserVideoEngine(factory);window.events=[];const start=performance.now()
   await window.engine.initialize(p=>{window.events.push({...p,at:performance.now()});if(window.events.length>5000)window.events.shift()})
-  const ff=window.engine.ffmpeg;window.io={writes:0,writeBytes:0,mounts:0}
+  const ff=window.engine.ffmpeg;window.io={writes:0,writeBytes:0,mounts:0,probes:[],keyframeBytes:0}
+  const probe=ff.ffprobe.bind(ff);ff.ffprobe=async args=>{const start=performance.now();const result=await probe(args);window.io.probes.push({interval:args.includes('-read_intervals')?args[args.indexOf('-read_intervals')+1]:null,output:args[args.indexOf('-o')+1],ms:performance.now()-start});return result}
+  const read=ff.readFile.bind(ff);ff.readFile=async path=>{const result=await read(path);if(path==='keyframes.txt')window.io.keyframeBytes+=typeof result==='string'?result.length:result.byteLength;return result}
   const write=ff.writeFile.bind(ff);ff.writeFile=(path,data)=>{if(!path.endsWith('.json')){window.io.writes++;window.io.writeBytes+=data.byteLength??0}return write(path,data)}
   if(ff.mount){const mount=ff.mount.bind(ff);ff.mount=(...args)=>{window.io.mounts++;return mount(...args)}}
   return {loadMs:performance.now()-start,crossOriginIsolated:window.crossOriginIsolated,multithreaded:mt}

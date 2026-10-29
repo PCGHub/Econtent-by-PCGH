@@ -5,6 +5,11 @@ import type {
   ProcessingProgress,
   TimeRange,
 } from "./types";
+import {
+  fastCompatibility,
+  MediaInspectionError,
+  type ProbeStream,
+} from "./compatibility";
 import { alignFastRange, encodingArgs } from "./command";
 import { assertValidRange } from "./validation";
 import { mediaFraction } from "./progress";
@@ -36,6 +41,7 @@ export interface FFmpegWorker {
 }
 interface SourceInfo extends SourceInspection {
   keyframes?: number[];
+  keyframeCoverage?: TimeRange;
 }
 
 /** One worker and one read-only source mount per session; all jobs are serialized. */
@@ -48,6 +54,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
   private info?: SourceInfo;
   private activeDuration?: number;
   private lastFraction = 0;
+  private probeLog = "";
   private notify: (progress: ProcessingProgress) => void = () => {};
   sourceAccess?: "workerfs" | "memfs";
   private factory?: () => Promise<FFmpegWorker>;
@@ -102,6 +109,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       this.ffmpeg = ffmpeg;
       ffmpeg.on("progress", ({ time }) => this.emitTime(time));
       ffmpeg.on("log", ({ message }) => {
+        this.probeLog = (this.probeLog + "\n" + message).slice(-8192);
         const match = /^out_time_us=(\d+)$/.exec(message.trim());
         if (match) this.emitTime(Number(match[1]));
       });
@@ -124,6 +132,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
   ): Promise<Record<string, unknown>> {
     const ffmpeg = this.ffmpeg!;
     try {
+      this.probeLog = "";
       const exit = await ffmpeg.ffprobe([
         "-v",
         "error",
@@ -136,10 +145,26 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       // core 0.12.10 can leave ret=-1 when ffprobe returns normally. A fresh,
       // parseable output plus the caller's required fields is authoritative.
       if (exit !== 0 && exit !== -1)
-        throw new Error("Cannot inspect video. Try an H.264/AAC MP4.");
+        throw new Error("ffprobe returned a failure");
       const data = await ffmpeg.readFile(output);
       return JSON.parse(
         typeof data === "string" ? data : new TextDecoder().decode(data),
+      );
+    } catch (error) {
+      if (
+        /moov atom not found|invalid atom|partial file|invalid data found|error reading header/i.test(
+          this.probeLog,
+        )
+      )
+        throw new MediaInspectionError(
+          "malformed-metadata",
+          "FFmpeg could not read the container header/index (for example, a missing MP4 moov atom or truncated file). Re-export or repair the original file. No codec incompatibility was established.",
+        );
+      throw new MediaInspectionError(
+        "probe-failed",
+        error instanceof SyntaxError
+          ? "FFprobe returned unreadable metadata; codec compatibility is unknown."
+          : "FFprobe could not inspect this file. It may be damaged, unsupported by this build, or exceed available browser memory. Codec compatibility is unknown.",
       );
     } finally {
       if (ffmpeg.loaded) await ffmpeg.deleteFile(output).catch(() => {});
@@ -157,8 +182,13 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     try {
       await this.prepare(source, false);
       signal?.throwIfAborted();
-      const { keyframes: _keys, ...info } = this.info!;
+      const {
+        keyframes: _keys,
+        keyframeCoverage: _coverage,
+        ...info
+      } = this.info!;
       void _keys;
+      void _coverage;
       return info;
     } catch (error) {
       await this.releaseSource().catch(() => {});
@@ -170,13 +200,15 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     }
   }
 
-  private async readKeyframes(): Promise<number[]> {
+  private async readKeyframes(range: TimeRange): Promise<number[]> {
     const ffmpeg = this.ffmpeg!,
       path = "keyframes.txt";
     try {
       const exit = await ffmpeg.ffprobe([
         "-v",
         "error",
+        "-read_intervals",
+        `${range.start}%${range.end}`,
         "-select_streams",
         "v:0",
         "-show_packets",
@@ -197,7 +229,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         typeof data === "string" ? data : new TextDecoder().decode(data);
       const values = new Set<number>();
       // Only allocate numeric entries for keyframes, not JSON objects for every packet.
-      for (let start = 0; start < text.length; ) {
+      for (let start = 0; start < text.length;) {
         const newline = text.indexOf("\n", start);
         const end = newline < 0 ? text.length : newline;
         const line = text.slice(start, end);
@@ -214,7 +246,11 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     }
   }
 
-  private async prepare(source: File, fast: boolean): Promise<void> {
+  private async prepare(
+    source: File,
+    fast: boolean,
+    range?: TimeRange,
+  ): Promise<void> {
     const ffmpeg = this.ffmpeg!;
     if (this.source !== source) {
       await this.releaseSource();
@@ -242,45 +278,39 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       const data = (await this.probe(
         [
           "-show_entries",
-          "format=format_name,duration:stream=codec_type,codec_name,width,height,avg_frame_rate",
+          "format=format_name,duration:stream=codec_type,codec_name,codec_tag_string,width,height,avg_frame_rate:stream_disposition=attached_pic",
           this.input,
         ],
         "source.json",
       )) as {
         format?: { duration?: string; format_name?: string };
-        streams?: {
-          codec_type: string;
-          codec_name: string;
-          width?: number;
-          height?: number;
-          avg_frame_rate?: string;
-        }[];
+        streams?: ProbeStream[];
       };
       const duration = Number(data.format?.duration);
       if (!Number.isFinite(duration) || duration <= 0)
-        throw new Error("Cannot read a finite source duration");
+        throw new MediaInspectionError(
+          "malformed-metadata",
+          "Cannot read a finite source duration",
+        );
       const video = data.streams?.find((s) => s.codec_type === "video"),
         audio = data.streams?.find((s) => s.codec_type === "audio");
-      if (!video) throw new Error("Source has no video stream");
+      if (!video)
+        throw new MediaInspectionError(
+          "malformed-metadata",
+          "Source has no video stream",
+        );
       const container = data.format?.format_name ?? "unknown";
-      const incompatibility = !container.includes("mp4")
-        ? `Source container ${container} is not a compatible MP4.`
-        : video.codec_name !== "h264"
-          ? `Source video codec is ${video.codec_name}; Fast Cut requires H.264.`
-          : audio && audio.codec_name !== "aac"
-            ? `Source audio codec is ${audio.codec_name}; Fast Cut requires AAC or no audio.`
-            : undefined;
+      const compatibility = fastCompatibility(container, data.streams ?? []);
       this.info = {
         duration,
         sizeBytes: source.size,
         width: video.width ?? 0,
         height: video.height ?? 0,
         frameRate: frameRate(video.avg_frame_rate),
-        videoCodec: video.codec_name,
-        audioCodec: audio?.codec_name,
+        videoCodec: video.codec_name ?? "unknown",
+        audioCodec: audio ? (audio.codec_name ?? "unknown") : undefined,
         container,
-        compatible: !incompatibility,
-        incompatibility,
+        ...compatibility,
       };
     }
     if (fast) {
@@ -288,12 +318,30 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         throw new Error(
           `${this.info?.incompatibility ?? "Fast Cut is unavailable."} Choose Precision Cut explicitly, or use an H.264/AAC MP4. No encoding fallback was started.`,
         );
-      if (!this.info.keyframes) {
+      if (!range)
+        throw new Error(
+          "A requested range is required for keyframe inspection",
+        );
+      assertValidRange(range, this.info.duration + 0.001);
+      const coverage = this.info.keyframeCoverage;
+      if (
+        !this.info.keyframes ||
+        !coverage ||
+        range.start < coverage.start ||
+        range.end > coverage.end
+      ) {
         this.notify({
           status: "preparing",
-          message: "Reading source keyframes for Fast Cut…",
+          message:
+            "Reading keyframes near the requested range (no frame decoding)…",
         });
-        this.info.keyframes = await this.readKeyframes();
+        // Seek to a preceding GOP; never scan unrelated hours after a short trim.
+        const window = {
+          start: Math.max(0, range.start - 10),
+          end: Math.min(this.info.duration, Math.ceil(range.end / 30) * 30 + 1),
+        };
+        this.info.keyframes = await this.readKeyframes(window);
+        this.info.keyframeCoverage = { start: range.start, end: window.end };
       }
     }
   }
@@ -314,7 +362,8 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       const fast = defaultStrategy(options) === "fast";
       if (fast && options.compression !== "off")
         throw new Error("Fast Cut requires compression Off");
-      await this.prepare(source, fast);
+      assertValidRange(options.range, Number.MAX_VALUE);
+      await this.prepare(source, fast, options.range);
       signal?.throwIfAborted();
       assertValidRange(options.range, this.info!.duration + 0.001);
       const requested: TimeRange = {
@@ -340,7 +389,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       if (result !== 0)
         throw new Error(
           fast
-            ? "Fast Cut stream copy failed. No encoding fallback was started. Choose Precision Cut explicitly or try another H.264/AAC MP4."
+            ? "MP4 stream-copy/remux failed after metadata inspection. Selected packets may have unsupported configuration or damaged timestamps. No encoding fallback was started. Re-export the source, or explicitly try Precision Cut if the file is decodable."
             : "Precision encoding failed. Try a shorter section, or choose Fast Cut for a compatible source.",
         );
       this.notify({
@@ -366,7 +415,9 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         ) ||
         (this.info!.audioCodec &&
           !info.streams?.some(
-            (s) => s.codec_type === "audio" && s.codec_name === "aac",
+            (s) =>
+              s.codec_type === "audio" &&
+              s.codec_name === (fast ? this.info!.audioCodec : "aac"),
           ))
       )
         throw new Error("Invalid MP4 output");

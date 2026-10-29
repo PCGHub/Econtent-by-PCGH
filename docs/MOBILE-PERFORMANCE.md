@@ -200,3 +200,6 @@ PostgREST and Mailpit config digests were checked against the locally tested ECR
 images and matched exactly, preserving image/layer content. Local default image names
 remain available via optional Compose overrides; no Auth/database setting changed.
 No registry subscription, token, billing change or paid service was introduced.
+
+Follow-up: [codec compatibility and bounded long-source trims](CODEC-COMPATIBILITY.md)
+adds explicit diagnostics, additional validated remux inputs and range-limited keyframe scans.

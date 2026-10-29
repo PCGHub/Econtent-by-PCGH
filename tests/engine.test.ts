@@ -259,3 +259,65 @@ test("failed source inspection cannot poison the retained metadata cache", async
   assert.equal(calls.filter((x) => x === "mount").length, 2);
   await engine.dispose();
 });
+
+test("long sources scan only the requested window and preserve input-side seek", async () => {
+  const { worker } = fixture();
+  const read = worker.readFile.bind(worker);
+  worker.readFile = async (path) =>
+    path === "source.json"
+      ? JSON.stringify({
+          format: { format_name: "mov,mp4", duration: "6791.168" },
+          streams: [{ codec_type: "video", codec_name: "h264" }],
+        })
+      : path === "keyframes.txt"
+        ? "pts_time=0|flags=K_\npts_time=150|flags=K_"
+        : read(path);
+  let scan: string[] = [],
+    encode: string[] = [];
+  worker.ffprobe = async (args) => {
+    if (args.includes("keyframes.txt")) scan = args;
+    return 0;
+  };
+  const exec = worker.exec.bind(worker);
+  worker.exec = async (args) => {
+    encode = args;
+    return exec(args);
+  };
+  const engine = new BrowserVideoEngine(async () => worker);
+  await engine.initialize();
+  await engine.process(new File(["source"], "long.mp4"), {
+    range: { start: 0, end: 150 },
+    compression: "off",
+    outputName: "clip.mp4",
+  });
+  assert.equal(scan[scan.indexOf("-read_intervals") + 1], "0%151");
+  assert.ok(!scan.includes("-show_frames"));
+  assert.ok(encode.indexOf("-ss") < encode.indexOf("-i"));
+  assert.equal(encode[encode.indexOf("-t") + 1], "150");
+  assert.equal(encode[encode.indexOf("-c") + 1], "copy");
+  await engine.dispose();
+});
+test("probe failures do not claim unsupported codecs; malformed MP4 headers have a distinct error", async () => {
+  for (const malformed of [false, true]) {
+    const { worker } = fixture();
+    let log: ((event: { message: string }) => void) | undefined;
+    const on = worker.on.bind(worker);
+    worker.on = ((event: string, cb: unknown) => {
+      if (event === "log") log = cb as typeof log;
+      else on(event as "progress", cb as never);
+    }) as typeof worker.on;
+    worker.ffprobe = async () => {
+      if (malformed) log?.({ message: "moov atom not found" });
+      return 1;
+    };
+    const engine = new BrowserVideoEngine(async () => worker);
+    await engine.initialize();
+    await assert.rejects(
+      engine.inspect(new File(["bad"], "damaged.mp4")),
+      malformed
+        ? /Malformed.*container header/
+        : /Media probe failed.*compatibility is unknown/,
+    );
+    await engine.dispose();
+  }
+});
