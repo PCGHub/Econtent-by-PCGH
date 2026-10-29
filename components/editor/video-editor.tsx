@@ -153,6 +153,16 @@ export default function VideoEditor({
   const [checking, setChecking] = useState(false);
   const restoreRange = useRef(!!initialSource);
   const player = useRef<HTMLVideoElement>(null);
+  const precisionReview = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (awaitingPrecision) {
+      precisionReview.current?.focus({ preventScroll: true });
+      precisionReview.current?.scrollIntoView({
+        block: "center",
+        behavior: "auto",
+      });
+    }
+  }, [awaitingPrecision]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -528,6 +538,8 @@ export default function VideoEditor({
       {awaitingPrecision && effectiveStrategy === "precision" && (
         <aside
           aria-label="Confirm precision workload"
+          ref={precisionReview}
+          tabIndex={-1}
           className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
         >
           <h2 className="font-semibold">Precision Cut requires re-encoding</h2>

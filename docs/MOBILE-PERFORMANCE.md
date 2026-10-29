@@ -39,6 +39,8 @@ for browsers without WORKERFS. The account fingerprint worker still reads bounde
   frames, rather than a duration promise inferred from megabytes.
 - Android/iOS user agents and reported device memory <=4 GiB trigger an inline Precision
   workload confirmation. It offers Fast when compatible, an explicit Continue, and Cancel.
+  The confirmation receives focus and is scrolled into view; only active progress
+  remains sticky, keeping completed/failed panels off editing controls.
   This is a conservative UX policy, not a tested device capability threshold.
 - Precision/Off changes only x264's speed preset from `fast` to `ultrafast`, retaining
   CRF 18, original dimensions/frame timing, yuv420p and AAC 128 kbps. This trades coding

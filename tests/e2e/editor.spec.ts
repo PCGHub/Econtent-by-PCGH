@@ -439,6 +439,12 @@ test("Android-like UI defaults to Fast Cut, confirms Precision and never falls b
       .getByRole("button", { name: "Process video", exact: true })
       .click();
     await expect(page.getByLabel("Confirm precision workload")).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: "Continue with Precision Cut",
+        exact: true,
+      }),
+    ).toBeInViewport();
     await expect(page.locator("article")).toHaveCount(0);
     await page
       .getByRole("button", { name: "Use Fast Cut instead", exact: true })
