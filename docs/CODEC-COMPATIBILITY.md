@@ -111,3 +111,7 @@ hosted Supabase schema or authentication configuration was modified.
 No Android hardware, ADB or device farm is available. Android speed, memory and playback
 remain unverified; desktop UA/viewport emulation tests only UI behavior. This branch
 has not been manually deployed, merged into main or deployed to production.
+
+Current import/export extension: [VIDEO-IMPORT.md](VIDEO-IMPORT.md). It supersedes the
+earlier passthrough audio policy: standard exports now use AAC, with explicit audio
+conversion when needed, and verified broader inputs may use Precision conversion.

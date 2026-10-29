@@ -1,0 +1,240 @@
+{
+  "fixture": {
+    "codec": "hevc",
+    "audio": "aac",
+    "width": 1152,
+    "height": 480,
+    "fps": 24,
+    "durationSeconds": 6791.280518,
+    "bytes": 238333231,
+    "generation": "30s testsrc2 + sine, libx265 ultrafast240k/pools=none/frame-threads=1, AAC32k; stream-loop/copy to6791.168s. Synthetic, not customer footage."
+  },
+  "method": "Same desktop Linux x64 Chromium154,2-core CPU quota,8GiB host memory cap, single-thread core0.12.10. Single trials, requested ranges0-150 and5400-5550. Times include source preparation and output verification/read, exclude core loading, fingerprinting and downloads/ZIP. Approximate summed process-tree RSS double-counts shared pages. No Android hardware or speed claim.",
+  "beforeCommit": "9f075e7a12eda22d6b721c09bb0f022233876998",
+  "runs": [
+    {
+      "version": "import-before",
+      "browserVersion": "154.0.8037.57",
+      "platform": "linux",
+      "architecture": "x64",
+      "loadMs": 233.80000000074506,
+      "processingMs": 81892.60000000149,
+      "io": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1,
+        "probes": [
+          {
+            "interval": null,
+            "output": "source.json",
+            "ms": 122.30000000074506
+          },
+          {
+            "interval": null,
+            "output": "output.json",
+            "ms": 27.400000002235174
+          },
+          {
+            "interval": null,
+            "output": "output.json",
+            "ms": 5.100000001490116
+          }
+        ],
+        "keyframeBytes": 0
+      },
+      "peakProcessTreeRSSKiB": 1139416,
+      "processTreeCPUSeconds": 82,
+      "jsHeapBytes": 78965292,
+      "clips": [
+        {
+          "ms": 42113.5,
+          "size": 76897107,
+          "range": {
+            "start": 0,
+            "end": 150
+          },
+          "alignedRange": {
+            "start": 0,
+            "end": 150
+          },
+          "duration": 150,
+          "method": "precision",
+          "sourceAccess": "workerfs",
+          "probe": {
+            "duration": 150,
+            "size": 76897107,
+            "streams": [
+              {
+                "type": "video",
+                "codec": "h264",
+                "start": 0,
+                "duration": 150,
+                "frames": 3600
+              },
+              {
+                "type": "audio",
+                "codec": "aac",
+                "start": 0,
+                "duration": 150,
+                "frames": 7036
+              }
+            ]
+          },
+          "firstFramePSNR": 55.500446066474474,
+          "fullyDecoded": true,
+          "sha256": "45746fd91f8d2b4ebda4da98c52711e29e899aca205b91eba9ad36709e79962f"
+        },
+        {
+          "ms": 39779.10000000149,
+          "size": 77236436,
+          "range": {
+            "start": 5400,
+            "end": 5550
+          },
+          "alignedRange": {
+            "start": 5400,
+            "end": 5550
+          },
+          "duration": 150,
+          "method": "precision",
+          "sourceAccess": "workerfs",
+          "probe": {
+            "duration": 150,
+            "size": 77236436,
+            "streams": [
+              {
+                "type": "video",
+                "codec": "h264",
+                "start": 0,
+                "duration": 150,
+                "frames": 3600
+              },
+              {
+                "type": "audio",
+                "codec": "aac",
+                "start": 0,
+                "duration": 150,
+                "frames": 7036
+              }
+            ]
+          },
+          "firstFramePSNR": 54.0616704503403,
+          "fullyDecoded": true,
+          "sha256": "d1fde0a9a4e856c3dd3c1f3c69e9abb3ca655399c461408a2a38aaddfe41be8f"
+        }
+      ]
+    },
+    {
+      "version": "import-after",
+      "browserVersion": "154.0.8037.57",
+      "platform": "linux",
+      "architecture": "x64",
+      "loadMs": 284.69999999925494,
+      "processingMs": 82257.19999999925,
+      "io": {
+        "writes": 0,
+        "writeBytes": 0,
+        "mounts": 1,
+        "probes": [
+          {
+            "interval": null,
+            "output": "source.json",
+            "ms": 121.10000000149012
+          },
+          {
+            "interval": null,
+            "output": "output.json",
+            "ms": 18
+          },
+          {
+            "interval": null,
+            "output": "output.json",
+            "ms": 6.5
+          }
+        ],
+        "keyframeBytes": 0
+      },
+      "peakProcessTreeRSSKiB": 1093172,
+      "processTreeCPUSeconds": 83,
+      "jsHeapBytes": 79117281,
+      "clips": [
+        {
+          "ms": 42208.5,
+          "size": 76893840,
+          "range": {
+            "start": 0,
+            "end": 150
+          },
+          "alignedRange": {
+            "start": 0,
+            "end": 150
+          },
+          "duration": 150,
+          "method": "precision",
+          "sourceAccess": "workerfs",
+          "probe": {
+            "duration": 150,
+            "size": 76893840,
+            "streams": [
+              {
+                "type": "video",
+                "codec": "h264",
+                "start": 0,
+                "duration": 150,
+                "frames": 3598
+              },
+              {
+                "type": "audio",
+                "codec": "aac",
+                "start": 0,
+                "duration": 150,
+                "frames": 7036
+              }
+            ]
+          },
+          "firstFramePSNR": 55.500446066474474,
+          "fullyDecoded": true,
+          "sha256": "3d313e2f63a0c2150e81032c130a75f6dc778eb23c5183442be149d9f19d3888"
+        },
+        {
+          "ms": 40048.699999999255,
+          "size": 77254719,
+          "range": {
+            "start": 5400,
+            "end": 5550
+          },
+          "alignedRange": {
+            "start": 5400,
+            "end": 5550
+          },
+          "duration": 150,
+          "method": "precision",
+          "sourceAccess": "workerfs",
+          "probe": {
+            "duration": 150,
+            "size": 77254719,
+            "streams": [
+              {
+                "type": "video",
+                "codec": "h264",
+                "start": 0.041016,
+                "duration": 149.958333,
+                "frames": 3597
+              },
+              {
+                "type": "audio",
+                "codec": "aac",
+                "start": 0,
+                "duration": 150,
+                "frames": 7036
+              }
+            ]
+          },
+          "firstFramePSNR": 54.0616704503403,
+          "fullyDecoded": true,
+          "sha256": "6838cddba9f5eb0d5c69206546b099e349d277a9cbe37e79a3b568fa82030d03"
+        }
+      ]
+    }
+  ]
+}

@@ -7,10 +7,12 @@ function fixture(fallback = false) {
   const calls: string[] = [];
   let outputDuration = 10;
   let time: ((event: { progress: number; time: number }) => void) | undefined;
+  let log: ((event: { message: string }) => void) | undefined;
   const worker = {
     loaded: false,
     on(event: string, cb: (event: { progress: number; time: number }) => void) {
       if (event === "progress") time = cb;
+      if (event === "log") log = cb as unknown as typeof log;
     },
     async load() {
       calls.push("load");
@@ -50,6 +52,15 @@ function fixture(fallback = false) {
       return 0;
     },
     async exec(args: string[]) {
+      if (args.some((a) => ["-decoders", "-encoders", "-muxers"].includes(a))) {
+        const messages = args.includes("-decoders")
+          ? [" VFS..D h264 H264", " VFS..D hevc HEVC", " A....D aac AAC"]
+          : args.includes("-encoders")
+            ? [" V....D libx264 libx264 (codec h264)", " A..... aac AAC"]
+            : ["  E mp4 MP4"];
+        for (const message of messages) log?.({ message });
+        return 0;
+      }
       calls.push("exec");
       outputDuration = Number(args[args.indexOf("-t") + 1]);
       time?.({ progress: 0.001, time: 5e6 });
@@ -76,8 +87,15 @@ function fixture(fallback = false) {
         return JSON.stringify({
           format: { duration: String(outputDuration) },
           streams: [
-            { codec_type: "video", codec_name: "h264" },
-            { codec_type: "audio", codec_name: "aac" },
+            {
+              codec_type: "video",
+              codec_name: "h264",
+              width: 1280,
+              height: 720,
+              pix_fmt: "yuv420p",
+              start_time: "0",
+            },
+            { codec_type: "audio", codec_name: "aac", start_time: "0" },
           ],
         });
       return new Uint8Array([0, 0, 1]);
@@ -267,7 +285,10 @@ test("long sources scan only the requested window and preserve input-side seek",
     path === "source.json"
       ? JSON.stringify({
           format: { format_name: "mov,mp4", duration: "6791.168" },
-          streams: [{ codec_type: "video", codec_name: "h264" }],
+          streams: [
+            { codec_type: "video", codec_name: "h264" },
+            { codec_type: "audio", codec_name: "aac" },
+          ],
         })
       : path === "keyframes.txt"
         ? "pts_time=0|flags=K_\npts_time=150|flags=K_"
@@ -304,7 +325,7 @@ test("probe failures do not claim unsupported codecs; malformed MP4 headers have
     const on = worker.on.bind(worker);
     worker.on = ((event: string, cb: unknown) => {
       if (event === "log") log = cb as typeof log;
-      else on(event as "progress", cb as never);
+      on(event as "progress", cb as never);
     }) as typeof worker.on;
     worker.ffprobe = async () => {
       if (malformed) log?.({ message: "moov atom not found" });
@@ -320,4 +341,56 @@ test("probe failures do not claim unsupported codecs; malformed MP4 headers have
     );
     await engine.dispose();
   }
+});
+
+test("mobile large-source fallback refuses a full memory copy when WORKERFS is unavailable", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    value: { userAgent: "Android", deviceMemory: 4 },
+    configurable: true,
+  });
+  const { worker, calls } = fixture(true),
+    engine = new BrowserVideoEngine(async () => worker);
+  try {
+    await engine.initialize();
+    const file = new File(["tiny"], "big.mp4");
+    Object.defineProperty(file, "size", { value: 129 * 1048576 });
+    let read = false;
+    file.arrayBuffer = async () => {
+      read = true;
+      throw new Error("Unexpected source read");
+    };
+    await assert.rejects(
+      engine.inspect(file),
+      /Copying this large source may exceed mobile memory/,
+    );
+    assert.equal(read, false);
+    assert.ok(!calls.includes("write"));
+    assert.ok(!calls.includes("exec"));
+  } finally {
+    await engine.dispose();
+    if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor);
+    else Reflect.deleteProperty(globalThis, "navigator");
+  }
+});
+
+test("an output hitting the explicit file budget is rejected rather than returned as a completed clip", async () => {
+  const { worker } = fixture();
+  const read = worker.readFile.bind(worker);
+  worker.readFile = async (path) =>
+    path === "output.mp4" ? new Uint8Array(1024) : read(path);
+  const engine = new BrowserVideoEngine(async () => worker);
+  await engine.initialize();
+  await assert.rejects(
+    engine.process(new File(["source"], "input.mp4"), {
+      range: { start: 0, end: 10 },
+      compression: "off",
+      cutStrategy: "fast",
+      maxOutputBytes: 1024,
+      outputName: "clip.mp4",
+    }),
+    /partial export is not reported as completed/,
+  );
+  assert.equal(worker.loaded, false);
+  await engine.dispose();
 });

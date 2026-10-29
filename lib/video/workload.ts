@@ -9,6 +9,9 @@ export interface SourceInspection {
   audioCodec?: string;
   container: string;
   compatible: boolean;
+  pixelFormat?: string;
+  timelineStart?: number;
+  conversion?: import("./capabilities").ConversionCapability;
   incompatibility?: string;
   compatibilityIssue?: import("./compatibility").CompatibilityIssue;
 }
@@ -81,6 +84,7 @@ export function workloadDescription(
       ? ""
       : ` · about ${Math.ceil(seconds * info.frameRate).toLocaleString()} frames`;
   const summary = `${seconds.toFixed(1)} seconds selected · ${pixels} · ${fps}${frames}`;
+  if(strategy === "fast" && !info.compatible) return summary + (info.conversion?.audioOnly ? ". Video can be copied at keyframes; AAC audio encoding requires an explicit choice. Only this selected range is processed." : ". Unchanged stream copy is unavailable. Review conversion capability and choose Precision Cut explicitly to encode only the selected range and preceding GOP.");
   return (
     summary +
     (strategy === "fast"

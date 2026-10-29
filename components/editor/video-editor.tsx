@@ -15,7 +15,7 @@ import {
   workloadDescription,
   type SourceInspection,
 } from "@/lib/video/workload";
-import { CUT_PRESETS_SECONDS } from "@/lib/video/types";
+import { CUT_PRESETS_SECONDS, VIDEO_FILE_ACCEPT } from "@/lib/video/types";
 import type {
   CompressionPreset,
   CutStrategy,
@@ -71,7 +71,11 @@ const ClipCard = memo(function ClipCard({
       {clip.outputDuration !== undefined && (
         <p className="mt-1 text-sm text-slate-500">
           Exported duration: {clip.outputDuration.toFixed(3)} seconds ·{" "}
-          {clip.cutStrategy === "fast" ? "Stream copy" : "Precision encode"}
+          {clip.cutStrategy === "fast"
+            ? clip.audioConverted
+              ? "Video copy + AAC audio conversion"
+              : "Stream copy"
+            : "H.264/AAC precision encode"}
         </p>
       )}
       <button
@@ -137,6 +141,8 @@ export default function VideoEditor({
   const [zipping, setZipping] = useState(false);
   const [error, setError] = useState("");
   const [inspection, setInspection] = useState<SourceInspection>();
+  const [awaitingAudioConversion, setAwaitingAudioConversion] = useState(false);
+  const [jobAudioConverted, setJobAudioConverted] = useState(false);
   const [awaitingPrecision, setAwaitingPrecision] = useState(false);
   const [modeNotice, setModeNotice] = useState("");
   const [jobMethod, setJobMethod] = useState<CutStrategy>(
@@ -153,6 +159,16 @@ export default function VideoEditor({
   const [checking, setChecking] = useState(false);
   const restoreRange = useRef(!!initialSource);
   const player = useRef<HTMLVideoElement>(null);
+  const audioReview = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (awaitingAudioConversion) {
+      audioReview.current?.focus({ preventScroll: true });
+      audioReview.current?.scrollIntoView({
+        block: "center",
+        behavior: "auto",
+      });
+    }
+  }, [awaitingAudioConversion]);
   const precisionReview = useRef<HTMLElement>(null);
   useEffect(() => {
     if (awaitingPrecision) {
@@ -191,12 +207,9 @@ export default function VideoEditor({
   async function choose(file?: File) {
     if (!file || busy || zipping || checking) return;
     setError("");
-    if (
-      !file.size ||
-      (!file.type.startsWith("video/") && !/\.(mp4|mov|mkv)$/i.test(file.name))
-    ) {
+    if (!file.size) {
       setError(
-        "Choose a non-empty video file. H.264/AAC MP4 is the initial target.",
+        "Choose a non-empty video file. Its actual container and codecs are inspected locally.",
       );
       return;
     }
@@ -225,6 +238,8 @@ export default function VideoEditor({
     if (!mounted.current) return;
     restoreRange.current = false;
     setInspection(undefined);
+    setAwaitingAudioConversion(false);
+    setJobAudioConverted(false);
     setAwaitingPrecision(false);
     if (compression === "off") {
       setStrategy("fast");
@@ -308,7 +323,11 @@ export default function VideoEditor({
         width: info.width,
         height: info.height,
       });
-      if (!metadata.duration && !restoreRange.current) setEnd(info.duration);
+      if (
+        !restoreRange.current &&
+        (!metadata.duration || end === metadata.duration)
+      )
+        setEnd(info.duration);
       setModeNotice(
         "Source inspected locally. Review codec compatibility before processing. Inspection does not create outputs.",
       );
@@ -330,7 +349,7 @@ export default function VideoEditor({
       if (mounted.current) setBusy(false);
     }
   }
-  async function processVideo(confirmPrecision = false) {
+  async function processVideo(confirmPrecision = false, convertAudio = false) {
     if (!source || !plan.length || busy || zipping || planError) return;
     // Avoid continuing the source preview's decoder alongside mobile encoding/copying.
     player.current?.pause();
@@ -347,6 +366,8 @@ export default function VideoEditor({
     };
     setModeNotice("");
     setJobMethod(effectiveStrategy);
+    setJobAudioConverted(convertAudio);
+    setAwaitingAudioConversion(false);
     setAwaitingPrecision(false);
     setBusy(true);
     setError("");
@@ -360,9 +381,34 @@ export default function VideoEditor({
       const info = await worker.inspect(source, abort.signal);
       if (!mounted.current) return;
       setInspection(info);
-      if (effectiveStrategy === "fast" && !info.compatible) {
+      if (effectiveStrategy === "precision" && !info.conversion?.available) {
+        throw new Error(
+          info.conversion?.reason ?? "Conversion is unavailable in this build.",
+        );
+      }
+      if (
+        effectiveStrategy === "fast" &&
+        !info.compatible &&
+        info.conversion?.available &&
+        info.conversion.audioOnly &&
+        !convertAudio
+      ) {
+        setAwaitingAudioConversion(true);
+        tracker.current = null;
+        setProgress(new JobProgressTracker([]).snapshot());
+        return;
+      }
+      if (
+        effectiveStrategy === "fast" &&
+        !info.compatible &&
+        !(
+          convertAudio &&
+          info.conversion?.available &&
+          info.conversion.audioOnly
+        )
+      ) {
         setError(
-          `${info.incompatibility} Fast Cut did not start. Choose Precision Cut explicitly or reconnect a compatible MP4.`,
+          `${info.incompatibility} Fast Cut did not start. ${info.conversion?.available ? "Choose Precision Cut explicitly or reconnect a compatible MP4." : (info.conversion?.reason ?? "No verified conversion path is available.")}`,
         );
         setProgress(
           job.finish(
@@ -376,7 +422,9 @@ export default function VideoEditor({
       const device = deviceProfile(navigator);
       if (
         effectiveStrategy === "precision" &&
-        needsPrecisionConfirmation(device) &&
+        (needsPrecisionConfirmation(device) ||
+          info.conversion?.precisionLoss ||
+          info.conversion?.omittedTracks) &&
         !confirmPrecision
       ) {
         setAwaitingPrecision(true);
@@ -399,6 +447,8 @@ export default function VideoEditor({
             range,
             compression,
             cutStrategy: effectiveStrategy,
+            convertAudio,
+            maxOutputBytes: outputBudget(device) - outputBytes,
             outputName: `econtent-${String(range.index).padStart(3, "0")}.mp4`,
           },
           abort.signal,
@@ -526,7 +576,7 @@ export default function VideoEditor({
           aria-label="Choose video"
           className="mt-3 block w-full"
           type="file"
-          accept="video/*,.mp4,.mov,.mkv"
+          accept={VIDEO_FILE_ACCEPT}
           disabled={busy || zipping || checking}
           onChange={(event) => {
             const file = event.target.files?.[0];
@@ -535,9 +585,10 @@ export default function VideoEditor({
           }}
         />
         <p className="mt-2 text-sm text-slate-500">
-          Fast Cut: H.264 with AAC/MP3 or no audio in MP4, MOV or Matroska. 256
-          MB safety cap; actual capacity depends on your device. Other formats
-          may fail to preview or encode.
+          Import MP4, MOV, WebM, MKV, AVI, FLV, WMV, MPEG, 3GP and more when the
+          bundled FFmpeg build can read them. Export H.264/AAC MP4. 256 MiB
+          safety cap; codec support and capacity vary. Files stay on this
+          device.
         </p>
       </label>
       {checking && (
@@ -576,6 +627,7 @@ export default function VideoEditor({
         progress={progress}
         method={progress.status === "idle" ? effectiveStrategy : jobMethod}
         active={busy || zipping}
+        audioConverted={progress.status !== "idle" && jobAudioConverted}
         onCancel={() => controller.current?.abort()}
       />
       {inspection && (
@@ -597,6 +649,47 @@ export default function VideoEditor({
               : `unavailable (${inspection.compatibilityIssue ?? "unknown"})`}
           </p>
           <p className="mt-2">
+            Available methods:{" "}
+            {inspection.compatible
+              ? "Fast Cut (no conversion); "
+              : inspection.conversion?.audioOnly &&
+                  inspection.conversion.available
+                ? "Fast video copy with explicit AAC audio conversion; "
+                : ""}
+            {inspection.conversion?.available
+              ? "Precision Cut / convert to H.264 + AAC"
+              : "conversion unavailable"}
+            .
+          </p>
+          <p className="mt-2 font-semibold">
+            Recommended:{" "}
+            {inspection.compatible
+              ? "Fast Cut with compression Off for speed; Precision Cut for accurate boundaries"
+              : inspection.conversion?.available
+                ? inspection.conversion.audioOnly
+                  ? "copy H.264 video and convert audio only"
+                  : "explicit conversion to H.264/AAC using Precision Cut"
+                : "re-export this source with a trusted local converter"}
+            .
+          </p>
+          {inspection.conversion?.precisionLoss && (
+            <p className="mt-2 text-amber-900">
+              {inspection.conversion.precisionLoss}
+            </p>
+          )}
+          {inspection.conversion?.omittedTracks && (
+            <p className="mt-2 text-amber-900">
+              Precision export uses only the first video and first audio tracks;
+              additional tracks and metadata attachments are omitted. Review
+              before continuing.
+            </p>
+          )}
+          {!inspection.conversion?.available && (
+            <p className="mt-2 text-amber-900">
+              {inspection.conversion?.reason}
+            </p>
+          )}
+          <p className="mt-2">
             {workloadDescription(
               inspection,
               plan.reduce((sum, clip) => sum + clip.duration, 0),
@@ -606,23 +699,66 @@ export default function VideoEditor({
           {inspection.incompatibility && (
             <div className="mt-2 text-amber-900">
               <p>{inspection.incompatibility}</p>
-              <button
-                type="button"
-                className="mt-2 font-semibold underline"
-                disabled={busy || zipping}
-                onClick={() => {
-                  setStrategy("precision");
-                  setModeNotice(
-                    "Precision Cut selected explicitly. It re-encodes; decoding support is not guaranteed. Press Process video when ready.",
-                  );
-                }}
-              >
-                Choose Precision Cut explicitly
-              </button>
+              {inspection.conversion?.available && (
+                <button
+                  type="button"
+                  className="mt-2 font-semibold underline"
+                  disabled={busy || zipping}
+                  onClick={() => {
+                    setStrategy("precision");
+                    setModeNotice(
+                      "Precision Cut selected explicitly. It re-encodes; decoding support is not guaranteed. Press Process video when ready.",
+                    );
+                  }}
+                >
+                  Choose Precision Cut explicitly
+                </button>
+              )}
             </div>
           )}
         </aside>
       )}
+      {awaitingAudioConversion &&
+        effectiveStrategy === "fast" &&
+        compression === "off" &&
+        inspection?.conversion?.audioOnly && (
+          <aside
+            ref={audioReview}
+            tabIndex={-1}
+            aria-label="Confirm audio conversion"
+            className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+          >
+            <h2 className="font-semibold">
+              Keep H.264 video; convert audio to AAC
+            </h2>
+            <p className="mt-2">
+              {inspection.audioCodec?.toUpperCase()} audio must be converted to
+              AAC 128 kbps for standard MP4 export. This changes audio quality.
+              Video is copied without re-encoding. Only the selected range is
+              processed, at source keyframes; boundaries are not frame-accurate.
+            </p>
+            <p className="mt-2">
+              {plan.length} clip(s),{" "}
+              {plan.reduce((sum, clip) => sum + clip.duration, 0).toFixed(1)}{" "}
+              seconds selected. This still uses browser memory; no fixed
+              completion time is promised.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                className={action}
+                onClick={() => void processVideo(false, true)}
+              >
+                Convert audio and continue Fast Cut
+              </button>
+              <button
+                className="font-semibold text-blue-700"
+                onClick={() => setAwaitingAudioConversion(false)}
+              >
+                Cancel audio conversion
+              </button>
+            </div>
+          </aside>
+        )}
       {awaitingPrecision && effectiveStrategy === "precision" && (
         <aside
           aria-label="Confirm precision workload"
@@ -637,6 +773,15 @@ export default function VideoEditor({
             memory. Keep this tab visible; Android backgrounding and heat can
             slow or suspend processing. There is no reliable time estimate yet.
           </p>
+          {inspection?.conversion?.precisionLoss && (
+            <p className="mt-2">{inspection.conversion.precisionLoss}</p>
+          )}
+          {inspection?.conversion?.omittedTracks && (
+            <p className="mt-2">
+              Additional tracks will be omitted; only the first video/audio
+              tracks are exported.
+            </p>
+          )}
           {compression === "off" && (
             <p className="mt-2">
               Off uses a speed-focused encoder and can produce larger files.
@@ -717,11 +862,13 @@ export default function VideoEditor({
               {metadata.height}
             </p>
             <p className="mt-3 text-sm text-slate-500">
-              Fast Cut remuxes compatible H.264 with AAC/MP3 or no audio from
-              MP4, MOV or Matroska without re-encoding. Precision Cut uses CRF
-              18 / ultrafast with compression Off (larger files are possible),
-              or CRF 20/25/30 with compression selected. Precision audio is AAC
-              128 kbps. Output size may increase.
+              Standard export is H.264 video with AAC audio (or no audio). Fast
+              Cut copies compatible streams; audio-only conversion requires your
+              explicit choice. Other decodable formats use Precision Cut /
+              conversion. Precision Cut uses CRF 18 / ultrafast with compression
+              Off (larger files are possible), or CRF 20/25/30 with compression
+              selected. Precision audio is AAC 128 kbps. Output size may
+              increase.
             </p>
           </div>
           <fieldset
@@ -826,6 +973,7 @@ export default function VideoEditor({
                 disabled={compression !== "off"}
                 onChange={(event) => {
                   setStrategy(event.target.value as CutStrategy);
+                  setAwaitingAudioConversion(false);
                   setAwaitingPrecision(false);
                   setModeNotice(
                     event.target.value === "precision"
@@ -835,7 +983,10 @@ export default function VideoEditor({
                 }}
               >
                 <option value="fast">Fast Cut — stream copy</option>
-                <option value="precision">
+                <option
+                  value="precision"
+                  disabled={inspection?.conversion?.available === false}
+                >
                   Precision Cut — accurate boundaries
                 </option>
               </select>
@@ -857,6 +1008,7 @@ export default function VideoEditor({
                   const preset = event.target.value as CompressionPreset;
                   setCompression(preset);
                   setStrategy(preset === "off" ? "fast" : "precision");
+                  setAwaitingAudioConversion(false);
                   setAwaitingPrecision(false);
                   setModeNotice(
                     preset === "off"
@@ -880,7 +1032,16 @@ export default function VideoEditor({
             <button
               type="button"
               className={action}
-              disabled={!plan.length || !!planError || !metadata.duration}
+              disabled={
+                !plan.length ||
+                !!planError ||
+                !metadata.duration ||
+                (!!inspection &&
+                  !inspection.compatible &&
+                  !inspection.conversion?.available) ||
+                (effectiveStrategy === "precision" &&
+                  inspection?.conversion?.available === false)
+              }
               onClick={() => void processVideo()}
             >
               Process video
@@ -910,21 +1071,24 @@ export default function VideoEditor({
           {error}
         </p>
       )}
-      {error && effectiveStrategy === "fast" && compression === "off" && (
-        <button
-          className="font-semibold text-blue-700"
-          onClick={() => {
-            setStrategy("precision");
-            setAwaitingPrecision(false);
-            setError("");
-            setModeNotice(
-              "Precision Cut selected explicitly. Press Process video to review the encoding workload.",
-            );
-          }}
-        >
-          Choose Precision Cut instead
-        </button>
-      )}
+      {error &&
+        effectiveStrategy === "fast" &&
+        compression === "off" &&
+        inspection?.conversion?.available && (
+          <button
+            className="font-semibold text-blue-700"
+            onClick={() => {
+              setStrategy("precision");
+              setAwaitingPrecision(false);
+              setError("");
+              setModeNotice(
+                "Precision Cut selected explicitly. Press Process video to review the encoding workload.",
+              );
+            }}
+          >
+            Choose Precision Cut instead
+          </button>
+        )}
       {!!clips.length && (
         <section className="space-y-4">
           <h2 className="text-xl font-bold">Processed clips</h2>

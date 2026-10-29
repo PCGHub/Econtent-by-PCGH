@@ -1,3 +1,9 @@
+import {
+  parseCodecs,
+  parseMuxers,
+  conversionCapability,
+  type CoreCapabilities,
+} from "./capabilities";
 import type { VideoProcessingEngine } from "./engine";
 import type {
   ProcessOptions,
@@ -13,7 +19,13 @@ import {
 import { alignFastRange, encodingArgs } from "./command";
 import { assertValidRange } from "./validation";
 import { mediaFraction } from "./progress";
-import { defaultStrategy, frameRate, type SourceInspection } from "./workload";
+import {
+  defaultStrategy,
+  frameRate,
+  deviceProfile,
+  needsPrecisionConfirmation,
+  type SourceInspection,
+} from "./workload";
 
 // Keep worker-only ambient declarations outside the app TypeScript program.
 export interface FFmpegWorker {
@@ -42,6 +54,7 @@ export interface FFmpegWorker {
 interface SourceInfo extends SourceInspection {
   keyframes?: number[];
   keyframeCoverage?: TimeRange;
+  audioTimelineStart?: number;
 }
 
 /** One worker and one read-only source mount per session; all jobs are serialized. */
@@ -55,6 +68,8 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
   private activeDuration?: number;
   private lastFraction = 0;
   private probeLog = "";
+  private capabilityLog?: string[];
+  private capabilities?: CoreCapabilities;
   private notify: (progress: ProcessingProgress) => void = () => {};
   sourceAccess?: "workerfs" | "memfs";
   private factory?: () => Promise<FFmpegWorker>;
@@ -79,6 +94,8 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     this.source = undefined;
     this.info = undefined;
     this.sourceAccess = undefined;
+    this.capabilities = undefined;
+    this.capabilityLog = undefined;
     this.activeDuration = undefined;
   };
 
@@ -109,6 +126,8 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       this.ffmpeg = ffmpeg;
       ffmpeg.on("progress", ({ time }) => this.emitTime(time));
       ffmpeg.on("log", ({ message }) => {
+        if (this.capabilityLog && this.capabilityLog.length < 5000)
+          this.capabilityLog.push(message.slice(0, 1024));
         this.probeLog = (this.probeLog + "\n" + message).slice(-8192);
         const match = /^out_time_us=(\d+)$/.exec(message.trim());
         if (match) this.emitTime(Number(match[1]));
@@ -118,6 +137,29 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         wasmURL: `${location.origin}/ffmpeg/core/ffmpeg-core.wasm`,
       });
       signal?.throwIfAborted();
+      this.notify({
+        status: "preparing",
+        message: "Checking the loaded FFmpeg decoder and export capabilities…",
+      });
+      const inventory: Record<string, string> = {};
+      for (const kind of ["decoders", "encoders", "muxers"]) {
+        this.capabilityLog = [];
+        const exit = await ffmpeg.exec(["-hide_banner", "-" + kind]);
+        signal?.throwIfAborted();
+        inventory[kind] = this.capabilityLog.join("\n");
+        if (exit !== 0)
+          throw new Error(
+            "Cannot verify the loaded FFmpeg capabilities. Reload the editor.",
+          );
+      }
+      this.capabilityLog = undefined;
+      this.capabilities = {
+        decoders: parseCodecs(inventory.decoders),
+        encoders: Object.values(parseCodecs(inventory.encoders)).flat(),
+        muxers: parseMuxers(inventory.muxers),
+      };
+      if (!this.capabilities.muxers.includes("mp4"))
+        throw new Error("This FFmpeg core cannot export MP4.");
     } catch (error) {
       this.stop();
       throw error;
@@ -136,7 +178,13 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       const exit = await ffmpeg.ffprobe([
         "-v",
         "error",
-        ...args,
+        "-read_intervals",
+        "%",
+        "-select_streams",
+        "",
+        ...args.map((arg, index) =>
+          args[index - 1] === "-show_entries" ? `packet=:frame=:${arg}` : arg,
+        ),
         "-of",
         "json",
         "-o",
@@ -185,10 +233,12 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       const {
         keyframes: _keys,
         keyframeCoverage: _coverage,
+        audioTimelineStart: _audioStart,
         ...info
       } = this.info!;
       void _keys;
       void _coverage;
+      void _audioStart;
       return info;
     } catch (error) {
       await this.releaseSource().catch(() => {});
@@ -208,10 +258,9 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         "-v",
         "error",
         "-read_intervals",
-        `${range.start}%${range.end}`,
+        `${range.start + (this.info?.timelineStart ?? 0)}%${range.end + (this.info?.timelineStart ?? 0)}`,
         "-select_streams",
         "v:0",
-        "-show_packets",
         "-show_entries",
         "packet=pts_time,flags",
         "-of",
@@ -235,8 +284,9 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         const line = text.slice(start, end);
         if (/(?:^|\|)flags=[^|]*K/.test(line)) {
           const match = /(?:^|\|)pts_time=([^|]+)/.exec(line);
-          const time = Number(match?.[1]);
-          if (Number.isFinite(time) && time >= 0) values.add(time);
+          const time = Number(match?.[1]) - (this.info?.timelineStart ?? 0);
+          if (Number.isFinite(time) && time >= -1e-6)
+            values.add(Math.max(0, time));
         }
         start = end + 1;
       }
@@ -250,6 +300,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     source: File,
     fast: boolean,
     range?: TimeRange,
+    convertAudio = false,
   ): Promise<void> {
     const ffmpeg = this.ffmpeg!;
     if (this.source !== source) {
@@ -268,6 +319,19 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         await ffmpeg.deleteDir("/source").catch(() => {});
         this.input = "input";
         this.sourceAccess = "memfs";
+        if (
+          source.size > 128 * 1048576 &&
+          typeof navigator !== "undefined" &&
+          needsPrecisionConfirmation(deviceProfile(navigator))
+        )
+          throw new Error(
+            "Read-only source mounting is unavailable. Copying this large source may exceed mobile memory; use a smaller file or another browser/device. No conversion was started.",
+          );
+        this.notify({
+          status: "preparing",
+          message:
+            "Read-only mounting is unavailable; copying the source once into browser memory…",
+        });
         // Compatibility fallback: transfer the source once, not once per clip.
         await ffmpeg.writeFile(
           this.input,
@@ -278,7 +342,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       const data = (await this.probe(
         [
           "-show_entries",
-          "format=format_name,duration:stream=codec_type,codec_name,codec_tag_string,width,height,avg_frame_rate:stream_disposition=attached_pic",
+          "format=format_name,duration:stream=codec_type,codec_name,codec_tag_string,width,height,avg_frame_rate,pix_fmt,color_transfer,profile,start_time,has_b_frames:stream_disposition=attached_pic",
           this.input,
         ],
         "source.json",
@@ -301,6 +365,20 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         );
       const container = data.format?.format_name ?? "unknown";
       const compatibility = fastCompatibility(container, data.streams ?? []);
+      const conversion = conversionCapability(
+        data.streams ?? [],
+        this.capabilities!,
+      );
+      conversion.audioOnly =
+        conversion.audioOnly &&
+        fastCompatibility(
+          container,
+          (data.streams ?? []).map((stream) =>
+            stream.codec_type === "audio"
+              ? { ...stream, codec_name: "aac" }
+              : stream,
+          ),
+        ).compatible;
       this.info = {
         duration,
         sizeBytes: source.size,
@@ -310,13 +388,30 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         videoCodec: video.codec_name ?? "unknown",
         audioCodec: audio ? (audio.codec_name ?? "unknown") : undefined,
         container,
+        pixelFormat: video.pix_fmt,
+        timelineStart: Number.isFinite(Number(video.start_time))
+          ? Number(video.start_time)
+          : 0,
+        audioTimelineStart:
+          audio?.start_time !== undefined &&
+          Number.isFinite(Number(audio.start_time))
+            ? Number(audio.start_time)
+            : undefined,
+        conversion,
         ...compatibility,
       };
     }
     if (fast) {
-      if (!this.info?.compatible)
+      if (
+        !this.info?.compatible &&
+        !(
+          convertAudio &&
+          this.info?.conversion?.audioOnly &&
+          this.info.conversion.available
+        )
+      )
         throw new Error(
-          `${this.info?.incompatibility ?? "Fast Cut is unavailable."} Choose Precision Cut explicitly, or use an H.264/AAC MP4. No encoding fallback was started.`,
+          `${this.info?.incompatibility ?? "Fast Cut is unavailable."} ${this.info?.conversion?.available ? "Choose Precision Cut explicitly, or use an H.264/AAC MP4." : (this.info?.conversion?.reason ?? "No verified conversion path is available.")} No encoding fallback was started.`,
         );
       if (!range)
         throw new Error(
@@ -363,7 +458,16 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       if (fast && options.compression !== "off")
         throw new Error("Fast Cut requires compression Off");
       assertValidRange(options.range, Number.MAX_VALUE);
-      await this.prepare(source, fast, options.range);
+      await this.prepare(source, fast, options.range, options.convertAudio);
+      if (!fast && !this.info!.conversion?.available)
+        throw new Error(
+          this.info!.conversion?.reason ??
+            "Conversion capability could not be verified.",
+        );
+      if (options.convertAudio && (!fast || !this.info!.conversion?.audioOnly))
+        throw new Error(
+          "Audio-only conversion is unavailable for this source or method.",
+        );
       signal?.throwIfAborted();
       assertValidRange(options.range, this.info!.duration + 0.001);
       const requested: TimeRange = {
@@ -378,11 +482,34 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       this.notify({
         status: "processing",
         message: fast
-          ? "Copying streams at source keyframes…"
+          ? options.convertAudio
+            ? "Copying H.264 video and converting audio to AAC at source keyframes…"
+            : "Copying streams at source keyframes…"
           : "Encoding precision cut…",
       });
       const result = await ffmpeg.exec(
-        encodingArgs({ ...options, range }, this.input),
+        (() => {
+          const args = encodingArgs(
+            { ...options, range },
+            this.input,
+            this.info!.timelineStart,
+            !fast && this.info!.container === "mpeg" ? 30 : 0,
+          );
+          // Select only verified software decoders. Input-side seek bounds decode work to the selected GOP/range.
+          const decoderArgs = fast
+            ? options.convertAudio
+              ? ["-c:a", this.info!.conversion!.audioDecoder!]
+              : []
+            : [
+                "-c:v",
+                this.info!.conversion!.videoDecoder!,
+                ...(this.info!.audioCodec
+                  ? ["-c:a", this.info!.conversion!.audioDecoder!]
+                  : []),
+              ];
+          args.splice(args.indexOf("-i"), 0, ...decoderArgs);
+          return args;
+        })(),
       );
       this.activeDuration = undefined;
       signal?.throwIfAborted();
@@ -399,31 +526,86 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       const info = (await this.probe(
         [
           "-show_entries",
-          "format=duration:stream=codec_name,codec_type",
+          "format=duration,size:stream=codec_name,codec_type,pix_fmt,width,height,start_time,duration",
           "output.mp4",
         ],
         "output.json",
       )) as {
-        format?: { duration?: string };
-        streams?: { codec_type: string; codec_name: string }[];
+        format?: { duration?: string; size?: string };
+        streams?: (ProbeStream & { duration?: string })[];
       };
       const duration = Number(info.format?.duration);
       if (
+        options.maxOutputBytes !== undefined &&
+        Number(info.format?.size) >= options.maxOutputBytes
+      )
+        throw new Error(
+          "Output memory safety limit reached; the partial export is not reported as completed. Choose a shorter range or compression.",
+        );
+      if (
         !(duration > 0) ||
+        !Number.isFinite(duration) ||
         !info.streams?.some(
           (s) => s.codec_type === "video" && s.codec_name === "h264",
         ) ||
         (this.info!.audioCodec &&
           !info.streams?.some(
-            (s) =>
-              s.codec_type === "audio" &&
-              s.codec_name === (fast ? this.info!.audioCodec : "aac"),
+            (s) => s.codec_type === "audio" && s.codec_name === "aac",
           ))
       )
         throw new Error("Invalid MP4 output");
+      const outputVideo = info.streams?.find((s) => s.codec_type === "video");
+      const outputAudio = info.streams?.find((s) => s.codec_type === "audio");
+      if (
+        info.streams?.filter((s) => s.codec_type === "video").length !== 1 ||
+        info.streams?.filter((s) => s.codec_type === "audio").length !==
+          (this.info!.audioCodec ? 1 : 0) ||
+        !outputVideo?.width ||
+        !outputVideo?.height ||
+        !["yuv420p", "yuvj420p"].includes(outputVideo.pix_fmt ?? "")
+      )
+        throw new Error(
+          "Invalid MP4 output: unexpected tracks, dimensions or pixel format.",
+        );
+      if (
+        !fast &&
+        Math.abs(duration - (range.end - range.start)) >
+          Math.max(0.25, 2 / (this.info!.frameRate ?? 24))
+      )
+        throw new Error(
+          "MP4 duration validation failed. No successful export is reported; try a shorter range or repair the source timestamps.",
+        );
+      if (
+        outputAudio &&
+        (!fast || options.convertAudio) &&
+        this.info!.audioTimelineStart !== undefined
+      ) {
+        const offset =
+          Number(outputAudio.start_time) - Number(outputVideo.start_time);
+        const expected = Math.max(
+          0,
+          this.info!.audioTimelineStart -
+            ((this.info!.timelineStart ?? 0) + range.start),
+        );
+        if (
+          !Number.isFinite(offset) ||
+          Math.abs(offset - expected) >
+            Math.max(0.25, 2 / (this.info!.frameRate ?? 24))
+        )
+          throw new Error(
+            "MP4 audio/video timestamp validation failed. Re-export the source or explicitly use Precision Cut; no automatic fallback was started.",
+          );
+      }
       const data = await ffmpeg.readFile("output.mp4");
       if (typeof data === "string" || data.length === 0)
         throw new Error("Encoder returned no video");
+      if (
+        options.maxOutputBytes !== undefined &&
+        data.length >= options.maxOutputBytes
+      )
+        throw new Error(
+          "Output memory safety limit reached; the partial export is not reported as completed. Choose a shorter range or compression.",
+        );
       // Worker transfers a normal ArrayBuffer. Blob takes the bytes without an extra Uint8Array copy.
       const blob = new Blob([data as Uint8Array<ArrayBuffer>], {
         type: "video/mp4",
@@ -433,6 +615,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
         name: options.outputName,
         range: options.range,
         alignedRange: range,
+        audioConverted: !!options.convertAudio,
         outputDuration: duration,
         cutStrategy: fast ? "fast" : "precision",
         blob,

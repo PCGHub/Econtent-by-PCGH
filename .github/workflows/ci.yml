@@ -24,6 +24,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:imports
   accounts:
     runs-on: ubuntu-latest
     env:

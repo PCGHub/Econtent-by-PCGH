@@ -34,7 +34,7 @@ Creators, podcasters, educators, small businesses and everyday users who need to
 
 Duration presets: **30, 45, 60, 90, 120, 190 seconds**, plus positive custom seconds. Validate all inputs and ranges. Users choose whether to **keep or discard the final shorter remainder**. Name clips in sequence and show their actual time ranges. Never pad or invent missing footage.
 
-Choose **Fast Cut** for compatible H.264 with AAC/MP3 or no audio in MP4, MOV or Matroska, remuxed to MP4 with compression Off. Its boundaries follow source keyframes and may differ from requested times; exported targets and durations are displayed. Choose **Precision Cut** for frame-accurate re-encoding. Compression selects Precision Cut. See [measured performance and progress behavior](docs/PERFORMANCE.md).
+Choose **Fast Cut** for compatible H.264 with AAC or no audio in validated MP4/MOV, Matroska, FLV or MPEG-TS sources, remuxed to MP4 with compression Off. Other decodable audio can be explicitly converted to AAC while video stays copied. Its boundaries follow source keyframes and may differ from requested times; exported targets and durations are displayed. Choose **Precision Cut** for frame-accurate re-encoding. Compression selects Precision Cut. See [measured performance and progress behavior](docs/PERFORMANCE.md).
 
 ### Compression (optional, independent of cutting)
 - Offer **Off**, **High quality**, **Balanced**, **Smaller file**.
@@ -206,3 +206,7 @@ unverified Android limits.
 
 See [Fast Cut codec diagnostics and long-source trims](docs/CODEC-COMPATIBILITY.md)
 for the expanded remux policy, precise rejection reasons and desktop benchmark limits.
+
+See [browser video import and standard MP4 export](docs/VIDEO-IMPORT.md) for the current
+verified format matrix, HEVC conversion, audio-only conversion, source timing, mobile
+memory safeguards, limitations and reproducible tests.

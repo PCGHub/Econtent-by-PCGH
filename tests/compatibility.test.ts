@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fastCompatibility } from "../lib/video/compatibility";
 const video = { codec_type: "video", codec_name: "h264" };
-test("stream copy accepts tested H264 AAC/MP3/silent MP4 MOV and Matroska combinations", () => {
+test("stream copy accepts tested H264 AAC/silent MP4 MOV and Matroska combinations", () => {
   for (const container of ["mov,mp4,m4a,3gp,3g2,mj2", "matroska,webm"])
-    for (const codec of ["aac", "mp3", undefined]) {
+    for (const codec of ["aac", undefined]) {
       assert.equal(
         fastCompatibility(container, [
           video,
@@ -34,7 +34,7 @@ test("unsupported codecs, containers, stream layouts and unknown metadata are di
     "incomplete-metadata",
   );
   assert.equal(
-    fastCompatibility("mpegts", [video]).compatibilityIssue,
+    fastCompatibility("ogg", [video]).compatibilityIssue,
     "unsupported-container",
   );
   for (const streams of [

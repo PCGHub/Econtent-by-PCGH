@@ -5,6 +5,8 @@ import { COMPRESSION_PRESETS } from "./presets";
 export function encodingArgs(
   options: ProcessOptions,
   input = "input",
+  timelineStart?: number,
+  seekPreroll = 0,
 ): string[] {
   const { start, end } = options.range;
   if (
@@ -14,9 +16,46 @@ export function encodingArgs(
     end <= start
   )
     throw new RangeError("Invalid cut range");
-  const common = ["-t", String(end - start), "-map", "0:v:0", "-map", "0:a:0?"];
+  if (
+    options.maxOutputBytes !== undefined &&
+    (!Number.isSafeInteger(options.maxOutputBytes) ||
+      options.maxOutputBytes < 1024 ||
+      options.maxOutputBytes > 512 * 1048576)
+  )
+    throw new RangeError("Invalid output memory budget");
+  const common = [
+    "-t",
+    String(end - start),
+    ...(options.maxOutputBytes === undefined
+      ? []
+      : ["-fs", String(options.maxOutputBytes)]),
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a:0?",
+  ];
   // Input-side accurate seek discards only the preceding GOP, instead of decoding from zero per clip.
-  const seek = ["-ss", String(start), "-i", input];
+  if (timelineStart !== undefined && !Number.isFinite(timelineStart))
+    throw new RangeError("Invalid source timeline");
+  // Probe packet PTS is absolute. Avoid seeking just before a keyframe when audio has negative priming timestamps.
+  const coarseStart = Math.max(0, start - seekPreroll);
+  const seek =
+    seekPreroll > 0
+      ? [
+          "-ss",
+          String(coarseStart),
+          "-i",
+          input,
+          "-ss",
+          String(start - coarseStart),
+        ]
+      : [
+          ...(timelineStart !== undefined ? ["-seek_timestamp", "1"] : []),
+          "-ss",
+          String(start + (timelineStart ?? 0)),
+          "-i",
+          input,
+        ];
   if (defaultStrategy(options) === "fast") {
     if (options.compression !== "off")
       throw new Error(
@@ -25,8 +64,9 @@ export function encodingArgs(
     return [
       ...seek,
       ...common,
-      "-c",
-      "copy",
+      ...(options.convertAudio
+        ? ["-c:v", "copy", "-c:a", "aac", "-b:a", "128k"]
+        : ["-c", "copy"]),
       "-avoid_negative_ts",
       "make_zero",
       "-movflags",
@@ -53,7 +93,7 @@ export function encodingArgs(
     "-preset",
     preset.preset,
     "-vf",
-    "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+    "setsar=sar*w*ceil(h/2)*2/(h*ceil(w/2)*2):max=65535,pad=ceil(iw/2)*2:ceil(ih/2)*2",
     "-pix_fmt",
     "yuv420p",
     "-c:a",
@@ -62,6 +102,8 @@ export function encodingArgs(
     "128k",
     "-movflags",
     "+faststart",
+    "-fps_mode",
+    "vfr",
     "-progress",
     "pipe:1",
     "-nostats",

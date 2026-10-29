@@ -48,3 +48,31 @@ test('Fast Cut copies keyframe-aligned H264/AAC and preserves the first decoded 
     console.log(JSON.stringify({method:'fast',requested:[12.5,31.25],keyframeRange:range,duration:info.format.duration,audioStart:info.streams[1].start_time,videoStart:info.streams[0].start_time,firstDecodedFrameMatches:true,timestampDrift}))
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+test('absolute packet seeking keeps negative-priming Matroska trims and audio-only AAC conversion synchronized',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'econtent-priming-'));
+ const run=(args:string[])=>execFileSync('ffmpeg',['-v','error','-y',...args],{cwd:dir});
+ try{
+  run(['-f','lavfi','-i','testsrc2=size=320x180:rate=24','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','8','-c:v','libx264','-preset','ultrafast','-g','48','-sc_threshold','0','-c:a','ac3','input.mkv']);
+  const args=encodingArgs({range:{start:2,end:6},compression:'off',cutStrategy:'fast',convertAudio:true,outputName:'clip.mp4'},'input.mkv',0);
+  run(args);
+  const probe=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',join(dir,'output.mp4')],{encoding:'utf8'}));
+  assert.equal(probe.streams[0].codec_name,'h264');assert.equal(probe.streams[1].codec_name,'aac');
+  assert.ok(Math.abs(Number(probe.format.duration)-4)<.15);
+  assert.ok(Math.abs(Number(probe.streams[0].start_time)-Number(probe.streams[1].start_time))<.15);
+  run(['-xerror','-i','output.mp4','-fps_mode','passthrough','-enc_time_base:v','1:1000000','-f','null','-']);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test('odd source dimensions retain display aspect ratio without downscaling',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'econtent-odd-'));
+ const run=(args:string[])=>execFileSync('ffmpeg',['-v','error','-y',...args],{cwd:dir});
+ try{
+  run(['-f','lavfi','-i','testsrc=size=319x179:rate=24','-t','3','-c:v','ffv1','input.mkv']);
+  run(encodingArgs({range:{start:.5,end:2.5},compression:'off',cutStrategy:'precision',outputName:'clip.mp4'},'input.mkv',0));
+  const p=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',join(dir,'output.mp4')],{encoding:'utf8'}));
+  assert.equal(p.streams[0].width,320);assert.equal(p.streams[0].height,180);
+  const [a,b]=p.streams[0].display_aspect_ratio.split(':').map(Number);assert.ok(Math.abs(a/b-319/179)<.00001);
+  run(['-xerror','-i','output.mp4','-f','null','-']);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

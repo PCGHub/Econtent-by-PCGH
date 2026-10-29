@@ -6,6 +6,11 @@ export interface ProbeStream {
   width?: number;
   height?: number;
   avg_frame_rate?: string;
+  pix_fmt?: string;
+  color_transfer?: string;
+  profile?: string;
+  start_time?: string;
+  has_b_frames?: number;
   disposition?: { attached_pic?: number };
 }
 export type CompatibilityIssue =
@@ -54,7 +59,11 @@ export function fastCompatibility(
       "unsupported-streams",
       "Fast Cut requires one video track, at most one audio track and no extra subtitle/data/attachment tracks. Re-export the desired tracks; Precision Cut exports only the first video and audio tracks.",
     );
-  if (!container.split(",").some((c) => ["mov", "mp4", "matroska"].includes(c)))
+  if (
+    !container
+      .split(",")
+      .some((c) => ["mov", "mp4", "matroska", "flv", "mpegts"].includes(c))
+  )
     return reject(
       "unsupported-container",
       `Container ${container} has not been validated for MP4 stream-copy remuxing. Re-export as MP4/MOV or Matroska, or explicitly try Precision Cut if the source is decodable.`,
@@ -62,12 +71,22 @@ export function fastCompatibility(
   if (video.codec_name !== "h264")
     return reject(
       "unsupported-codec",
-      `Detected video codec ${video.codec_name}. Fast Cut currently supports H.264 video for broadly playable MP4 outputs; this codec is not enabled for stream copy. Explicitly try Precision Cut to convert to H.264, or re-export from the original app. Decoder availability is not guaranteed.`,
+      `Detected video codec ${video.codec_name}. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below.`,
     );
-  if (audio && !["aac", "mp3"].includes(audio.codec_name!))
+  if (video.pix_fmt && !["yuv420p", "yuvj420p"].includes(video.pix_fmt))
+    return reject(
+      "unsupported-streams",
+      `Video pixel format ${video.pix_fmt} requires explicit conversion to 8-bit 4:2:0 for broadly playable H.264 MP4.`,
+    );
+  if (["smpte2084", "arib-std-b67"].includes(video.color_transfer ?? ""))
+    return reject(
+      "unsupported-streams",
+      "HDR video cannot be presented as a broadly compatible SDR export. Re-export an SDR source first.",
+    );
+  if (audio && audio.codec_name !== "aac")
     return reject(
       "unsupported-codec",
-      `Detected audio codec ${audio.codec_name}. Fast Cut supports AAC, MP3 or no audio in MP4. Explicitly try Precision Cut to convert audio to AAC, or re-export compatible audio.`,
+      `Detected audio codec ${audio.codec_name}. Standard MP4 export requires AAC or no audio. Choose audio-only conversion when available, or Precision Cut to convert video and audio.`,
     );
   return { compatible: true };
 }

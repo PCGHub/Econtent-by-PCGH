@@ -600,9 +600,12 @@ test("codec inspection distinguishes MP3/MOV/Matroska remux from unsupported MP4
       const details = page.getByRole("complementary", {
         name: "Video workload",
       });
-      await expect(details).toContainText("compatible for MP4 stream copy", {
-        timeout: 60000,
-      });
+      await expect(details).toContainText(
+        codec === "mp3"
+          ? "copy H.264 video and convert audio only"
+          : "compatible for MP4 stream copy",
+        { timeout: 60000 },
+      );
       await expect(details).toContainText(`H264 / ${codec.toUpperCase()}`);
       await expect(details).toContainText(
         name.endsWith(".mkv") ? "matroska" : "mov,mp4",
@@ -612,6 +615,18 @@ test("codec inspection distinguishes MP3/MOV/Matroska remux from unsupported MP4
       await page
         .getByRole("button", { name: "Process video", exact: true })
         .click();
+      if (codec === "mp3") {
+        await expect(
+          page.getByRole("complementary", { name: "Confirm audio conversion" }),
+        ).toBeVisible();
+        await expect(page.locator("article")).toHaveCount(0);
+        await page
+          .getByRole("button", {
+            name: "Convert audio and continue Fast Cut",
+            exact: true,
+          })
+          .click();
+      }
       await expect(
         page.getByRole("heading", { name: "Completed", exact: true }),
       ).toBeVisible({ timeout: 60000 });
@@ -638,9 +653,21 @@ test("codec inspection distinguishes MP3/MOV/Matroska remux from unsupported MP4
       );
       expect(
         data.streams.map((s: { codec_name: string }) => s.codec_name),
-      ).toEqual(["h264", codec]);
+      ).toEqual(["h264", "aac"]);
       expect(Math.abs(Number(data.format.duration) - 6)).toBeLessThan(0.5);
-      expect(assertStreamCopySync(input, output)).toBeLessThan(0.005);
+      if (codec !== "mp3")
+        expect(assertStreamCopySync(input, output)).toBeLessThan(0.005);
+      else {
+        const video = data.streams.find(
+          (s: { codec_type: string }) => s.codec_type === "video",
+        );
+        const audio = data.streams.find(
+          (s: { codec_type: string }) => s.codec_type === "audio",
+        );
+        expect(
+          Math.abs(Number(video.start_time) - Number(audio.start_time)),
+        ).toBeLessThan(0.15);
+      }
       run([
         "-xerror",
         "-i",

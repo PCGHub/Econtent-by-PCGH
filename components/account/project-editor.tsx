@@ -18,6 +18,7 @@ import {
 } from "@/lib/projects/model";
 import { fingerprint } from "@/lib/projects/fingerprint";
 import { projectRequest, saveProject } from "@/lib/projects/client";
+import { VIDEO_FILE_ACCEPT } from "@/lib/video/types";
 import { SaveQueue } from "@/lib/projects/autosave";
 export default function ProjectEditor({ project }: { project?: Project }) {
   const router = useRouter();
@@ -287,7 +288,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
             <input
               aria-label="Reconnect video"
               type="file"
-              accept="video/*,.mp4"
+              accept={VIDEO_FILE_ACCEPT}
               disabled={checking||loading}
               className="mt-6 block w-full"
               onChange={(event) => {const chosen=event.target.files?.[0];event.target.value="";void reconnect(chosen)}}

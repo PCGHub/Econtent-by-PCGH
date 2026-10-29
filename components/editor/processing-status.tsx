@@ -21,11 +21,13 @@ export default function ProcessingStatus({
   progress,
   method,
   active,
+  audioConverted,
   onCancel,
 }: {
   progress: JobProgress;
   method?: CutStrategy;
   active: boolean;
+  audioConverted?: boolean;
   onCancel: () => void;
 }) {
   const percentage =
@@ -69,7 +71,9 @@ export default function ProcessingStatus({
           {progress.status === "packaging"
             ? "ZIP packaging"
             : method === "fast"
-              ? "Fast Cut · stream copy"
+              ? audioConverted
+                ? "Fast Cut · video copy + AAC audio conversion"
+                : "Fast Cut · stream copy"
               : "Precision Cut · re-encoding"}
         </p>
       )}

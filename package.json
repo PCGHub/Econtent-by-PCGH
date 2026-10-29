@@ -14,7 +14,8 @@
     "test:browser": "playwright test",
     "test:account:setup": "node scripts/account-test-stack.mjs && node scripts/account-test-env.mjs",
     "test:account": "playwright test -c tests/account/playwright.config.ts",
-    "test:account:stop": "node scripts/account-test-stack.mjs stop"
+    "test:account:stop": "node scripts/account-test-stack.mjs stop",
+    "test:imports": "node scripts/benchmark-compile.mjs lib/video test-results/universal/site/engine && node scripts/verify-import-matrix.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "0.12.10",

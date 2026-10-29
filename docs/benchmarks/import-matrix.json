@@ -1,0 +1,2823 @@
+{
+  "coreSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
+  "coreVersion": "0.12.10",
+  "wrapperVersion": "0.12.15",
+  "browser": "154.0.8037.57",
+  "host": {
+    "platform": "linux",
+    "architecture": "x64"
+  },
+  "method": "Desktop single trials, selected range2.25-6.25s from8s synthetic files, core load excluded per process time, approximate summed process-tree RSS double-counts shared pages; no Android hardware.",
+  "loadMs": 296.69999999925494,
+  "capabilities": {
+    "decoders": {
+      "012v": [
+        "012v"
+      ],
+      "4xm": [
+        "4xm"
+      ],
+      "8bps": [
+        "8bps"
+      ],
+      "aasc": [
+        "aasc"
+      ],
+      "agm": [
+        "agm"
+      ],
+      "aic": [
+        "aic"
+      ],
+      "alias_pix": [
+        "alias_pix"
+      ],
+      "amv": [
+        "amv"
+      ],
+      "anm": [
+        "anm"
+      ],
+      "ansi": [
+        "ansi"
+      ],
+      "apng": [
+        "apng"
+      ],
+      "arbc": [
+        "arbc"
+      ],
+      "argo": [
+        "argo"
+      ],
+      "asv1": [
+        "asv1"
+      ],
+      "asv2": [
+        "asv2"
+      ],
+      "aura": [
+        "aura"
+      ],
+      "aura2": [
+        "aura2"
+      ],
+      "av1": [
+        "av1"
+      ],
+      "avrn": [
+        "avrn"
+      ],
+      "avrp": [
+        "avrp"
+      ],
+      "avs": [
+        "avs"
+      ],
+      "avui": [
+        "avui"
+      ],
+      "ayuv": [
+        "ayuv"
+      ],
+      "bethsoftvid": [
+        "bethsoftvid"
+      ],
+      "bfi": [
+        "bfi"
+      ],
+      "binkvideo": [
+        "binkvideo"
+      ],
+      "bintext": [
+        "bintext"
+      ],
+      "bitpacked": [
+        "bitpacked"
+      ],
+      "bmp": [
+        "bmp"
+      ],
+      "bmv_video": [
+        "bmv_video"
+      ],
+      "brender_pix": [
+        "brender_pix"
+      ],
+      "c93": [
+        "c93"
+      ],
+      "cavs": [
+        "cavs"
+      ],
+      "cdgraphics": [
+        "cdgraphics"
+      ],
+      "cdtoons": [
+        "cdtoons"
+      ],
+      "cdxl": [
+        "cdxl"
+      ],
+      "cfhd": [
+        "cfhd"
+      ],
+      "cinepak": [
+        "cinepak"
+      ],
+      "clearvideo": [
+        "clearvideo"
+      ],
+      "cljr": [
+        "cljr"
+      ],
+      "cllc": [
+        "cllc"
+      ],
+      "cmv": [
+        "eacmv"
+      ],
+      "cpia": [
+        "cpia"
+      ],
+      "cri": [
+        "cri"
+      ],
+      "cscd": [
+        "camstudio"
+      ],
+      "cyuv": [
+        "cyuv"
+      ],
+      "dds": [
+        "dds"
+      ],
+      "dfa": [
+        "dfa"
+      ],
+      "dirac": [
+        "dirac"
+      ],
+      "dnxhd": [
+        "dnxhd"
+      ],
+      "dpx": [
+        "dpx"
+      ],
+      "dsicinvideo": [
+        "dsicinvideo"
+      ],
+      "dvvideo": [
+        "dvvideo"
+      ],
+      "dxa": [
+        "dxa"
+      ],
+      "dxtory": [
+        "dxtory"
+      ],
+      "dxv": [
+        "dxv"
+      ],
+      "escape124": [
+        "escape124"
+      ],
+      "escape130": [
+        "escape130"
+      ],
+      "exr": [
+        "exr"
+      ],
+      "ffv1": [
+        "ffv1"
+      ],
+      "ffvhuff": [
+        "ffvhuff"
+      ],
+      "fic": [
+        "fic"
+      ],
+      "fits": [
+        "fits"
+      ],
+      "flashsv": [
+        "flashsv"
+      ],
+      "flashsv2": [
+        "flashsv2"
+      ],
+      "flic": [
+        "flic"
+      ],
+      "flv1": [
+        "flv"
+      ],
+      "fmvc": [
+        "fmvc"
+      ],
+      "fraps": [
+        "fraps"
+      ],
+      "frwu": [
+        "frwu"
+      ],
+      "g2m": [
+        "g2m"
+      ],
+      "gdv": [
+        "gdv"
+      ],
+      "gem": [
+        "gem"
+      ],
+      "gif": [
+        "gif"
+      ],
+      "h261": [
+        "h261"
+      ],
+      "h263": [
+        "h263"
+      ],
+      "h263i": [
+        "h263i"
+      ],
+      "h263p": [
+        "h263p"
+      ],
+      "h264": [
+        "h264"
+      ],
+      "hap": [
+        "hap"
+      ],
+      "hevc": [
+        "hevc"
+      ],
+      "hnm4video": [
+        "hnm4video"
+      ],
+      "hq_hqa": [
+        "hq_hqa"
+      ],
+      "hqx": [
+        "hqx"
+      ],
+      "huffyuv": [
+        "huffyuv"
+      ],
+      "hymt": [
+        "hymt"
+      ],
+      "idcin": [
+        "idcinvideo"
+      ],
+      "idf": [
+        "idf"
+      ],
+      "iff_ilbm": [
+        "iff"
+      ],
+      "imm4": [
+        "imm4"
+      ],
+      "imm5": [
+        "imm5"
+      ],
+      "indeo2": [
+        "indeo2"
+      ],
+      "indeo3": [
+        "indeo3"
+      ],
+      "indeo4": [
+        "indeo4"
+      ],
+      "indeo5": [
+        "indeo5"
+      ],
+      "interplayvideo": [
+        "interplayvideo"
+      ],
+      "ipu": [
+        "ipu"
+      ],
+      "jpeg2000": [
+        "jpeg2000"
+      ],
+      "jpegls": [
+        "jpegls"
+      ],
+      "jv": [
+        "jv"
+      ],
+      "kgv1": [
+        "kgv1"
+      ],
+      "kmvc": [
+        "kmvc"
+      ],
+      "lagarith": [
+        "lagarith"
+      ],
+      "loco": [
+        "loco"
+      ],
+      "lscr": [
+        "lscr"
+      ],
+      "m101": [
+        "m101"
+      ],
+      "mad": [
+        "eamad"
+      ],
+      "magicyuv": [
+        "magicyuv"
+      ],
+      "mdec": [
+        "mdec"
+      ],
+      "mimic": [
+        "mimic"
+      ],
+      "mjpeg": [
+        "mjpeg"
+      ],
+      "mjpegb": [
+        "mjpegb"
+      ],
+      "mmvideo": [
+        "mmvideo"
+      ],
+      "mobiclip": [
+        "mobiclip"
+      ],
+      "motionpixels": [
+        "motionpixels"
+      ],
+      "mpeg1video": [
+        "mpeg1video"
+      ],
+      "mpeg2video": [
+        "mpeg2video",
+        "mpegvideo"
+      ],
+      "mpeg4": [
+        "mpeg4"
+      ],
+      "msa1": [
+        "msa1"
+      ],
+      "mscc": [
+        "mscc"
+      ],
+      "msmpeg4v1": [
+        "msmpeg4v1"
+      ],
+      "msmpeg4v2": [
+        "msmpeg4v2"
+      ],
+      "msmpeg4v3": [
+        "msmpeg4"
+      ],
+      "msp2": [
+        "msp2"
+      ],
+      "msrle": [
+        "msrle"
+      ],
+      "mss1": [
+        "mss1"
+      ],
+      "mss2": [
+        "mss2"
+      ],
+      "msvideo1": [
+        "msvideo1"
+      ],
+      "mszh": [
+        "mszh"
+      ],
+      "mts2": [
+        "mts2"
+      ],
+      "mv30": [
+        "mv30"
+      ],
+      "mvc1": [
+        "mvc1"
+      ],
+      "mvc2": [
+        "mvc2"
+      ],
+      "mvdv": [
+        "mvdv"
+      ],
+      "mvha": [
+        "mvha"
+      ],
+      "mwsc": [
+        "mwsc"
+      ],
+      "mxpeg": [
+        "mxpeg"
+      ],
+      "notchlc": [
+        "notchlc"
+      ],
+      "nuv": [
+        "nuv"
+      ],
+      "paf_video": [
+        "paf_video"
+      ],
+      "pam": [
+        "pam"
+      ],
+      "pbm": [
+        "pbm"
+      ],
+      "pcx": [
+        "pcx"
+      ],
+      "pfm": [
+        "pfm"
+      ],
+      "pgm": [
+        "pgm"
+      ],
+      "pgmyuv": [
+        "pgmyuv"
+      ],
+      "pgx": [
+        "pgx"
+      ],
+      "phm": [
+        "phm"
+      ],
+      "photocd": [
+        "photocd"
+      ],
+      "pictor": [
+        "pictor"
+      ],
+      "pixlet": [
+        "pixlet"
+      ],
+      "png": [
+        "png"
+      ],
+      "ppm": [
+        "ppm"
+      ],
+      "prores": [
+        "prores"
+      ],
+      "prosumer": [
+        "prosumer"
+      ],
+      "psd": [
+        "psd"
+      ],
+      "ptx": [
+        "ptx"
+      ],
+      "qdraw": [
+        "qdraw"
+      ],
+      "qoi": [
+        "qoi"
+      ],
+      "qpeg": [
+        "qpeg"
+      ],
+      "qtrle": [
+        "qtrle"
+      ],
+      "r10k": [
+        "r10k"
+      ],
+      "r210": [
+        "r210"
+      ],
+      "rasc": [
+        "rasc"
+      ],
+      "rawvideo": [
+        "rawvideo"
+      ],
+      "rl2": [
+        "rl2"
+      ],
+      "roq": [
+        "roqvideo"
+      ],
+      "rpza": [
+        "rpza"
+      ],
+      "rscc": [
+        "rscc"
+      ],
+      "rv10": [
+        "rv10"
+      ],
+      "rv20": [
+        "rv20"
+      ],
+      "rv30": [
+        "rv30"
+      ],
+      "rv40": [
+        "rv40"
+      ],
+      "sanm": [
+        "sanm"
+      ],
+      "scpr": [
+        "scpr"
+      ],
+      "screenpresso": [
+        "screenpresso"
+      ],
+      "sga": [
+        "sga"
+      ],
+      "sgi": [
+        "sgi"
+      ],
+      "sgirle": [
+        "sgirle"
+      ],
+      "sheervideo": [
+        "sheervideo"
+      ],
+      "simbiosis_imx": [
+        "simbiosis_imx"
+      ],
+      "smackvideo": [
+        "smackvid"
+      ],
+      "smc": [
+        "smc"
+      ],
+      "smvjpeg": [
+        "smvjpeg"
+      ],
+      "snow": [
+        "snow"
+      ],
+      "sp5x": [
+        "sp5x"
+      ],
+      "speedhq": [
+        "speedhq"
+      ],
+      "srgc": [
+        "srgc"
+      ],
+      "sunrast": [
+        "sunrast"
+      ],
+      "svq1": [
+        "svq1"
+      ],
+      "svq3": [
+        "svq3"
+      ],
+      "targa": [
+        "targa"
+      ],
+      "targa_y216": [
+        "targa_y216"
+      ],
+      "tdsc": [
+        "tdsc"
+      ],
+      "tgq": [
+        "eatgq"
+      ],
+      "tgv": [
+        "eatgv"
+      ],
+      "theora": [
+        "theora"
+      ],
+      "thp": [
+        "thp"
+      ],
+      "tiertexseqvideo": [
+        "tiertexseqvideo"
+      ],
+      "tiff": [
+        "tiff"
+      ],
+      "tmv": [
+        "tmv"
+      ],
+      "tqi": [
+        "eatqi"
+      ],
+      "truemotion1": [
+        "truemotion1"
+      ],
+      "truemotion2": [
+        "truemotion2"
+      ],
+      "truemotion2rt": [
+        "truemotion2rt"
+      ],
+      "tscc": [
+        "camtasia"
+      ],
+      "tscc2": [
+        "tscc2"
+      ],
+      "txd": [
+        "txd"
+      ],
+      "ulti": [
+        "ultimotion"
+      ],
+      "utvideo": [
+        "utvideo"
+      ],
+      "v210": [
+        "v210"
+      ],
+      "v210x": [
+        "v210x"
+      ],
+      "v308": [
+        "v308"
+      ],
+      "v408": [
+        "v408"
+      ],
+      "v410": [
+        "v410"
+      ],
+      "vb": [
+        "vb"
+      ],
+      "vble": [
+        "vble"
+      ],
+      "vbn": [
+        "vbn"
+      ],
+      "vc1": [
+        "vc1"
+      ],
+      "vc1image": [
+        "vc1image"
+      ],
+      "vcr1": [
+        "vcr1"
+      ],
+      "vixl": [
+        "xl"
+      ],
+      "vmdvideo": [
+        "vmdvideo"
+      ],
+      "vmnc": [
+        "vmnc"
+      ],
+      "vp3": [
+        "vp3"
+      ],
+      "vp4": [
+        "vp4"
+      ],
+      "vp5": [
+        "vp5"
+      ],
+      "vp6": [
+        "vp6"
+      ],
+      "vp6a": [
+        "vp6a"
+      ],
+      "vp6f": [
+        "vp6f"
+      ],
+      "vp7": [
+        "vp7"
+      ],
+      "vp8": [
+        "vp8",
+        "libvpx"
+      ],
+      "vp9": [
+        "vp9",
+        "libvpx-vp9"
+      ],
+      "wcmv": [
+        "wcmv"
+      ],
+      "webp": [
+        "webp"
+      ],
+      "wmv1": [
+        "wmv1"
+      ],
+      "wmv2": [
+        "wmv2"
+      ],
+      "wmv3": [
+        "wmv3"
+      ],
+      "wmv3image": [
+        "wmv3image"
+      ],
+      "wnv1": [
+        "wnv1"
+      ],
+      "wrapped_avframe": [
+        "wrapped_avframe"
+      ],
+      "ws_vqa": [
+        "vqavideo"
+      ],
+      "xan_wc3": [
+        "xan_wc3"
+      ],
+      "xan_wc4": [
+        "xan_wc4"
+      ],
+      "xbin": [
+        "xbin"
+      ],
+      "xbm": [
+        "xbm"
+      ],
+      "xface": [
+        "xface"
+      ],
+      "xpm": [
+        "xpm"
+      ],
+      "xwd": [
+        "xwd"
+      ],
+      "y41p": [
+        "y41p"
+      ],
+      "ylc": [
+        "ylc"
+      ],
+      "yop": [
+        "yop"
+      ],
+      "yuv4": [
+        "yuv4"
+      ],
+      "zerocodec": [
+        "zerocodec"
+      ],
+      "zlib": [
+        "zlib"
+      ],
+      "zmbv": [
+        "zmbv"
+      ],
+      "8svx_exp": [
+        "8svx_exp"
+      ],
+      "8svx_fib": [
+        "8svx_fib"
+      ],
+      "aac": [
+        "aac",
+        "aac_fixed"
+      ],
+      "aac_latm": [
+        "aac_latm"
+      ],
+      "ac3": [
+        "ac3",
+        "ac3_fixed"
+      ],
+      "adpcm_4xm": [
+        "adpcm_4xm"
+      ],
+      "adpcm_adx": [
+        "adpcm_adx"
+      ],
+      "adpcm_afc": [
+        "adpcm_afc"
+      ],
+      "adpcm_agm": [
+        "adpcm_agm"
+      ],
+      "adpcm_aica": [
+        "adpcm_aica"
+      ],
+      "adpcm_argo": [
+        "adpcm_argo"
+      ],
+      "adpcm_ct": [
+        "adpcm_ct"
+      ],
+      "adpcm_dtk": [
+        "adpcm_dtk"
+      ],
+      "adpcm_ea": [
+        "adpcm_ea"
+      ],
+      "adpcm_ea_maxis_xa": [
+        "adpcm_ea_maxis_xa"
+      ],
+      "adpcm_ea_r1": [
+        "adpcm_ea_r1"
+      ],
+      "adpcm_ea_r2": [
+        "adpcm_ea_r2"
+      ],
+      "adpcm_ea_r3": [
+        "adpcm_ea_r3"
+      ],
+      "adpcm_ea_xas": [
+        "adpcm_ea_xas"
+      ],
+      "adpcm_g722": [
+        "g722"
+      ],
+      "adpcm_g726": [
+        "g726"
+      ],
+      "adpcm_g726le": [
+        "g726le"
+      ],
+      "adpcm_ima_acorn": [
+        "adpcm_ima_acorn"
+      ],
+      "adpcm_ima_alp": [
+        "adpcm_ima_alp"
+      ],
+      "adpcm_ima_amv": [
+        "adpcm_ima_amv"
+      ],
+      "adpcm_ima_apc": [
+        "adpcm_ima_apc"
+      ],
+      "adpcm_ima_apm": [
+        "adpcm_ima_apm"
+      ],
+      "adpcm_ima_cunning": [
+        "adpcm_ima_cunning"
+      ],
+      "adpcm_ima_dat4": [
+        "adpcm_ima_dat4"
+      ],
+      "adpcm_ima_dk3": [
+        "adpcm_ima_dk3"
+      ],
+      "adpcm_ima_dk4": [
+        "adpcm_ima_dk4"
+      ],
+      "adpcm_ima_ea_eacs": [
+        "adpcm_ima_ea_eacs"
+      ],
+      "adpcm_ima_ea_sead": [
+        "adpcm_ima_ea_sead"
+      ],
+      "adpcm_ima_iss": [
+        "adpcm_ima_iss"
+      ],
+      "adpcm_ima_moflex": [
+        "adpcm_ima_moflex"
+      ],
+      "adpcm_ima_mtf": [
+        "adpcm_ima_mtf"
+      ],
+      "adpcm_ima_oki": [
+        "adpcm_ima_oki"
+      ],
+      "adpcm_ima_qt": [
+        "adpcm_ima_qt"
+      ],
+      "adpcm_ima_rad": [
+        "adpcm_ima_rad"
+      ],
+      "adpcm_ima_smjpeg": [
+        "adpcm_ima_smjpeg"
+      ],
+      "adpcm_ima_ssi": [
+        "adpcm_ima_ssi"
+      ],
+      "adpcm_ima_wav": [
+        "adpcm_ima_wav"
+      ],
+      "adpcm_ima_ws": [
+        "adpcm_ima_ws"
+      ],
+      "adpcm_ms": [
+        "adpcm_ms"
+      ],
+      "adpcm_mtaf": [
+        "adpcm_mtaf"
+      ],
+      "adpcm_psx": [
+        "adpcm_psx"
+      ],
+      "adpcm_sbpro_2": [
+        "adpcm_sbpro_2"
+      ],
+      "adpcm_sbpro_3": [
+        "adpcm_sbpro_3"
+      ],
+      "adpcm_sbpro_4": [
+        "adpcm_sbpro_4"
+      ],
+      "adpcm_swf": [
+        "adpcm_swf"
+      ],
+      "adpcm_thp": [
+        "adpcm_thp"
+      ],
+      "adpcm_thp_le": [
+        "adpcm_thp_le"
+      ],
+      "adpcm_vima": [
+        "adpcm_vima"
+      ],
+      "adpcm_xa": [
+        "adpcm_xa"
+      ],
+      "adpcm_yamaha": [
+        "adpcm_yamaha"
+      ],
+      "adpcm_zork": [
+        "adpcm_zork"
+      ],
+      "alac": [
+        "alac"
+      ],
+      "amr_nb": [
+        "amrnb"
+      ],
+      "amr_wb": [
+        "amrwb"
+      ],
+      "ape": [
+        "ape"
+      ],
+      "aptx": [
+        "aptx"
+      ],
+      "aptx_hd": [
+        "aptx_hd"
+      ],
+      "atrac1": [
+        "atrac1"
+      ],
+      "atrac3": [
+        "atrac3"
+      ],
+      "atrac3al": [
+        "atrac3al"
+      ],
+      "atrac3p": [
+        "atrac3plus"
+      ],
+      "atrac3pal": [
+        "atrac3plusal"
+      ],
+      "atrac9": [
+        "atrac9"
+      ],
+      "avc": [
+        "on2avc"
+      ],
+      "binkaudio_dct": [
+        "binkaudio_dct"
+      ],
+      "binkaudio_rdft": [
+        "binkaudio_rdft"
+      ],
+      "bmv_audio": [
+        "bmv_audio"
+      ],
+      "comfortnoise": [
+        "comfortnoise"
+      ],
+      "cook": [
+        "cook"
+      ],
+      "derf_dpcm": [
+        "derf_dpcm"
+      ],
+      "dfpwm": [
+        "dfpwm"
+      ],
+      "dolby_e": [
+        "dolby_e"
+      ],
+      "dsd_lsbf": [
+        "dsd_lsbf"
+      ],
+      "dsd_lsbf_planar": [
+        "dsd_lsbf_planar"
+      ],
+      "dsd_msbf": [
+        "dsd_msbf"
+      ],
+      "dsd_msbf_planar": [
+        "dsd_msbf_planar"
+      ],
+      "dsicinaudio": [
+        "dsicinaudio"
+      ],
+      "dss_sp": [
+        "dss_sp"
+      ],
+      "dst": [
+        "dst"
+      ],
+      "dts": [
+        "dca"
+      ],
+      "dvaudio": [
+        "dvaudio"
+      ],
+      "eac3": [
+        "eac3"
+      ],
+      "evrc": [
+        "evrc"
+      ],
+      "fastaudio": [
+        "fastaudio"
+      ],
+      "flac": [
+        "flac"
+      ],
+      "g723_1": [
+        "g723_1"
+      ],
+      "g729": [
+        "g729"
+      ],
+      "gremlin_dpcm": [
+        "gremlin_dpcm"
+      ],
+      "gsm": [
+        "gsm"
+      ],
+      "gsm_ms": [
+        "gsm_ms"
+      ],
+      "hca": [
+        "hca"
+      ],
+      "hcom": [
+        "hcom"
+      ],
+      "iac": [
+        "iac"
+      ],
+      "ilbc": [
+        "ilbc"
+      ],
+      "imc": [
+        "imc"
+      ],
+      "interplay_dpcm": [
+        "interplay_dpcm"
+      ],
+      "interplayacm": [
+        "interplayacm"
+      ],
+      "mace3": [
+        "mace3"
+      ],
+      "mace6": [
+        "mace6"
+      ],
+      "metasound": [
+        "metasound"
+      ],
+      "mlp": [
+        "mlp"
+      ],
+      "mp1": [
+        "mp1",
+        "mp1float"
+      ],
+      "mp2": [
+        "mp2",
+        "mp2float"
+      ],
+      "mp3": [
+        "mp3float",
+        "mp3"
+      ],
+      "mp3adu": [
+        "mp3adufloat",
+        "mp3adu"
+      ],
+      "mp3on4": [
+        "mp3on4float",
+        "mp3on4"
+      ],
+      "mp4als": [
+        "als"
+      ],
+      "msnsiren": [
+        "msnsiren"
+      ],
+      "musepack7": [
+        "mpc7"
+      ],
+      "musepack8": [
+        "mpc8"
+      ],
+      "nellymoser": [
+        "nellymoser"
+      ],
+      "opus": [
+        "opus",
+        "libopus"
+      ],
+      "paf_audio": [
+        "paf_audio"
+      ],
+      "pcm_alaw": [
+        "pcm_alaw"
+      ],
+      "pcm_bluray": [
+        "pcm_bluray"
+      ],
+      "pcm_dvd": [
+        "pcm_dvd"
+      ],
+      "pcm_f16le": [
+        "pcm_f16le"
+      ],
+      "pcm_f24le": [
+        "pcm_f24le"
+      ],
+      "pcm_f32be": [
+        "pcm_f32be"
+      ],
+      "pcm_f32le": [
+        "pcm_f32le"
+      ],
+      "pcm_f64be": [
+        "pcm_f64be"
+      ],
+      "pcm_f64le": [
+        "pcm_f64le"
+      ],
+      "pcm_lxf": [
+        "pcm_lxf"
+      ],
+      "pcm_mulaw": [
+        "pcm_mulaw"
+      ],
+      "pcm_s16be": [
+        "pcm_s16be"
+      ],
+      "pcm_s16be_planar": [
+        "pcm_s16be_planar"
+      ],
+      "pcm_s16le": [
+        "pcm_s16le"
+      ],
+      "pcm_s16le_planar": [
+        "pcm_s16le_planar"
+      ],
+      "pcm_s24be": [
+        "pcm_s24be"
+      ],
+      "pcm_s24daud": [
+        "pcm_s24daud"
+      ],
+      "pcm_s24le": [
+        "pcm_s24le"
+      ],
+      "pcm_s24le_planar": [
+        "pcm_s24le_planar"
+      ],
+      "pcm_s32be": [
+        "pcm_s32be"
+      ],
+      "pcm_s32le": [
+        "pcm_s32le"
+      ],
+      "pcm_s32le_planar": [
+        "pcm_s32le_planar"
+      ],
+      "pcm_s64be": [
+        "pcm_s64be"
+      ],
+      "pcm_s64le": [
+        "pcm_s64le"
+      ],
+      "pcm_s8": [
+        "pcm_s8"
+      ],
+      "pcm_s8_planar": [
+        "pcm_s8_planar"
+      ],
+      "pcm_sga": [
+        "pcm_sga"
+      ],
+      "pcm_u16be": [
+        "pcm_u16be"
+      ],
+      "pcm_u16le": [
+        "pcm_u16le"
+      ],
+      "pcm_u24be": [
+        "pcm_u24be"
+      ],
+      "pcm_u24le": [
+        "pcm_u24le"
+      ],
+      "pcm_u32be": [
+        "pcm_u32be"
+      ],
+      "pcm_u32le": [
+        "pcm_u32le"
+      ],
+      "pcm_u8": [
+        "pcm_u8"
+      ],
+      "pcm_vidc": [
+        "pcm_vidc"
+      ],
+      "qcelp": [
+        "qcelp"
+      ],
+      "qdm2": [
+        "qdm2"
+      ],
+      "qdmc": [
+        "qdmc"
+      ],
+      "ra_144": [
+        "real_144"
+      ],
+      "ra_288": [
+        "real_288"
+      ],
+      "ralf": [
+        "ralf"
+      ],
+      "roq_dpcm": [
+        "roq_dpcm"
+      ],
+      "s302m": [
+        "s302m"
+      ],
+      "sbc": [
+        "sbc"
+      ],
+      "sdx2_dpcm": [
+        "sdx2_dpcm"
+      ],
+      "shorten": [
+        "shorten"
+      ],
+      "sipr": [
+        "sipr"
+      ],
+      "siren": [
+        "siren"
+      ],
+      "smackaudio": [
+        "smackaud"
+      ],
+      "sol_dpcm": [
+        "sol_dpcm"
+      ],
+      "sonic": [
+        "sonic"
+      ],
+      "speex": [
+        "speex"
+      ],
+      "tak": [
+        "tak"
+      ],
+      "truehd": [
+        "truehd"
+      ],
+      "truespeech": [
+        "truespeech"
+      ],
+      "tta": [
+        "tta"
+      ],
+      "twinvq": [
+        "twinvq"
+      ],
+      "vmdaudio": [
+        "vmdaudio"
+      ],
+      "vorbis": [
+        "vorbis",
+        "libvorbis"
+      ],
+      "wavesynth": [
+        "wavesynth"
+      ],
+      "wavpack": [
+        "wavpack"
+      ],
+      "westwood_snd1": [
+        "ws_snd1"
+      ],
+      "wmalossless": [
+        "wmalossless"
+      ],
+      "wmapro": [
+        "wmapro"
+      ],
+      "wmav1": [
+        "wmav1"
+      ],
+      "wmav2": [
+        "wmav2"
+      ],
+      "wmavoice": [
+        "wmavoice"
+      ],
+      "xan_dpcm": [
+        "xan_dpcm"
+      ],
+      "xma1": [
+        "xma1"
+      ],
+      "xma2": [
+        "xma2"
+      ],
+      "ass": [
+        "ssa",
+        "ass"
+      ],
+      "dvb_subtitle": [
+        "dvbsub"
+      ],
+      "dvd_subtitle": [
+        "dvdsub"
+      ],
+      "eia_608": [
+        "cc_dec"
+      ],
+      "hdmv_pgs_subtitle": [
+        "pgssub"
+      ],
+      "jacosub": [
+        "jacosub"
+      ],
+      "microdvd": [
+        "microdvd"
+      ],
+      "mov_text": [
+        "mov_text"
+      ],
+      "mpl2": [
+        "mpl2"
+      ],
+      "pjs": [
+        "pjs"
+      ],
+      "realtext": [
+        "realtext"
+      ],
+      "sami": [
+        "sami"
+      ],
+      "stl": [
+        "stl"
+      ],
+      "subrip": [
+        "srt",
+        "subrip"
+      ],
+      "subviewer": [
+        "subviewer"
+      ],
+      "subviewer1": [
+        "subviewer1"
+      ],
+      "text": [
+        "text"
+      ],
+      "vplayer": [
+        "vplayer"
+      ],
+      "webvtt": [
+        "webvtt"
+      ],
+      "xsub": [
+        "xsub"
+      ]
+    },
+    "encoders": [
+      "a64multi",
+      "a64multi5",
+      "alias_pix",
+      "amv",
+      "apng",
+      "asv1",
+      "asv2",
+      "avrp",
+      "avui",
+      "ayuv",
+      "bitpacked",
+      "bmp",
+      "cfhd",
+      "cinepak",
+      "cljr",
+      "vc2",
+      "dnxhd",
+      "dpx",
+      "dvvideo",
+      "exr",
+      "ffv1",
+      "ffvhuff",
+      "fits",
+      "flashsv",
+      "flashsv2",
+      "flv",
+      "gif",
+      "h261",
+      "h263",
+      "h263p",
+      "libx264",
+      "libx264rgb",
+      "libx265",
+      "huffyuv",
+      "jpeg2000",
+      "jpegls",
+      "ljpeg",
+      "magicyuv",
+      "mjpeg",
+      "mpeg1video",
+      "mpeg2video",
+      "mpeg4",
+      "msmpeg4v2",
+      "msmpeg4",
+      "msvideo1",
+      "pam",
+      "pbm",
+      "pcx",
+      "pfm",
+      "pgm",
+      "pgmyuv",
+      "phm",
+      "png",
+      "ppm",
+      "prores",
+      "prores_aw",
+      "prores_ks",
+      "qoi",
+      "qtrle",
+      "r10k",
+      "r210",
+      "rawvideo",
+      "roqvideo",
+      "rpza",
+      "rv10",
+      "rv20",
+      "sgi",
+      "smc",
+      "snow",
+      "speedhq",
+      "sunrast",
+      "svq1",
+      "targa",
+      "libtheora",
+      "tiff",
+      "utvideo",
+      "v210",
+      "v308",
+      "v408",
+      "v410",
+      "vbn",
+      "libvpx",
+      "libvpx-vp9",
+      "libwebp_anim",
+      "libwebp",
+      "wmv1",
+      "wmv2",
+      "wrapped_avframe",
+      "xbm",
+      "xface",
+      "xwd",
+      "y41p",
+      "yuv4",
+      "zlib",
+      "zmbv",
+      "aac",
+      "ac3",
+      "ac3_fixed",
+      "adpcm_adx",
+      "adpcm_argo",
+      "g722",
+      "g726",
+      "g726le",
+      "adpcm_ima_alp",
+      "adpcm_ima_amv",
+      "adpcm_ima_apm",
+      "adpcm_ima_qt",
+      "adpcm_ima_ssi",
+      "adpcm_ima_wav",
+      "adpcm_ima_ws",
+      "adpcm_ms",
+      "adpcm_swf",
+      "adpcm_yamaha",
+      "alac",
+      "aptx",
+      "aptx_hd",
+      "comfortnoise",
+      "dfpwm",
+      "dca",
+      "eac3",
+      "flac",
+      "g723_1",
+      "mlp",
+      "mp2",
+      "mp2fixed",
+      "libmp3lame",
+      "nellymoser",
+      "opus",
+      "libopus",
+      "pcm_alaw",
+      "pcm_bluray",
+      "pcm_dvd",
+      "pcm_f32be",
+      "pcm_f32le",
+      "pcm_f64be",
+      "pcm_f64le",
+      "pcm_mulaw",
+      "pcm_s16be",
+      "pcm_s16be_planar",
+      "pcm_s16le",
+      "pcm_s16le_planar",
+      "pcm_s24be",
+      "pcm_s24daud",
+      "pcm_s24le",
+      "pcm_s24le_planar",
+      "pcm_s32be",
+      "pcm_s32le",
+      "pcm_s32le_planar",
+      "pcm_s64be",
+      "pcm_s64le",
+      "pcm_s8",
+      "pcm_s8_planar",
+      "pcm_u16be",
+      "pcm_u16le",
+      "pcm_u24be",
+      "pcm_u24le",
+      "pcm_u32be",
+      "pcm_u32le",
+      "pcm_u8",
+      "pcm_vidc",
+      "real_144",
+      "roq_dpcm",
+      "s302m",
+      "sbc",
+      "sonic",
+      "sonicls",
+      "truehd",
+      "tta",
+      "vorbis",
+      "libvorbis",
+      "wavpack",
+      "wmav1",
+      "wmav2",
+      "ssa",
+      "ass",
+      "dvbsub",
+      "dvdsub",
+      "mov_text",
+      "srt",
+      "subrip",
+      "text",
+      "ttml",
+      "webvtt",
+      "xsub"
+    ],
+    "muxers": [
+      "3g2",
+      "3gp",
+      "a64",
+      "ac3",
+      "adts",
+      "adx",
+      "aiff",
+      "alaw",
+      "alp",
+      "amr",
+      "amv",
+      "apm",
+      "apng",
+      "aptx",
+      "aptx_hd",
+      "argo_asf",
+      "argo_cvg",
+      "asf",
+      "asf_stream",
+      "ass",
+      "ast",
+      "au",
+      "avi",
+      "avif",
+      "avm2",
+      "avs2",
+      "avs3",
+      "bit",
+      "caf",
+      "cavsvideo",
+      "codec2",
+      "codec2raw",
+      "crc",
+      "dash",
+      "data",
+      "daud",
+      "dfpwm",
+      "dirac",
+      "dnxhd",
+      "dts",
+      "dv",
+      "dvd",
+      "eac3",
+      "f32be",
+      "f32le",
+      "f4v",
+      "f64be",
+      "f64le",
+      "ffmetadata",
+      "fifo_test",
+      "film_cpk",
+      "filmstrip",
+      "fits",
+      "flac",
+      "flv",
+      "framecrc",
+      "framehash",
+      "framemd5",
+      "g722",
+      "g723_1",
+      "g726",
+      "g726le",
+      "gif",
+      "gsm",
+      "gxf",
+      "h261",
+      "h263",
+      "h264",
+      "hash",
+      "hds",
+      "hevc",
+      "hls",
+      "ico",
+      "ilbc",
+      "image2",
+      "image2pipe",
+      "ipod",
+      "ircam",
+      "ismv",
+      "ivf",
+      "jacosub",
+      "kvag",
+      "latm",
+      "lrc",
+      "m4v",
+      "matroska",
+      "md5",
+      "microdvd",
+      "mjpeg",
+      "mkvtimestamp_v2",
+      "mlp",
+      "mmf",
+      "mov",
+      "mp2",
+      "mp3",
+      "mp4",
+      "mpeg",
+      "mpeg1video",
+      "mpeg2video",
+      "mpegts",
+      "mpjpeg",
+      "mulaw",
+      "mxf",
+      "mxf_d10",
+      "mxf_opatom",
+      "null",
+      "nut",
+      "obu",
+      "oga",
+      "ogg",
+      "ogv",
+      "oma",
+      "opus",
+      "psp",
+      "rawvideo",
+      "rm",
+      "roq",
+      "rso",
+      "rtp",
+      "rtp_mpegts",
+      "rtsp",
+      "s16be",
+      "s16le",
+      "s24be",
+      "s24le",
+      "s32be",
+      "s32le",
+      "s8",
+      "sap",
+      "sbc",
+      "scc",
+      "segment",
+      "smjpeg",
+      "smoothstreaming",
+      "sox",
+      "spdif",
+      "spx",
+      "srt",
+      "stream_segment",
+      "ssegment",
+      "streamhash",
+      "sup",
+      "svcd",
+      "swf",
+      "tee",
+      "truehd",
+      "tta",
+      "ttml",
+      "u16be",
+      "u16le",
+      "u24be",
+      "u24le",
+      "u32be",
+      "u32le",
+      "u8",
+      "uncodedframecrc",
+      "vc1",
+      "vc1test",
+      "vcd",
+      "vidc",
+      "vob",
+      "voc",
+      "w64",
+      "wav",
+      "webm",
+      "webm_chunk",
+      "webm_dash_manifest",
+      "webp",
+      "webvtt",
+      "wsaud",
+      "wtv",
+      "wv",
+      "yuv4mpegpipe"
+    ]
+  },
+  "cases": [
+    {
+      "source": "h264-aac.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 708564,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "aac"
+        },
+        "compatible": true
+      },
+      "inspectionMs": 44.30000000074506,
+      "method": "fast",
+      "processMs": 66.19999999925494,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.032,
+      "bytes": 357581,
+      "sourceAccess": "workerfs",
+      "heap": 3155609,
+      "peakProcessTreeRSSKiB": 809224,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.032,
+        "videoStart": 0.016032,
+        "audioStart": 0,
+        "audioDuration": 4.032
+      }
+    },
+    {
+      "source": "hevc-aac.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 297859,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "hevc",
+        "audioCodec": "aac",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "hevc",
+          "audioDecoder": "aac"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec hevc. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 7.599999997764826,
+      "method": "precision",
+      "processMs": 581.8000000007451,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 631962,
+      "sourceAccess": "workerfs",
+      "heap": 3980791,
+      "peakProcessTreeRSSKiB": 869748,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "hevc-main10.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 296177,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "hevc",
+        "audioCodec": "aac",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p10le",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "hevc",
+          "audioDecoder": "aac",
+          "precisionLoss": "Conversion changes yuv420p10le to 8-bit 4:2:0 H.264 for MP4 playback. It is lossy; source content is not downscaled and display aspect ratio is retained."
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec hevc. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 5.300000000745058,
+      "method": "precision",
+      "processMs": 289.69999999925494,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 633448,
+      "sourceAccess": "workerfs",
+      "heap": 4726356,
+      "peakProcessTreeRSSKiB": 832612,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "hevc-hdr.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 296248,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "hevc",
+        "audioCodec": "aac",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p10le",
+        "timelineStart": 0,
+        "conversion": {
+          "available": false,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "reason": "HDR/PQ/HLG conversion requires verified tone mapping, which this editor does not provide. Export an SDR source first; no silent HDR or color reduction is applied."
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec hevc. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 5.300000000745058,
+      "method": "unsupported",
+      "peakProcessTreeRSSKiB": 830900
+    },
+    {
+      "source": "vp9-opus.webm",
+      "info": {
+        "duration": 8.008,
+        "sizeBytes": 483225,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "vp9",
+        "audioCodec": "opus",
+        "container": "matroska,webm",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "vp9",
+          "audioDecoder": "opus"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec vp9. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 18.399999998509884,
+      "method": "precision",
+      "processMs": 371,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 589904,
+      "sourceAccess": "workerfs",
+      "heap": 5517609,
+      "peakProcessTreeRSSKiB": 881596,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "vp8-vorbis.webm",
+      "info": {
+        "duration": 8.003,
+        "sizeBytes": 278209,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "vp8",
+        "audioCodec": "vorbis",
+        "container": "matroska,webm",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0.003,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "vp8",
+          "audioDecoder": "vorbis"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec vp8. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 18.099999997764826,
+      "method": "precision",
+      "processMs": 252.30000000074506,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4.001,
+      "bytes": 604496,
+      "sourceAccess": "workerfs",
+      "heap": 6221680,
+      "peakProcessTreeRSSKiB": 841820,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "av1-opus.mkv",
+      "info": {
+        "duration": 8.008,
+        "sizeBytes": 191888,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "av1",
+        "audioCodec": "opus",
+        "container": "matroska,webm",
+        "timelineStart": 0,
+        "conversion": {
+          "available": false,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "reason": "The loaded FFmpeg core has no usable software decoder for video codec av1. Re-export to H.264/AAC with a trusted local converter."
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec av1. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 10,
+      "method": "unsupported",
+      "peakProcessTreeRSSKiB": 845308
+    },
+    {
+      "source": "h264-aac.mkv",
+      "info": {
+        "duration": 8.021,
+        "sizeBytes": 707997,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "container": "matroska,webm",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "aac"
+        },
+        "compatible": true
+      },
+      "inspectionMs": 8.800000000745058,
+      "method": "fast",
+      "processMs": 44.5,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.016,
+      "bytes": 357869,
+      "sourceAccess": "workerfs",
+      "heap": 6770697,
+      "peakProcessTreeRSSKiB": 843312,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.0155,
+        "videoStart": 0,
+        "audioStart": 0.005,
+        "audioDuration": 4.0105
+      }
+    },
+    {
+      "source": "h264-pcm.mov",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 1405433,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "pcm_s16le",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": true,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "pcm_s16le"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected audio codec pcm_s16le. Standard MP4 export requires AAC or no audio. Choose audio-only conversion when available, or Precision Cut to convert video and audio."
+      },
+      "inspectionMs": 5.199999999254942,
+      "method": "audio-only",
+      "processMs": 91.5,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.022,
+      "bytes": 386064,
+      "sourceAccess": "workerfs",
+      "heap": 7313350,
+      "peakProcessTreeRSSKiB": 848380,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.021333,
+        "videoStart": 0.020996,
+        "audioStart": 0,
+        "audioDuration": 4.021333
+      }
+    },
+    {
+      "source": "mpeg4-mp3.avi",
+      "info": {
+        "duration": 8.045714,
+        "sizeBytes": 355124,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "mpeg4",
+        "audioCodec": "mp3",
+        "container": "avi",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "mpeg4",
+          "audioDecoder": "mp3"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-container",
+        "incompatibility": "Container avi has not been validated for MP4 stream-copy remuxing. Re-export as MP4/MOV or Matroska, or explicitly try Precision Cut if the source is decodable."
+      },
+      "inspectionMs": 11.200000002980232,
+      "method": "precision",
+      "processMs": 209.29999999701977,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 577910,
+      "sourceAccess": "workerfs",
+      "heap": 7978942,
+      "peakProcessTreeRSSKiB": 852012,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "h264-mp3.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 704747,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "mp3",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": true,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "mp3"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected audio codec mp3. Standard MP4 export requires AAC or no audio. Choose audio-only conversion when available, or Precision Cut to convert video and audio."
+      },
+      "inspectionMs": 5.099999997764826,
+      "method": "audio-only",
+      "processMs": 78.60000000149012,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.024,
+      "bytes": 380511,
+      "sourceAccess": "workerfs",
+      "heap": 8470263,
+      "peakProcessTreeRSSKiB": 855272,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.02322,
+        "videoStart": 0.023031,
+        "audioStart": 0,
+        "audioDuration": 4.02322
+      }
+    },
+    {
+      "source": "h264-ac3.mkv",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 733620,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "ac3",
+        "container": "matroska,webm",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": true,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "ac3"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected audio codec ac3. Standard MP4 export requires AAC or no audio. Choose audio-only conversion when available, or Precision Cut to convert video and audio."
+      },
+      "inspectionMs": 6.099999997764826,
+      "method": "audio-only",
+      "processMs": 79.10000000149012,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.011,
+      "bytes": 386028,
+      "sourceAccess": "workerfs",
+      "heap": 8967971,
+      "peakProcessTreeRSSKiB": 864496,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.010667,
+        "videoStart": 0.01,
+        "audioStart": 0,
+        "audioDuration": 4.010667
+      }
+    },
+    {
+      "source": "flv-mp3.flv",
+      "info": {
+        "duration": 8.025,
+        "sizeBytes": 345115,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "flv1",
+        "audioCodec": "mp3",
+        "container": "flv",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0.025,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "flv",
+          "audioDecoder": "mp3"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec flv1. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 6.300000000745058,
+      "method": "precision",
+      "processMs": 195.30000000074506,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4.001,
+      "bytes": 595146,
+      "sourceAccess": "workerfs",
+      "heap": 9706807,
+      "peakProcessTreeRSSKiB": 859296,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "wmv-wmav1.wmv",
+      "info": {
+        "duration": 8.086,
+        "sizeBytes": 423301,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "wmv2",
+        "audioCodec": "wmav1",
+        "container": "asf",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0.043,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "wmv2",
+          "audioDecoder": "wmav1"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-container",
+        "incompatibility": "Container asf has not been validated for MP4 stream-copy remuxing. Re-export as MP4/MOV or Matroska, or explicitly try Precision Cut if the source is decodable."
+      },
+      "inspectionMs": 5.399999998509884,
+      "method": "precision",
+      "processMs": 204.5,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 561934,
+      "sourceAccess": "workerfs",
+      "heap": 10360822,
+      "peakProcessTreeRSSKiB": 863100,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "wmv-wmav2.wmv",
+      "info": {
+        "duration": 8.086,
+        "sizeBytes": 423341,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "wmv2",
+        "audioCodec": "wmav2",
+        "container": "asf",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0.043,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "wmv2",
+          "audioDecoder": "wmav2"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-container",
+        "incompatibility": "Container asf has not been validated for MP4 stream-copy remuxing. Re-export as MP4/MOV or Matroska, or explicitly try Precision Cut if the source is decodable."
+      },
+      "inspectionMs": 4.300000000745058,
+      "method": "precision",
+      "processMs": 183,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 562831,
+      "sourceAccess": "workerfs",
+      "heap": 11015522,
+      "peakProcessTreeRSSKiB": 865184,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "mpeg2-mp2.mpg",
+      "info": {
+        "duration": 8.016,
+        "sizeBytes": 663552,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "mpeg2video",
+        "audioCodec": "mp2",
+        "container": "mpeg",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0.541667,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "mpeg2video",
+          "audioDecoder": "mp2"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-container",
+        "incompatibility": "Container mpeg has not been validated for MP4 stream-copy remuxing. Re-export as MP4/MOV or Matroska, or explicitly try Precision Cut if the source is decodable."
+      },
+      "inspectionMs": 13.199999999254942,
+      "method": "precision",
+      "processMs": 216.89999999850988,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 626127,
+      "sourceAccess": "workerfs",
+      "heap": 11760580,
+      "peakProcessTreeRSSKiB": 865380,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "mpeg4-aac.3gp",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 342975,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "mpeg4",
+        "audioCodec": "aac",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "mpeg4",
+          "audioDecoder": "aac"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-codec",
+        "incompatibility": "Detected video codec mpeg4. Standard MP4 export targets H.264. Copying this source would retain its original codec; video conversion is required for this export target. Review the available conversion methods below."
+      },
+      "inspectionMs": 4.100000001490116,
+      "method": "precision",
+      "processMs": 186.5,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 582085,
+      "sourceAccess": "workerfs",
+      "heap": 12433894,
+      "peakProcessTreeRSSKiB": 796824,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "h264-aac.avi",
+      "info": {
+        "duration": 8.041667,
+        "sizeBytes": 727186,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "container": "avi",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "aac"
+        },
+        "compatible": false,
+        "compatibilityIssue": "unsupported-container",
+        "incompatibility": "Container avi has not been validated for MP4 stream-copy remuxing. Re-export as MP4/MOV or Matroska, or explicitly try Precision Cut if the source is decodable."
+      },
+      "inspectionMs": 8.899999998509884,
+      "method": "precision",
+      "processMs": 262.4000000022352,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 451232,
+      "sourceAccess": "workerfs",
+      "heap": 11614986,
+      "peakProcessTreeRSSKiB": 798992,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "h264-aac.flv",
+      "info": {
+        "duration": 8.021,
+        "sizeBytes": 713773,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "container": "flv",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0.021,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "aac"
+        },
+        "compatible": true
+      },
+      "inspectionMs": 6.199999999254942,
+      "method": "fast",
+      "processMs": 34.100000001490116,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.016,
+      "bytes": 357869,
+      "sourceAccess": "workerfs",
+      "heap": 12086207,
+      "peakProcessTreeRSSKiB": 802532,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.0155,
+        "videoStart": 0,
+        "audioStart": 0.005,
+        "audioDuration": 4.0105
+      }
+    },
+    {
+      "source": "h264-aac.ts",
+      "info": {
+        "duration": 8.021333,
+        "sizeBytes": 772680,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "container": "mpegts",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 1.421333,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "aac"
+        },
+        "compatible": true
+      },
+      "inspectionMs": 20.5,
+      "method": "fast",
+      "processMs": 51.900000002235174,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4.16,
+      "bytes": 359341,
+      "sourceAccess": "workerfs",
+      "heap": 12561034,
+      "peakProcessTreeRSSKiB": 807992,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4.16,
+        "videoStart": 0.144,
+        "audioStart": 0,
+        "audioDuration": 4.16
+      }
+    },
+    {
+      "source": "vfr-h264-aac.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 591659,
+        "width": 320,
+        "height": 180,
+        "frameRate": 18,
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264",
+          "audioDecoder": "aac"
+        },
+        "compatible": true
+      },
+      "inspectionMs": 4.700000002980232,
+      "method": "precision",
+      "processMs": 160.5,
+      "alignedRange": {
+        "start": 2.25,
+        "end": 6.25
+      },
+      "duration": 4,
+      "bytes": 397335,
+      "sourceAccess": "workerfs",
+      "heap": 13049809,
+      "peakProcessTreeRSSKiB": 810148,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "audio": "aac",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0,
+        "audioStart": 0,
+        "audioDuration": 4
+      }
+    },
+    {
+      "source": "h264-silent.mp4",
+      "info": {
+        "duration": 8,
+        "sizeBytes": 635253,
+        "width": 320,
+        "height": 180,
+        "frameRate": 24,
+        "videoCodec": "h264",
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "pixelFormat": "yuv420p",
+        "timelineStart": 0,
+        "conversion": {
+          "available": true,
+          "audioOnly": false,
+          "omittedTracks": false,
+          "videoDecoder": "h264"
+        },
+        "compatible": true
+      },
+      "inspectionMs": 4.899999998509884,
+      "method": "fast",
+      "processMs": 31.399999998509884,
+      "alignedRange": {
+        "start": 2,
+        "end": 6
+      },
+      "duration": 4,
+      "bytes": 320528,
+      "sourceAccess": "workerfs",
+      "heap": 13471420,
+      "peakProcessTreeRSSKiB": 812768,
+      "validation": {
+        "decoded": true,
+        "video": "h264",
+        "pixelFormat": "yuv420p",
+        "width": 320,
+        "height": 180,
+        "duration": 4,
+        "videoStart": 0
+      }
+    }
+  ],
+  "av1Experiment": {
+    "exit": 1,
+    "diagnostic": [
+      "[av1 @ 0xdf9510] Failed to get pixel format.",
+      "[av1 @ 0xdfb720] Your platform doesn't suppport hardware accelerated AV1 decoding.",
+      "[av1 @ 0xdfb720] Failed to get pixel format.",
+      "Error while decoding stream #0:0: Function not implemented",
+      "Error while decoding stream #0:0: Invalid data found when processing input",
+      "Error while decoding stream #0:0: Invalid data found when processing input",
+      "Error while decoding stream #0:0: Resource temporarily unavailable",
+      "Error while decoding stream #0:0: Invalid data found when processing input",
+      "Error while decoding stream #0:0: Invalid data found when processing input",
+      "Error while decoding stream #0:0: Invalid data found when processing input",
+      "Error while decoding stream #0:0: Invalid data found when processing input",
+      "Error marking filters as finished"
+    ]
+  },
+  "outputBudgetExperiment": {
+    "rejected": true,
+    "reason": "Error: Output memory safety limit reached; the partial export is not reported as completed. Choose a shorter range or compression."
+  }
+}

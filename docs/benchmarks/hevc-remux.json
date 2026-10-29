@@ -1,0 +1,20 @@
+{
+  "browser": "154.0.8037.57",
+  "ms": 45.400000002235174,
+  "bytes": 151971,
+  "codecTag": "hvc1",
+  "canPlayType": "",
+  "playback": {
+    "played": false,
+    "currentTime": 0.483096,
+    "duration": 4.104341,
+    "videoWidth": 0,
+    "videoHeight": 0,
+    "decodedFrames": 0
+  },
+  "nativeDecodePassed": true,
+  "videoCodec": "hevc",
+  "audioCodec": "aac",
+  "duration": 4.104341,
+  "note": "Valid HEVC MP4 remux is not H.264 output, and one desktop playback result does not establish Android/device compatibility. Investigation only; unavailable as a product export target."
+}
