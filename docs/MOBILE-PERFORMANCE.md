@@ -187,3 +187,13 @@ ignored `test-results/performance/` and are reproducible with the scripts above.
   A transient hidden-page locator race was corrected in the test without changing Auth.
 - No Supabase migration, Auth setting, project schema or existing Preview configuration
   was changed. Production and main are outside this delivery.
+
+### CI registry reliability
+
+The first remote account job stopped before running tests because public ECR returned
+“Data limit exceeded” on a shared GitHub runner. Editor CI passed. CI now selects the
+maintainers' public Docker Hub images by immutable amd64 manifest digest. GoTrue,
+PostgREST and Mailpit config digests were checked against the locally tested ECR
+images and matched exactly, preserving image/layer content. Local default image names
+remain available via optional Compose overrides; no Auth/database setting changed.
+No registry subscription, token, billing change or paid service was introduced.

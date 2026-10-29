@@ -14,11 +14,11 @@ services:
       interval: 2s
       retries: 30
   mail:
-    image: public.ecr.aws/supabase/mailpit:v1.30.2
+    image: ${ECONTENT_TEST_MAILPIT_IMAGE:-public.ecr.aws/supabase/mailpit:v1.30.2}
     ports: ["127.0.0.1:55324:8025"]
     mem_limit: 128m
   auth:
-    image: public.ecr.aws/supabase/gotrue:v2.197.0
+    image: ${ECONTENT_TEST_GOTRUE_IMAGE:-public.ecr.aws/supabase/gotrue:v2.197.0}
     depends_on:
       db:
         condition: service_healthy
@@ -51,7 +51,7 @@ services:
     ports: ["127.0.0.1:55325:9999"]
     mem_limit: 256m
   rest:
-    image: public.ecr.aws/supabase/postgrest:v16.3
+    image: ${ECONTENT_TEST_POSTGREST_IMAGE:-public.ecr.aws/supabase/postgrest:v16.3}
     depends_on:
       db:
         condition: service_healthy

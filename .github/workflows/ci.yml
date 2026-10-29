@@ -26,6 +26,12 @@ jobs:
       - run: npm run test:browser
   accounts:
     runs-on: ubuntu-latest
+    env:
+      # Official amd64 images: identical config/layer content to the ECR defaults.
+      # Avoid shared-runner ECR anonymous data quotas; these public pulls require no secrets.
+      ECONTENT_TEST_GOTRUE_IMAGE: docker.io/supabase/gotrue@sha256:839f529492d116b4e8b7777c953a27c381d34c15a744b1bcefde5eefaa1f9f9f
+      ECONTENT_TEST_POSTGREST_IMAGE: docker.io/postgrest/postgrest@sha256:63b567a462c4fd81ede0bdff0b38a150f732ad5fe4f4b01cebeb6a1aa8dbe0d6
+      ECONTENT_TEST_MAILPIT_IMAGE: docker.io/axllent/mailpit@sha256:f0b0ed33c8cf53aac0dd004abbe245c83420a7ae44914e25178f7791dec5723a
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
