@@ -403,9 +403,17 @@ test("Android-like UI defaults to Fast Cut, confirms Precision and never falls b
     );
     await page.getByLabel("Mode", { exact: true }).selectOption("full-split");
     await page.getByLabel("Clip length (seconds)", { exact: false }).fill("10");
+    const original = page.getByLabel("Original video", { exact: true });
+    await original.evaluate(async (video: HTMLVideoElement) => {
+      video.muted = true;
+      await video.play();
+    });
     await page
       .getByRole("button", { name: "Process video", exact: true })
       .click();
+    await expect
+      .poll(() => original.evaluate((video: HTMLVideoElement) => video.paused))
+      .toBe(true);
     await expect(
       page.getByRole("heading", { name: "Completed", exact: true }),
     ).toBeVisible();

@@ -50,7 +50,8 @@ for browsers without WORKERFS. The account fingerprint worker still reads bounde
 - Fast keyframe indexing now uses compact packet text and stores only keyframe numbers,
   avoiding JSON objects/arrays for every packet. It still scans packets once without
   frame decoding and caches its result.
-- Output previews use preload=none so the browser need not initialize every preview
+- Starting a job pauses the original preview, avoiding continuous preview decoding
+  alongside the processing worker. Output previews use preload=none so the browser need not initialize every preview
   while encoding other clips. Pressing Play loads the actual local MP4 normally.
 - Mobile/low-memory retained-output safety budget is 128 MiB (desktop remains 512 MiB).
   An exceeded budget stops the job with completed clips available to download. This is

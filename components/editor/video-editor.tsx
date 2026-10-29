@@ -287,6 +287,8 @@ export default function VideoEditor({
   ]);
   async function processVideo(confirmPrecision = false) {
     if (!source || !plan.length || busy || zipping || planError) return;
+    // Avoid continuing the source preview's decoder alongside mobile encoding/copying.
+    player.current?.pause();
     const abort = new AbortController();
     controller.current = abort;
     const worker = engine.current ?? new BrowserVideoEngine();
