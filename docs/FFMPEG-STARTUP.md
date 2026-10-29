@@ -101,3 +101,5 @@ plus seven 30s Fast clips from 30.07 MB took 1.945s (load 0.319s); sixteen clips
 writes; all 23 MP4 outputs were byte-identical to the previously fully decoded outputs
 at the base commit. These locally served single trials exclude phone/network behavior,
 file selection/fingerprinting, downloads and ZIP. They are not an Android speed claim.
+
+Current asset delivery, verified caching and download measurements: [FFmpeg download investigation](FFMPEG-DOWNLOAD.md).

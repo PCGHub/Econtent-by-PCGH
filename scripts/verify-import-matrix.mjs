@@ -31,6 +31,7 @@ const server = createServer(async (req, res) => {
       "content-type",
       extname(file) === ".wasm" ? "application/wasm" : extname(file) === ".json" ? "application/json" : "application/javascript",
     );
+    if(path.includes('/releases/')){res.setHeader('Cache-Control','public,max-age=31536000,immutable');if(path.endsWith('.wasm'))res.setHeader('Content-Encoding','br')}
     res.end(await readFile(file));
   } catch {
     res.statusCode = 404;

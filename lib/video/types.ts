@@ -64,6 +64,18 @@ export interface ProcessedClip {
   outputDuration?: number;
 }
 export interface StartupProgress {
+  downloadMs?: number;
+  compileFinalizeMs?: number;
+  initializeMs?: number;
+  transferBytes?: number;
+  networkBodyBytes?: number;
+  cached?: boolean;
+  cacheStorage?: boolean;
+  cacheStored?: boolean;
+  cacheWriteMs?: number;
+  cacheLookupMs?: number;
+  cacheReadMs?: number;
+  cacheAvailable?: boolean;
   phase: string;
   label?: string;
   receivedBytes?: number;

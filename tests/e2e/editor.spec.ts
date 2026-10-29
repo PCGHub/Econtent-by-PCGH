@@ -756,7 +756,7 @@ test("a lost FFmpeg worker response fails clearly and retry loads a fresh worker
     await page.getByLabel('End (seconds)', {exact:false}).fill('4');
     await expect(page.getByRole('button', {name:'Process video',exact:true})).toBeEnabled();
     let blocked = 0;
-    await page.route('**/ffmpeg/ffmpeg/worker.js', async route => { blocked++; await route.abort('failed'); });
+    await page.route('**/ffmpeg/worker.js', async route => { blocked++; await route.abort('failed'); });
     await page.getByRole('button', {name:'Process video',exact:true}).click();
     await expect.poll(() => blocked).toBe(1);
     await expect(page.getByRole('heading', {name:'Failed',exact:true})).toBeVisible();
@@ -765,7 +765,7 @@ test("a lost FFmpeg worker response fails clearly and retry loads a fresh worker
     await expect(page.getByTestId('processing-operation')).toContainText('Start module worker');
     await expect(page.getByTestId('completed-clips')).toHaveText('Completed clips: 0 of 1');
     await expect(page.locator('article')).toHaveCount(0);
-    await page.unroute('**/ffmpeg/ffmpeg/worker.js');
+    await page.unroute('**/ffmpeg/worker.js');
     await page.getByRole('button', {name:'Process video',exact:true}).click();
     await expect(page.getByRole('heading', {name:'Completed',exact:true})).toBeVisible({timeout:60000});
     await expect(page.getByTestId('processing-method')).toContainText('Fast Cut · stream copy');

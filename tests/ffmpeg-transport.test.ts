@@ -50,7 +50,7 @@ test('native worker and message errors reject load immediately and terminate res
 test('worker handshake, download inactivity, compile and initialization have separate deadlines',async()=>{
  for(const phase of ['worker','core','download','compile','initialize']) {
   const restore=environment();const limits={...STARTUP_LIMITS,worker:25,downloadIdle:25,compile:25,initialize:25};const ff=new FFmpegTransport(()=>{},limits);
-  try {const loading=ff.load(config);const rejection=assert.rejects(loading,/handshake|download bytes|compilation|initialization/);const worker=MockWorker.last;
+  try {const loading=ff.load(config);const rejection=assert.rejects(loading,/handshake|asset bytes|compilation|initialization/);const worker=MockWorker.last;
    if(phase!=='worker')worker.emit({type:'ECONTENT_STARTUP',data:{phase:'core',workerReady:true}});
    if(phase!=='worker'&&phase!=='core')worker.emit({type:'ECONTENT_STARTUP',data:{phase,receivedBytes:0,totalBytes:100}});
    await rejection;assert.equal(worker.terminated,true);
@@ -59,7 +59,7 @@ test('worker handshake, download inactivity, compile and initialization have sep
 });
 test('advancing download bytes extend only inactivity, and total download deadline remains bounded',async()=>{
  const restore=environment();const ff=new FFmpegTransport(()=>{},{...STARTUP_LIMITS,downloadIdle:50,downloadTotal:150});
- try {const loading=ff.load(config);const rejection=assert.rejects(loading,/five-minute download limit/);const worker=MockWorker.last;
+ try {const loading=ff.load(config);const rejection=assert.rejects(loading,/five-minute asset-read limit/);const worker=MockWorker.last;
   worker.emit({type:'ECONTENT_STARTUP',data:{phase:'core',workerReady:true}});let bytes=0;
   const timer=setInterval(()=>worker.emit({type:'ECONTENT_STARTUP',data:{phase:'download',receivedBytes:++bytes,totalBytes:1000}}),10);
   try {await rejection;}finally{clearInterval(timer);}assert.equal(worker.terminated,true);

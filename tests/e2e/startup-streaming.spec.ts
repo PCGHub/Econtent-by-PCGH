@@ -15,7 +15,7 @@ test('advancing WASM download survives over two minutes of test-clock time, then
   try {
    const path=new URL(req.url!,'http://localhost').pathname;
    if(path==='/'){res.setHeader('Content-Type','text/html');res.end('<input type="file" id="source">');return;}
-   if(path==='/ffmpeg/core/ffmpeg-core.wasm'){
+   if(path.endsWith('/core/ffmpeg-core.wasm')){
     wasmRequests++;
     res.setHeader('Content-Type','application/wasm');res.flushHeaders();wasmResponse=res;return;
    }

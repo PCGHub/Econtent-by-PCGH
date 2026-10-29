@@ -14,6 +14,7 @@ const server=createServer(async(req,res)=>{
   const path=resolve(dir,'.'+pathname)
   if(!path.startsWith(dir+'/'))throw new Error('Invalid path')
   const body=await readFile(path)
+  if(pathname.includes('/releases/')){res.setHeader('Cache-Control','public,max-age=31536000,immutable');if(pathname.endsWith('.wasm'))res.setHeader('Content-Encoding','br')}
   res.setHeader('content-type',({'.js':'application/javascript','.wasm':'application/wasm','.json':'application/json'})[extname(path)]??'application/octet-stream');res.end(body)
  }catch{res.statusCode=404;res.end()}
 })

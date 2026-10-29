@@ -1071,6 +1071,16 @@ export default function VideoEditor({
           {error}
         </p>
       )}
+      {error && progress.status === "failed" && progress.startup && progress.startup.phase !== "ready" && source && plan.length > 0 && !planError && (
+        <button type="button" disabled={busy || zipping || checking}
+          className="rounded-lg border border-blue-600 px-4 py-2 font-semibold text-blue-700 disabled:opacity-50"
+          onClick={() => {
+            void engine.current?.dispose(); engine.current = null;
+            void processVideo();
+          }}>
+          {progress.startup.phase === "download" ? "Retry FFmpeg download" : "Retry FFmpeg startup"}
+        </button>
+      )}
       {error &&
         effectiveStrategy === "fast" &&
         compression === "off" &&

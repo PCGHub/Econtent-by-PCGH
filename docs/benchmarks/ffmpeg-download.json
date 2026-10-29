@@ -1,0 +1,257 @@
+{
+  "baseCommit": "10a7c68a97b2da3145839eaf9dd10731cb873dc7",
+  "runs": [
+    {
+      "version": "base",
+      "bytesPerSecond": 200000,
+      "latencyMs": 150,
+      "environment": "Desktop Chromium; real HTTP server pacing models mobile throughput/latency. No route interception or disabled HTTP cache. Cold browser context; warm reload and fresh worker in same context. Not Android hardware.",
+      "results": [
+        {
+          "startupMs": 50036.39999999851,
+          "cuttingMs": 90.60000000149012,
+          "downloadObservationMs": 48374.39999999851,
+          "compileFinalizeMs": 13,
+          "runtimeInitializeMs": 10.800000004470348,
+          "metrics": {
+            "phase": "ready",
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "cold",
+          "wireBodyBytes": 9830200,
+          "wasmWireBytes": 9646830,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        },
+        {
+          "startupMs": 49499.89999999851,
+          "cuttingMs": 84.70000000298023,
+          "downloadObservationMs": 48373.79999999702,
+          "compileFinalizeMs": 13.600000001490116,
+          "runtimeInitializeMs": 10.5,
+          "metrics": {
+            "phase": "ready",
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "warm",
+          "wireBodyBytes": 9646830,
+          "wasmWireBytes": 9646830,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        }
+      ]
+    },
+    {
+      "version": "current",
+      "bytesPerSecond": 200000,
+      "latencyMs": 150,
+      "environment": "Desktop Chromium; real HTTP server pacing models mobile throughput/latency. No route interception or disabled HTTP cache. Cold browser context; warm reload and fresh worker in same context. Not Android hardware.",
+      "results": [
+        {
+          "startupMs": 38570.29999999702,
+          "cuttingMs": 93.20000000298023,
+          "downloadObservationMs": 36534.39999999851,
+          "compileFinalizeMs": 54.399999998509884,
+          "runtimeInitializeMs": 12.200000002980232,
+          "metrics": {
+            "phase": "ready",
+            "downloadMs": 36531.09999999404,
+            "compileFinalizeMs": 18.399999998509884,
+            "transferBytes": 7280821,
+            "networkBodyBytes": 7280521,
+            "cached": false,
+            "cacheStorage": false,
+            "cacheLookupMs": 2.100000001490116,
+            "cacheAvailable": true,
+            "cacheStored": true,
+            "cacheWriteMs": 35.100000001490116,
+            "initializeMs": 12.199999995529652,
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "cold",
+          "wireBodyBytes": 7520600,
+          "wasmWireBytes": 7280521,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        },
+        {
+          "startupMs": 562.7999999970198,
+          "cuttingMs": 102.10000000149012,
+          "downloadObservationMs": 500.59999999403954,
+          "compileFinalizeMs": 10.300000004470348,
+          "runtimeInitializeMs": 10.600000001490116,
+          "metrics": {
+            "phase": "ready",
+            "downloadMs": 0,
+            "cacheReadMs": 500.3999999985099,
+            "compileFinalizeMs": 10.299999997019768,
+            "transferBytes": 0,
+            "networkBodyBytes": 0,
+            "cached": true,
+            "cacheStorage": true,
+            "cacheLookupMs": 1.1000000014901161,
+            "cacheAvailable": true,
+            "cacheStored": true,
+            "initializeMs": 10.600000001490116,
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "warm",
+          "wireBodyBytes": 0,
+          "wasmWireBytes": 0,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        }
+      ]
+    },
+    {
+      "version": "base",
+      "bytesPerSecond": 64000,
+      "latencyMs": 300,
+      "environment": "Desktop Chromium; real HTTP server pacing models mobile throughput/latency. No route interception or disabled HTTP cache. Cold browser context; warm reload and fresh worker in same context. Not Android hardware.",
+      "results": [
+        {
+          "startupMs": 154825.09999999404,
+          "cuttingMs": 95.60000000149012,
+          "downloadObservationMs": 150970.59999999404,
+          "compileFinalizeMs": 14.5,
+          "runtimeInitializeMs": 11.300000004470348,
+          "metrics": {
+            "phase": "ready",
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "cold",
+          "wireBodyBytes": 9830200,
+          "wasmWireBytes": 9646830,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        },
+        {
+          "startupMs": 153167.1000000015,
+          "cuttingMs": 126.10000000149012,
+          "downloadObservationMs": 150973.3999999985,
+          "compileFinalizeMs": 16.799999997019768,
+          "runtimeInitializeMs": 12.200000002980232,
+          "metrics": {
+            "phase": "ready",
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "warm",
+          "wireBodyBytes": 9646830,
+          "wasmWireBytes": 9646830,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        }
+      ]
+    },
+    {
+      "version": "current",
+      "bytesPerSecond": 64000,
+      "latencyMs": 300,
+      "environment": "Desktop Chromium; real HTTP server pacing models mobile throughput/latency. No route interception or disabled HTTP cache. Cold browser context; warm reload and fresh worker in same context. Not Android hardware.",
+      "results": [
+        {
+          "startupMs": 118800.79999999702,
+          "cuttingMs": 77.5,
+          "downloadObservationMs": 114014.59999999404,
+          "compileFinalizeMs": 57.900000005960464,
+          "runtimeInitializeMs": 11.199999995529652,
+          "metrics": {
+            "phase": "ready",
+            "downloadMs": 114011.80000000447,
+            "compileFinalizeMs": 16.19999999552965,
+            "transferBytes": 7280821,
+            "networkBodyBytes": 7280521,
+            "cached": false,
+            "cacheStorage": false,
+            "cacheLookupMs": 7.5,
+            "cacheAvailable": true,
+            "cacheStored": true,
+            "cacheWriteMs": 40.70000000298023,
+            "initializeMs": 11.399999998509884,
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "cold",
+          "wireBodyBytes": 7520600,
+          "wasmWireBytes": 7280521,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        },
+        {
+          "startupMs": 556.6000000014901,
+          "cuttingMs": 100.69999999552965,
+          "downloadObservationMs": 490,
+          "compileFinalizeMs": 11.299999997019768,
+          "runtimeInitializeMs": 11.100000001490116,
+          "metrics": {
+            "phase": "ready",
+            "downloadMs": 0,
+            "cacheReadMs": 489.79999999701977,
+            "compileFinalizeMs": 11.200000002980232,
+            "transferBytes": 0,
+            "networkBodyBytes": 0,
+            "cached": true,
+            "cacheStorage": true,
+            "cacheLookupMs": 1,
+            "cacheAvailable": true,
+            "cacheStored": true,
+            "initializeMs": 11,
+            "label": "FFmpeg runtime ready"
+          },
+          "trial": "warm",
+          "wireBodyBytes": 0,
+          "wasmWireBytes": 0,
+          "output": {
+            "duration": 4.010667,
+            "codecs": [
+              "h264",
+              "aac"
+            ],
+            "fullDecode": true
+          }
+        }
+      ]
+    }
+  ]
+}

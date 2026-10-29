@@ -246,3 +246,5 @@ recovery and visible processing diagnostics, see [FAST-CUT-REGRESSION.md](FAST-C
 
 Startup failures before encoding now have independent download/worker/WASM/runtime
 diagnostics and limits. See [FFMPEG-STARTUP.md](FFMPEG-STARTUP.md).
+
+Current asset delivery, verified caching and download measurements: [FFmpeg download investigation](FFMPEG-DOWNLOAD.md).

@@ -1,10 +1,11 @@
+import { FFMPEG_RELEASE_PATH } from "./ffmpeg-assets-generated";
 import type { FFmpegWorker } from "./ffmpeg-browser";
 import type { StartupProgress } from "./types";
 
-export const STARTUP_LIMITS = { worker: 15_000, downloadIdle: 30_000, downloadTotal: 300_000, compile: 60_000, initialize: 60_000 };
+export const STARTUP_LIMITS = { worker: 15_000, downloadIdle: 30_000, downloadTotal: 300_000, compile: 60_000, initialize: 60_000, cache:10_000 };
 const labels: Record<string, string> = {
   worker: "Start module worker", core: "Download/import FFmpeg JavaScript", download: "Download FFmpeg WASM",
-  compile: "Compile FFmpeg WebAssembly", initialize: "Initialize FFmpeg memory/runtime", ready: "FFmpeg runtime ready",
+  cache:"Check/save verified FFmpeg asset cache", compile: "Compile FFmpeg WebAssembly", initialize: "Initialize FFmpeg memory/runtime", ready: "FFmpeg runtime ready",
 };
 
 /** Uses the pinned upstream worker protocol, with native failure handling and a ready handshake. */
@@ -41,16 +42,18 @@ export class FFmpegTransport implements FFmpegWorker {
     const changed = data.phase !== this.phase;
     if (changed) { this.clearTimers(); this.phase = data.phase; this.received = 0; }
     if (data.phase === "core" || data.phase === "download") {
+      const stageName = data.phase === "download" && data.cacheStorage ? "Read cached FFmpeg WASM" : labels[data.phase];
       const advancing = Number.isSafeInteger(data.receivedBytes) && data.receivedBytes! > this.received;
-      if (changed || advancing) this.deadline(`${labels[data.phase]} stalled: no new download bytes for 30 seconds`, this.limits.downloadIdle);
+      if (changed || advancing) this.deadline(`${stageName} stalled: no new asset bytes for 30 seconds`, this.limits.downloadIdle);
       if (advancing) this.received = data.receivedBytes!;
-      if (changed) this.total = setTimeout(() => this.fail(new Error(`${labels[data.phase]} exceeded its five-minute download limit. Retry on a stable connection. No encoding started.`)), this.limits.downloadTotal);
+      if (changed) this.total = setTimeout(() => this.fail(new Error(`${stageName} exceeded its five-minute asset-read limit. Retry on a stable connection if the asset is not cached. No encoding started.`)), this.limits.downloadTotal);
     } else if (changed) {
       if (data.phase === "compile") this.deadline("WebAssembly compilation did not finish within 60 seconds", this.limits.compile);
       if (data.phase === "initialize") this.deadline("FFmpeg memory/runtime initialization did not finish within 60 seconds; device memory may be insufficient", this.limits.initialize);
+      if (data.phase === "cache") this.deadline("FFmpeg asset cache write did not respond", this.limits.cache);
       if (data.phase === "ready") this.deadline("FFmpeg runtime became ready but its load acknowledgement was not received within 15 seconds", this.limits.worker);
     }
-    this.startupProgress({...data, label: labels[data.phase]});
+    this.startupProgress({...data, label: data.phase === "download" && data.cacheStorage ? "Read cached FFmpeg WASM" : labels[data.phase]});
   }
   private fail(error: Error) {
     this.clearTimers(); this.loaded = false;
@@ -78,7 +81,7 @@ export class FFmpegTransport implements FFmpegWorker {
       this.phase = "worker";
       this.startupProgress({phase:"worker", label:labels.worker});
       this.deadline("Module worker did not send its startup handshake within 15 seconds (check worker URL, CSP and browser support)", this.limits.worker);
-      this.worker = new Worker(new URL("/ffmpeg/startup-worker.js", location.origin), {type:"module", credentials:"same-origin"});
+      this.worker = new Worker(new URL(FFMPEG_RELEASE_PATH+"/startup-worker.js", location.origin), {type:"module", credentials:"same-origin"});
       this.worker.onerror = event => {
         event.preventDefault();
         this.fail(new Error(`FFmpeg worker failed during ${this.loaded ? "media processing/communication" : (labels[this.phase] ?? this.phase)}: ${event.message || "script/network/CSP error; browser may also have terminated the worker under memory pressure"}. Retry with a fresh worker.`));

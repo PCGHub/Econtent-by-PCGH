@@ -155,11 +155,11 @@ export default function ProcessingStatus({
       )}
       {(progress.status === "loading" || progress.status === "failed") && progress.startup?.phase === "download" && (
         <div className="mt-3 text-sm text-slate-600" data-testid="startup-download">
-          <p>{active ? "FFmpeg download" : "Last measured download"}: {((progress.startup.receivedBytes ?? 0) / 1000000).toFixed(1)} MB
+          <p>{progress.startup.cacheStorage ? "Read cached engine" : active ? "FFmpeg download" : "Last measured download"}: {((progress.startup.receivedBytes ?? 0) / 1000000).toFixed(1)} MB
             {progress.startup.totalBytes ? ` of ${(progress.startup.totalBytes / 1000000).toFixed(1)} MB` : ""}</p>
-          <progress aria-label="FFmpeg download progress" className="h-2 w-full accent-blue-500"
+          <progress aria-label="FFmpeg asset loading progress" className="h-2 w-full accent-blue-500"
             max={progress.startup.totalBytes ?? 1} value={progress.startup.totalBytes ? progress.startup.receivedBytes ?? 0 : undefined} />
-          <p className="text-xs">Measured asset bytes; video processing has not started.</p>
+          <p className="text-xs">{progress.startup.cacheStorage ? "Reading the verified local engine cache; no WASM network transfer." : "Measured decoded asset bytes; the network payload is compressed. Video processing has not started."}</p>
         </div>
       )}
       {progress.status !== "idle" && progress.operation && (
@@ -169,6 +169,18 @@ export default function ProcessingStatus({
           </p>
           <details className="mt-2">
           <summary className="cursor-pointer font-semibold">Processing diagnostics</summary>
+          {progress.startup?.downloadMs !== undefined && (
+            <p className="mt-1" data-testid="startup-metrics">
+              Asset source: {progress.startup.cached === undefined ? "not reported" : progress.startup.cached ? "browser cache" : "network"}.
+              {" "}Network body: {progress.startup.networkBodyBytes === undefined ? "not reported" : `${progress.startup.networkBodyBytes} bytes`}.
+              {" "}Download: {(progress.startup.downloadMs / 1000).toFixed(3)}s;
+              {progress.startup.cacheReadMs !== undefined && ` Cache read/validation: ${(progress.startup.cacheReadMs / 1000).toFixed(3)}s;`}
+              {" "}compile finalization: {((progress.startup.compileFinalizeMs ?? 0) / 1000).toFixed(3)}s;
+              {" "}runtime initialization: {progress.startup.initializeMs === undefined ? "pending" : `${(progress.startup.initializeMs / 1000).toFixed(3)}s`}.
+              {progress.startup.phase === "ready" && progress.startup.cacheStored === false && " Browser asset cache was unavailable or not saved; another load may need the network."}
+              {" "}Streaming compilation may overlap downloading.
+            </p>
+          )}
           {progress.status === "processing" && (
             <p className="mt-1">
               {progress.lastMediaAdvanceSeconds === undefined

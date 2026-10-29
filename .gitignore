@@ -11,3 +11,5 @@ playwright-report/
 !.env.example
 supabase/.temp/
 supabase/.branches/
+
+/lib/video/ffmpeg-assets-generated.ts
