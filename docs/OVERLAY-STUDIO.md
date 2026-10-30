@@ -53,7 +53,8 @@ mixing; exact sample-level limiter behavior is not simulated by the preview.
 
 Progress uses actual FFmpeg media timestamps and the existing tracker. Loading,
 encoding, finalization, cancellation and failure remain distinct; no guessed time or
-percentage is added. Cancel terminates the worker and discards partial output. Retry
+percentage is added. Cancel remains fixed in the viewport, including when export starts from the bottom
+of the mobile editor. It terminates the worker and discards partial output. Retry
 creates a fresh runtime, reusing valid cached WASM. Metadata validation checks expected
 H.264/AAC tracks, yuv420p, dimensions, duration, start timestamps and output size before
 creating a downloadable Blob. This is structural validation; automated tests additionally
