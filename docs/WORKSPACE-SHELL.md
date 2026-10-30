@@ -79,3 +79,12 @@ all five local account regressions and the 22-case pinned WASM import matrix.
 After unique accessibility IDs and the sticky offset were finalized, all three
 shell browser checks and the protected account navigation check passed again.
 React-generated IDs avoid duplicate dialog/skip-link targets during route transitions.
+
+## Preview configuration ordering
+
+The first Git-triggered deployment captured its environment before the new branch's
+existing public configuration bindings were created. Guest processing and shell
+checks worked, but account navigation correctly reported the unavailable environment.
+A fresh Preview after binding the same existing URL/publishable key is required.
+This is deployment configuration ordering, not a credential rotation or Auth change.
+No Supabase schema, credential value or hosted Auth setting was modified.
