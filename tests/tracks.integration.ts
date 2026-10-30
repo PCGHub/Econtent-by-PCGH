@@ -12,6 +12,10 @@ test('timed raster overlays and music produce measured frames, silent gaps and l
  run(compositionArgs(c,{duration:6,hasAudio:true},undefined,true,'main.mp4','photo.png',128*1048576,{text:texts.map((clip,i)=>({clip,path:i?'textB.png':'textA.png',x:0,y:0,width:80,height:40})),audio:music.map(clip=>({clip,path:'song.wav',source:{duration:3,hasAudio:true}}))}));
  for(const [time,color]of [[.5,'black'],[1.5,'white'],[2.5,'black'],[3.5,'red'],[4.5,'black']] as const){const pixels=run(['-ss',String(time),'-i','output.mp4','-vf','crop=2:2:10:10,format=rgb24','-frames:v','1','-f','rawvideo','-']);if(color==='black')assert.ok(Math.max(...pixels)<15);else if(color==='white')assert.ok(Math.min(...pixels)>210);else assert.ok(pixels[0]>210&&pixels[1]<25);}
  for(const [time,active]of [[.3,false],[1.3,true],[2.3,false],[3.3,true],[4.3,false]] as const){const pcm=run(['-ss',String(time),'-i','output.mp4','-t','0.2','-map','0:a','-ar','48000','-ac','1','-f','f32le','-']);let sum=0,peak=0;for(let i=0;i<pcm.length;i+=4){const value=pcm.readFloatLE(i);sum+=value*value;peak=Math.max(peak,Math.abs(value));}const rms=Math.sqrt(sum/(pcm.length/4));assert.ok(active?rms>.03:rms<.001,`audio ${time}: ${rms}`);assert.ok(peak<1,'Audio must not clip');}
+ run(['-f','lavfi','-i','sine=frequency=880:sample_rate=48000,volume=6','-t','3','-c:a','pcm_f32le','loud.wav']);
+ const loud=Array.from({length:4},(_,i)=>({...music[0],id:'loud'+i}));const mixed={...c,tracks:{...c.tracks,text:[],audio:loud}};
+ run(compositionArgs(mixed,{duration:6,hasAudio:true},undefined,true,'main.mp4','photo.png',128*1048576,{text:[],audio:loud.map(clip=>({clip,path:'loud.wav',source:{duration:3,hasAudio:true}}))}));
+ const mixedPcm=run(['-ss','1.3','-i','output.mp4','-t','0.2','-map','0:a','-ar','48000','-ac','1','-f','f32le','-']);let mixedPeak=0;for(let i=0;i<mixedPcm.length;i+=4)mixedPeak=Math.max(mixedPeak,Math.abs(mixedPcm.readFloatLE(i)));assert.ok(mixedPeak>.2&&mixedPeak<1,`Limited overlap peak: ${mixedPeak}`);
  run(['-xerror','-i','output.mp4','-f','null','-']);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

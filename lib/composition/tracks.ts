@@ -20,8 +20,9 @@ export function parseTracks(value:unknown,duration:number):StudioTracks{
 /** Move preserves duration. Trimming the left of audio advances its source offset. */
 export function editClip<T extends {start:number;end:number;sourceStart?:number}>(clip:T,kind:'move'|'start'|'end',delta:number,duration:number):T{
  if(!Number.isFinite(delta))throw Error('Invalid timeline movement');
- if(kind==='move'){const start=Math.max(0,Math.min(duration-(clip.end-clip.start),clip.start+delta));return {...clip,start,end:start+clip.end-clip.start};}
- if(kind==='end')return {...clip,end:Math.max(clip.start+.01,Math.min(duration,clip.end+delta))};
+ const round=(n:number)=>Math.round(n*1000)/1000;
+ if(kind==='move'){const start=Math.max(0,Math.min(duration-(clip.end-clip.start),round(clip.start+delta)));return {...clip,start,end:start+clip.end-clip.start};}
+ if(kind==='end')return {...clip,end:Math.max(clip.start+.01,Math.min(duration,round(clip.end+delta)))};
  const minimum=clip.sourceStart===undefined?0:Math.max(0,clip.start-clip.sourceStart);
- const start=Math.max(minimum,Math.min(clip.end-.01,clip.start+delta));return {...clip,start,...(clip.sourceStart===undefined?{}:{sourceStart:clip.sourceStart+start-clip.start})};
+ const start=Math.max(minimum,Math.min(clip.end-.01,round(clip.start+delta)));return {...clip,start,...(clip.sourceStart===undefined?{}:{sourceStart:round(clip.sourceStart+start-clip.start)})};
 }

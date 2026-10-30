@@ -12,7 +12,7 @@ test('real browser composition exports image/video layouts, audio, cancellation 
   for(const ext of ['jpg','webp'])execFileSync('ffmpeg',['-v','error','-i',join(dir,'photo.png'),'-frames:v','1',join(dir,'photo.'+ext)]);
   await page.goto('/overlay-studio');await page.getByLabel('Upload main video',{exact:true}).setInputFiles(join(dir,'main.mp4'));await page.getByLabel('Upload photo',{exact:true}).setInputFiles(join(dir,'photo.png'));
   await page.getByLabel('Main trim start',{exact:true}).fill('2');await page.getByLabel('Main trim end',{exact:true}).fill('6');await page.getByLabel('Layer appears at',{exact:true}).fill('1');await page.getByLabel('Layer ends at / image duration end',{exact:true}).fill('3');
-  await page.getByText('Audio',{exact:true}).click();
+  await page.locator('summary').filter({hasText:/^Audio$/}).click();
   for(const [layout,video]of [['stack',false],['stack',true],['pip',true],['pip',false],['full',false],['full',true]] as const){
    if(video)await page.getByLabel('Upload overlay video',{exact:true}).setInputFiles(join(dir,'layer.mp4'));
    else await page.getByLabel('Upload photo',{exact:true}).setInputFiles(join(dir,'photo.'+(layout==='stack'?'jpg':layout==='pip'?'webp':'png')));

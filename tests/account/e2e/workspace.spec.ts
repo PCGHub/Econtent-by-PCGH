@@ -335,3 +335,21 @@ test('overlay cloud drafts autosave, duplicate, reconnect exact local media and 
   const outsider=createClient('http://localhost:55321',key,{auth:{persistSession:false,autoRefreshToken:false}});expect((await outsider.auth.signInWithPassword({email:otherEmail,password})).error).toBeNull();const privateRead=await outsider.from('projects').select('composition').eq('id',id);expect(privateRead.error).toBeNull();expect(privateRead.data).toEqual([]);const update=await outsider.from('projects').update({composition:null}).eq('id',id).select('id');expect(update.data).toEqual([]);await outsider.auth.signOut();
  }finally{await other?.close();rmSync(dir,{recursive:true,force:true});}
 });
+
+test('phase 2 drafts restore timed text/music and verify every reattached audio file',async({page})=>{
+ const dir=mkdtempSync(join(tmpdir(),'econtent-phase2-account-'));
+ try{
+  const run=(args:string[])=>execFileSync('ffmpeg',['-v','error','-y',...args],{cwd:dir});
+  run(['-f','lavfi','-i','color=black:size=160x90:rate=24','-t','4','-c:v','libx264','main.mp4']);run(['-f','lavfi','-i','color=black:size=160x90','-frames:v','1','photo.png']);for(const [name,freq]of [['music.wav',880],['wrong.wav',440]] as const)run(['-f','lavfi','-i',`sine=frequency=${freq}:sample_rate=48000`,'-t','3',name]);
+  await register(page,'tracks-'+randomUUID()+'@example.test');await page.goto('/overlay-studio');await page.getByLabel('Upload main video',{exact:true}).setInputFiles(join(dir,'main.mp4'));await expect(page.getByLabel('Main composition video')).toBeVisible();await page.getByLabel('Upload photo',{exact:true}).setInputFiles(join(dir,'photo.png'));
+  await page.getByRole('button',{name:'Add text clip',exact:true}).click();await page.getByLabel('Text 1 content',{exact:true}).fill('Saved title');await page.getByLabel('Text 1 start',{exact:true}).fill('1');await page.getByLabel('Text 1 color',{exact:true}).fill('#00ff00');
+  await page.getByLabel('Import music or narration',{exact:true}).setInputFiles(join(dir,'music.wav'));await expect(page.getByLabel('Music 1 start',{exact:true})).toBeVisible();await page.getByLabel('Music 1 start',{exact:true}).fill('1');await page.getByLabel('Music 1 end',{exact:true}).fill('2');await page.getByLabel('Mute original video audio').check();
+  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Saved settings · source files remain local',{exact:true})).toBeVisible();const url=await page.getByRole('link',{name:'Open saved project',exact:true}).getAttribute('href');const id=url!.split('/').at(-1)!;
+  await page.getByLabel('Text 1 fontSize',{exact:true}).fill('40');await expect.poll(async()=>((await(await page.request.get('/api/projects/'+id)).json()).project.studioTracks.settings.text[0].fontSize)).toBe(40);
+  const dup=await page.request.post('/api/projects/'+id+'/duplicate',{headers:{origin:'http://localhost:3000'}});expect(dup.status()).toBe(201);expect((await dup.json()).project.studioTracks.settings.text[0].text).toBe('Saved title');
+  await page.goto(url!);await expect(page.getByLabel('Text 1 content',{exact:true})).toHaveValue('Saved title');await expect(page.getByLabel('Text 1 fontSize',{exact:true})).toHaveValue('40');await expect(page.getByLabel('Mute original video audio')).toBeChecked();
+  await page.getByLabel('Upload main video',{exact:true}).setInputFiles(join(dir,'main.mp4'));await expect(page.getByLabel('Main composition video')).toBeVisible();await page.getByLabel('Upload photo',{exact:true}).setInputFiles(join(dir,'photo.png'));
+  await page.getByLabel('Reconnect music music.wav',{exact:true}).setInputFiles(join(dir,'wrong.wav'));await expect(page.locator('p[role="alert"]').filter({hasText:'different music file'})).toBeVisible();await page.getByLabel('Reconnect music music.wav',{exact:true}).setInputFiles(join(dir,'music.wav'));await expect(page.getByLabel('Reconnect music music.wav',{exact:true})).toHaveCount(0);
+  await page.getByLabel('Approve local composition encoding').check();await page.getByRole('button',{name:'Render Preview',exact:true}).click();await expect(page.getByRole('heading',{name:'Completed',exact:true})).toBeVisible({timeout:60000});
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
