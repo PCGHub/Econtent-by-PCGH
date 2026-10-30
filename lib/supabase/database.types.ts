@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       projects: {
         Row: {
+          studio_tracks: Json | null
           composition: Json | null
           clip_duration: number
           compression: string
@@ -34,6 +35,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          studio_tracks?: Json | null
           composition?: Json | null
           clip_duration?: number
           compression?: string
@@ -52,6 +54,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          studio_tracks?: Json | null
           composition?: Json | null
           clip_duration?: number
           compression?: string

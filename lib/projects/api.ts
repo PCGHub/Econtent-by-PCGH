@@ -51,7 +51,7 @@ export async function body(
       const { done, value } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > 16384) {
+      if (size > 32768) {
         await reader.cancel();
         throw new ApiError(
           413,

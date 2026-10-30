@@ -1,6 +1,8 @@
+import {parseTracks,type StudioTracks} from './tracks';
 export type Layout = 'stack' | 'pip' | 'full';
 export type Ratio = '9:16' | '16:9' | '1:1' | '4:5';
 export interface Composition {
+  tracks?: StudioTracks;
   version: 1;
   layout: Layout;
   ratio: Ratio;
@@ -45,7 +47,7 @@ export interface LocalMedia {
 export function parseComposition(value: unknown): Composition {
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid composition settings');
   const v=value as Record<string,unknown>;
-  if(Object.keys(v).length!==Object.keys(DEFAULT_COMPOSITION).length||Object.keys(v).some(k=>!(k in DEFAULT_COMPOSITION)))throw Error('Unexpected composition fields');
+  if(Object.keys(v).filter(k=>k!=='tracks').length!==Object.keys(DEFAULT_COMPOSITION).length||Object.keys(v).some(k=>k!=='tracks'&&!(k in DEFAULT_COMPOSITION)))throw Error('Unexpected composition fields');
   for(const [key,choices] of Object.entries({version:[1],layout:['stack','pip','full'],ratio:['9:16','16:9','1:1','4:5'],resolution:[360,720],fps:[24,30],mainFit:['cover','contain'],overlayFit:['cover','contain'],audio:['main','secondary','mix','none']})){
     if(!choices.includes(v[key] as never))throw Error('Invalid composition '+key);
   }
@@ -54,7 +56,8 @@ export function parseComposition(value: unknown): Composition {
   const c=v as unknown as Composition;
   if(c.split<.1||c.split>.9||c.width<.05||c.height<.05||c.x+c.width>1.000001||c.y+c.height>1.000001)throw Error('Layer position/size exceeds canvas');
   if(c.trimEnd<=c.trimStart||c.overlayEnd<=c.overlayStart||c.overlayEnd>c.trimEnd-c.trimStart+.001)throw Error('Composition timing exceeds trimmed video');
-  return Object.fromEntries(Object.keys(DEFAULT_COMPOSITION).map(key=>[key,v[key]])) as unknown as Composition;
+  const base=Object.fromEntries(Object.keys(DEFAULT_COMPOSITION).map(key=>[key,v[key]])) as unknown as Composition;
+  return v.tracks===undefined?base:{...base,tracks:parseTracks(v.tracks,c.trimEnd-c.trimStart)};
 }
 const even=(n:number)=>Math.max(2,Math.round(n/2)*2);
 export function geometry(c: Composition) {

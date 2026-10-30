@@ -1,4 +1,5 @@
-import { compositionArgs, type CompositionInput } from "../composition/command";
+import type {CompositionAssets} from "../composition/assets";
+import { compositionArgs, type CompositionInput, type TrackInputs } from "../composition/command";
 import { parseComposition, geometry, type Composition } from "../composition/model";
 import { FFmpegTransport } from "./ffmpeg-transport";
 import {
@@ -683,15 +684,15 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
   }
 
   /** Composition always encodes; shares the same verified runtime/cache and main source mount. */
-  async compose(source: File, layer: File, image: boolean, raw: Composition, maxBytes: number, signal?: AbortSignal): Promise<ProcessedClip> {
+  async compose(source: File, layer: File, image: boolean, raw: Composition, maxBytes: number, signal?: AbortSignal, assets:CompositionAssets={text:[],audio:[]}): Promise<ProcessedClip> {
     if (this.busy) throw new Error("Another operation is processing");
     if (!this.ffmpeg?.loaded || this.disposed) throw new Error("Initialize the engine first");
     const settings = parseComposition(raw), ffmpeg=this.ffmpeg;
     signal?.throwIfAborted(); this.busy=true;
     signal?.addEventListener("abort",this.stop,{once:true});
-    let mounted=false, copied=false;
+    let mounted=false, copied=false, tracksMounted=false;const trackCopies:string[]=[];
     try {
-      if(source.size+layer.size>256*1048576) throw new Error("Combined composition sources exceed the 256 MiB safety limit");
+      if(source.size+layer.size+assets.audio.reduce((n,a)=>n+a.file.size,0)>256*1048576) throw new Error("Combined composition sources exceed the 256 MiB safety limit");
       await this.prepare(source,false);
       if(!this.info!.conversion?.available) throw new Error(this.info!.conversion?.reason ?? "Source conversion unavailable");
       this.notify({status:"preparing",operation:"Mount and inspect secondary layer",message:"Inspecting local composition media…"});
@@ -711,7 +712,30 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       if(image&&!['png','mjpeg','webp'].includes(video.codec_name??''))throw new Error("Photo must decode as PNG, JPEG or WebP; renamed or animated formats are not accepted");
       const secondary:CompositionInput={duration:Number(data.format?.duration),hasAudio:!!audio,videoDecoder:capability.videoDecoder,audioDecoder:capability.audioDecoder,timelineStart:Number(video.start_time)||0,audioTimelineStart:audio?.start_time===undefined?undefined:Number(audio.start_time)};
       const main:CompositionInput={...this.info!,hasAudio:!!this.info!.audioCodec,videoDecoder:this.info!.conversion!.videoDecoder,audioDecoder:this.info!.conversion!.audioDecoder};
-      const duration=settings.trimEnd-settings.trimStart, args=compositionArgs(settings,main,secondary,image,this.input,path,maxBytes);
+      const extra:TrackInputs={text:[],audio:[]};
+      const textClips=settings.tracks?.text??[], musicClips=settings.tracks?.audio??[];
+      if(textClips.length!==assets.text.length)throw new Error("Text raster assets do not match the composition");
+      const files=[...assets.text.map((t,i)=>new File([t.file],`text-${i}.png`)),...assets.audio.map((a,i)=>new File([a.file],`music-${i}`))];
+      const locations=new Map<string,string>();
+      if(files.length){
+        this.notify({status:'preparing',operation:'Prepare timed text and audio',message:'Mounting timed tracks locally…'});
+        try{await ffmpeg.createDir('/tracks');if(!await ffmpeg.mount('WORKERFS',{files},'/tracks'))throw Error('WORKERFS unavailable');tracksMounted=true;files.forEach(f=>locations.set(f.name,'/tracks/'+f.name));}
+        catch(error){if(!ffmpeg.loaded||error instanceof WorkerUnresponsiveError)throw error;await ffmpeg.unmount('/tracks').catch(()=>{});await ffmpeg.deleteDir('/tracks').catch(()=>{});for(const f of files){signal?.throwIfAborted();if(f.size>32*1048576)throw Error('Track mounting unavailable; select an audio file under 32 MiB for the bounded copy fallback');const name='track-'+f.name;trackCopies.push(name);locations.set(f.name,name);await ffmpeg.writeFile(name,new Uint8Array(await f.arrayBuffer()));}}
+      }
+      for(const [i,clip]of textClips.entries())extra.text.push({clip,...assets.text[i],path:locations.get(`text-${i}.png`)!});
+      const inspected=new Map<string,CompositionInput>();
+      for(const clip of musicClips){
+        const i=assets.audio.findIndex(a=>a.id===clip.sourceId);if(i<0)throw Error('Reconnect the original music file before rendering');const path=locations.get(`music-${i}`)!;
+        if(!inspected.has(clip.sourceId)){
+          const metadata=await this.probe(['-show_entries','format=duration:stream=codec_type,codec_name',path],'music.json') as {format?:{duration?:string};streams?:ProbeStream[]};
+          const audio=metadata.streams?.find(s=>s.codec_type==='audio'),duration=Number(metadata.format?.duration);
+          const names=this.capabilities!.decoders[audio?.codec_name??''];const decoder=names?.includes(audio?.codec_name??'')?audio!.codec_name:names?.[0];
+          if(!decoder||!Number.isFinite(duration)||duration<=0||!this.capabilities!.encoders.includes('aac'))throw Error('This loaded core cannot decode this audio file or encode it as AAC');
+          inspected.set(clip.sourceId,{duration,hasAudio:true,audioDecoder:decoder});
+        }
+        extra.audio.push({clip,path,source:inspected.get(clip.sourceId)!});
+      }
+      const duration=settings.trimEnd-settings.trimStart, args=compositionArgs(settings,main,secondary,image,this.input,path,maxBytes,extra);
       signal?.throwIfAborted();this.activeDuration=duration;this.lastFraction=0;
       this.notify({status:"processing",operation:"Encode composition to H.264/AAC",message:"Encoding the selected composition range locally…"});
       if(await ffmpeg.exec(args)!==0)throw new Error("Composition encoding failed. Try a shorter selection or smaller explicit output size; no successful output was accepted.");
@@ -719,7 +743,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
       this.notify({status:"finalizing",operation:"Validate composition MP4",message:"Validating composition duration, video and audio…"});
       const output=await this.probe(["-show_entries","format=duration,size:stream=codec_type,codec_name,width,height,pix_fmt,start_time,duration","output.mp4"],"composition.json") as {format?:{duration?:string;size?:string};streams?:(ProbeStream&{duration?:string})[]};
       const v=output.streams?.find(s=>s.codec_type==='video'),a=output.streams?.find(s=>s.codec_type==='audio'),g=geometry(settings);
-      const wantsAudio=settings.audio!=='none'&&(settings.audio!=='main'||main.hasAudio);
+      const wantsAudio=!!(((settings.audio==='main'||settings.audio==='mix')&&main.hasAudio&&!settings.tracks?.muteMain)||((settings.audio==='secondary'||settings.audio==='mix')&&secondary.hasAudio&&!settings.tracks?.muteSecondary)||musicClips.some(c=>!c.muted));
       if(v?.codec_name!=='h264'||v.width!==g.w||v.height!==g.h||v.pix_fmt!=='yuv420p'||output.streams?.length!==(wantsAudio?2:1)||(wantsAudio&&a?.codec_name!=='aac')||Math.abs(Number(output.format?.duration)-duration)>.15||!Number.isFinite(Number(output.format?.duration))||Number(output.format?.size)>=maxBytes)throw new Error("Composition output validation failed; no partial MP4 was accepted");
       if(a&&Math.abs(Number(a.start_time)-Number(v.start_time))>.15)throw new Error("Composition audio/video start timestamps do not match");
       const bytes=await ffmpeg.readFile('output.mp4');if(typeof bytes==='string'||!bytes.length||bytes.length>=maxBytes)throw new Error("Invalid or oversized composition output");
@@ -727,7 +751,7 @@ export class BrowserVideoEngine implements VideoProcessingEngine {
     } catch(error){this.stop();if(signal?.aborted)throw new DOMException("Cancelled","AbortError");throw error;}
     finally{
       this.activeDuration=undefined;this.busy=false;signal?.removeEventListener("abort",this.stop);
-      if(ffmpeg.loaded){await ffmpeg.deleteFile('output.mp4').catch(()=>{});if(mounted){await ffmpeg.unmount('/overlay').catch(()=>{});await ffmpeg.deleteDir('/overlay').catch(()=>{});}if(copied)await ffmpeg.deleteFile('overlay-input').catch(()=>{});}
+      if(ffmpeg.loaded){if(tracksMounted){await ffmpeg.unmount('/tracks').catch(()=>{});await ffmpeg.deleteDir('/tracks').catch(()=>{});}for(const name of trackCopies)await ffmpeg.deleteFile(name).catch(()=>{});await ffmpeg.deleteFile('output.mp4').catch(()=>{});if(mounted){await ffmpeg.unmount('/overlay').catch(()=>{});await ffmpeg.deleteDir('/overlay').catch(()=>{});}if(copied)await ffmpeg.deleteFile('overlay-input').catch(()=>{});}
     }
   }
 

@@ -1,3 +1,5 @@
+import {parseStudioDraft,type StudioDraft} from "../composition/studio-draft";
+import type {Json} from "../supabase/database.types";
 import {parseCompositionDraft,type CompositionDraft} from "../composition/draft";
 import type { CompressionPreset, CutStrategy, EditMode } from "../video/types";
 import { createCutPlan } from "../video/planner";
@@ -27,6 +29,7 @@ export type ProjectStatus =
 export interface ProjectDraft {
   title: string;
   composition?: CompositionDraft | null;
+  studioTracks?: StudioDraft | null;
   settings: EditorSettings;
   source: SourceMetadata | null;
   status: ProjectStatus;
@@ -52,7 +55,7 @@ export const EMPTY_DRAFT: ProjectDraft = {
   status: "draft",
 };
 export const PROJECT_COLUMNS =
-  "id,title,edit_mode,cut_start,cut_end,clip_duration,keep_remainder,compression,cut_strategy,source_metadata,composition,status,revision,created_at,updated_at";
+  "id,title,edit_mode,cut_start,cut_end,clip_duration,keep_remainder,compression,cut_strategy,source_metadata,composition,studio_tracks,status,revision,created_at,updated_at";
 export function isProjectId(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value,
@@ -103,7 +106,7 @@ function choice<T extends string>(
 }
 export function parseProjectDraft(input: unknown): ProjectDraft {
   const data = object(input, "Project");
-  keys(data, ["title", "settings", "source", "status", "composition"]);
+  keys(data, ["title", "settings", "source", "status", "composition", "studioTracks"]);
   const cfg = object(data.settings, "Settings");
   keys(cfg, [
     "mode",
@@ -188,7 +191,11 @@ export function parseProjectDraft(input: unknown): ProjectDraft {
     if(settings.mode!=="manual-trim"||settings.cutStrategy!=="precision"||settings.compression!=="off"||settings.range.start!==composition.settings.trimStart||settings.range.end!==composition.settings.trimEnd)throw new Error("Composition and project ranges must match");
     if(source.sizeBytes+composition.layer.sizeBytes>256*1048576)throw new Error("Combined composition source size exceeds limit");
   }
+  const studioTracks=data.studioTracks==null?undefined:parseStudioDraft(data.studioTracks,settings.range.end-settings.range.start);
+  if(studioTracks&&(!composition||!source||source.sizeBytes+composition.layer.sizeBytes+studioTracks.sources.reduce((n,a)=>n+a.sizeBytes,0)>256*1048576))throw new Error("Studio tracks require a composition within the source memory limit");
+  if(composition?.settings.tracks)throw new Error("Persist timed tracks in studioTracks, not composition settings");
   return {
+    ...(studioTracks?{studioTracks}:{}),
     ...(composition?{composition}:{}),
     title: text(data.title, "Project title", 120),
     settings,
@@ -211,7 +218,8 @@ export function toRow(draft: ProjectDraft) {
     compression: draft.settings.compression,
     cut_strategy: draft.settings.cutStrategy,
     source_metadata: draft.source ? {...draft.source} : null,
-    composition: draft.composition ? {settings:{...draft.composition.settings},layer:{...draft.composition.layer}} : null,
+    composition: draft.composition ? JSON.parse(JSON.stringify({settings:{...draft.composition.settings},layer:{...draft.composition.layer}})) as Json : null,
+    studio_tracks: draft.studioTracks ? JSON.parse(JSON.stringify(draft.studioTracks)) as Json : null,
     status: draft.status,
   };
 }
@@ -228,6 +236,7 @@ export function fromRow(row: Record<string, unknown>): Project {
     },
     source: row.source_metadata,
     composition: row.composition,
+    studioTracks: row.studio_tracks,
     status: row.status,
   });
   if (
