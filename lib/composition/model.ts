@@ -54,7 +54,7 @@ export function parseComposition(value: unknown): Composition {
   const c=v as unknown as Composition;
   if(c.split<.1||c.split>.9||c.width<.05||c.height<.05||c.x+c.width>1.000001||c.y+c.height>1.000001)throw Error('Layer position/size exceeds canvas');
   if(c.trimEnd<=c.trimStart||c.overlayEnd<=c.overlayStart||c.overlayEnd>c.trimEnd-c.trimStart+.001)throw Error('Composition timing exceeds trimmed video');
-  return {...c};
+  return Object.fromEntries(Object.keys(DEFAULT_COMPOSITION).map(key=>[key,v[key]])) as unknown as Composition;
 }
 const even=(n:number)=>Math.max(2,Math.round(n/2)*2);
 export function geometry(c: Composition) {
