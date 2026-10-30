@@ -41,7 +41,7 @@ export default function ProcessingStatus({
   return (
     <section
       aria-label="Processing status"
-      className={`${active ? "sticky top-2 z-10 " : ""}rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5`}
+      className={`${active ? "sticky top-[var(--workspace-sticky-offset,0.5rem)] z-10 " : ""}rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="status" aria-live="polite">

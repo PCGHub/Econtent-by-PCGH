@@ -1,12 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VideoEditor, {
   type EditorSnapshot,
 } from "@/components/editor/video-editor";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/account-ui";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { useAccount } from "./provider";
 import {
   EMPTY_DRAFT,
@@ -222,23 +221,8 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   }
   if(project&&!loading&&!user)return <p role="status" className="p-6">Sign in to resume this saved project.</p>;
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4">
-        <Logo />
-        <div className="flex flex-wrap items-center gap-4">
-          <Link
-            href={user ? "/projects" : "/login"}
-            className="text-sm font-semibold text-blue-600"
-          >
-            {loading ? "Account…" : user ? "My projects" : "Sign in"}
-          </Link>
-          {user && (
-            <Button disabled={busy || checking} onClick={() => void save()}>
-              {busy ? "Saving…" : project ? "Save project" : "Save to account"}
-            </Button>
-          )}
-        </div>
-      </header>
+    <WorkspaceShell><main className="min-h-screen bg-[#f8fafc] text-slate-900">
+      {user&&<div role="toolbar" aria-label="Project saving" className="mx-auto flex max-w-6xl justify-end px-5 pt-4"><Button disabled={busy||checking} onClick={()=>void save()}>{busy?'Saving…':project?'Save project':'Save to account'}</Button></div>}
       <section className="mx-auto max-w-6xl px-5 pt-6">
         <label className="text-sm font-semibold">
           Project title
@@ -318,6 +302,6 @@ export default function ProjectEditor({ project }: { project?: Project }) {
       <span className="sr-only">
         {digest ? "Source identity verified" : ""}
       </span>
-    </main>
+    </main></WorkspaceShell>
   );
 }

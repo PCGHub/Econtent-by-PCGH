@@ -1,4 +1,5 @@
 'use client';
+import {WorkspaceShell} from '@/components/workspace-shell';
 import {restoreSpatial,spatialSignature} from '@/lib/composition/spatial';
 import {StudioTimeline} from './overlay/timeline';
 import {TrackTools} from './overlay/track-tools';
@@ -107,8 +108,7 @@ export function OverlayStudio({project}:{project?:Project}){
     const value=Number(e.target.value);const next={...settings,[key]:value};if(key==='x'||key==='width'){next.x=Math.min(next.x,1-next.width);}if(key==='y'||key==='height'){next.y=Math.min(next.y,1-next.height);}record(next);
   }}/></label>;
   const mediaCard=(title:string,role:'main'|'secondary',kind:'video'|'image',Icon:typeof Video)=><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 p-3 text-sm font-semibold hover:border-blue-400 hover:bg-blue-50"><Icon className="size-6 shrink-0 text-blue-600"/><span>{title}<input type="file" aria-label={title} className="mt-2 block w-full text-xs font-normal" disabled={importing||busy} accept={kind==='image'?'.jpg,.jpeg,.png,.webp':VIDEO_FILE_ACCEPT} onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void upload(file,role,kind);}}/></span><Upload className="ml-auto size-4 shrink-0 text-slate-400"/></label>;
-  return <main className="min-h-screen bg-slate-50 text-slate-900">
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 md:px-6"><Link href="/" className="flex items-center gap-2 font-bold"><Video className="size-9 rounded-xl bg-blue-600 p-2 text-white"/> econtent <span className="text-xs text-slate-500">by PCGH</span></Link><nav className="flex flex-wrap gap-4 text-sm font-semibold text-blue-600"><Link href="/editor">Video Cutter</Link><Link href="/projects">My projects</Link><Link href="/dashboard">Workspace</Link></nav></header>
+  return <WorkspaceShell><main className="min-h-screen bg-slate-50 text-slate-900">
     {busy&&<Button className="fixed bottom-4 right-4 z-50 shadow-lg" onClick={()=>renderAbort.current?.abort()}>Cancel composition export</Button>}
     <div className="mx-auto max-w-[1500px] px-4 py-5 md:px-6"><h1 className="text-2xl font-bold md:text-3xl">Video Overlay Studio</h1><p className="mt-2 text-sm text-slate-500">Combine one main video and one photo or video layer. Source files stay on your device.</p>
       {configurationError&&<p role="alert" className="my-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{configurationError}</p>}
@@ -117,7 +117,7 @@ export function OverlayStudio({project}:{project?:Project}){
       <div className="mt-4 flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1 text-xs font-semibold text-slate-600">Project title<input aria-label="Composition project title" maxLength={120} className={inputClass} value={title} onChange={e=>setTitle(e.target.value)}/></label><Button variant="outline" disabled={busy||importing||cloud.saving||cloud.account.loading||!main||!secondary} onClick={cloud.save}>Save draft</Button>{!cloud.account.user&&<Link href="/login?next=%2Foverlay-studio" className="text-sm text-blue-600">Sign in for cloud drafts</Link>}{cloud.savedId&&<Link href={'/projects/'+cloud.savedId} className="text-sm text-blue-600 underline">Open saved project</Link>}</div>
       {project?.composition&&<p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Reconnect both original local files to resume. Only metadata was saved; media and exports are not stored in your account.</p>}
       {cloud.message&&<p role="status" className="mt-2 text-sm text-slate-600">{cloud.message}</p>}{cloud.error&&<p role="alert" className="mt-2 text-sm text-red-700">{cloud.error}</p>}
-      {progress.status!=='idle'&&(busy||validOutput||['failed','cancelled'].includes(progress.status))&&<div className={busy?'sticky top-2 z-30 mt-4':'mt-4'}><ProcessingStatus progress={progress} active={busy} onCancel={()=>renderAbort.current?.abort()}/></div>}
+      {progress.status!=='idle'&&(busy||validOutput||['failed','cancelled'].includes(progress.status))&&<div className={busy?'sticky top-[var(--workspace-sticky-offset,0.5rem)] z-30 mt-4':'mt-4'}><ProcessingStatus progress={progress} active={busy} onCancel={()=>renderAbort.current?.abort()}/></div>}
       <div className="mt-4 flex gap-2"><Button size="sm" variant="outline" disabled={busy||!past.length} onClick={undo}>Undo layout change</Button><Button size="sm" variant="outline" disabled={busy||!future.length} onClick={redo}>Redo layout change</Button></div>
       <nav aria-label="Studio tools" className="mt-4 flex flex-wrap gap-2">{['Media','Text','Audio','Timeline','Export'].map(tab=><Button key={tab} size="sm" variant="outline" onClick={()=>document.getElementById('studio-'+tab.toLowerCase())?.scrollIntoView({behavior:'smooth',block:'start'})}>{tab}</Button>)}</nav>
       <div id="studio-media" className="mt-5 grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
@@ -150,5 +150,5 @@ export function OverlayStudio({project}:{project?:Project}){
         {!validOutput&&<p className="mt-2 text-sm text-amber-700">Settings changed. This download is the previous render; export again to apply edits.</p>}
         <Button className="mt-3" disabled={!validOutput} onClick={()=>downloadBlob(output.blob,'econtent-composition.mp4')}>Download composition MP4</Button><p className="mt-2 text-xs text-slate-500">{(output.blob.size/1048576).toFixed(2)} MiB · H.264 video{settings.audio==='none'?'':' with selected AAC audio where present'}</p></section>}
     </div>
-  </main>;
+  </main></WorkspaceShell>;
 }

@@ -356,3 +356,19 @@ test('phase 2 drafts restore timed text/music and verify every reattached audio 
   await page.getByLabel('Approve local composition encoding').check();await page.getByRole('button',{name:'Render Preview',exact:true}).click();await expect(page.getByRole('heading',{name:'Completed',exact:true})).toBeVisible({timeout:60000});
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
+
+test('shared shell keeps protected sidebar navigation, saved project URLs and mobile account navigation working',async({page})=>{
+ await register(page,'shell-'+randomUUID()+'@example.test');
+ const nav=()=>page.getByRole('navigation',{name:'Workspace navigation',exact:true});
+ for(const [name,path,heading] of [['My projects','/projects','My projects'],['Settings','/settings','Settings'],['Dashboard','/dashboard','Welcome back, Local Creator'],['Overlay Studio','/overlay-studio','Video Overlay Studio']] as const){
+  await nav().getByRole('link',{name,exact:true}).click();await expect(page).toHaveURL(new RegExp(path+'$'));await expect(page.getByRole('heading',{name:heading,exact:true})).toBeVisible();await expect(nav().getByRole('link',{name,exact:true})).toHaveAttribute('aria-current','page');
+  await expect(page.locator('[data-testid="workspace-shell"]:visible')).toHaveCount(1);await expect(page.locator('main main')).toHaveCount(0);
+ }
+ await nav().getByRole('link',{name:'Dashboard',exact:true}).click();await page.getByRole('link',{name:'Create new project',exact:true}).click();await expect(page).toHaveURL(/\/projects\/new$/);
+ await page.getByLabel('Project title').fill('Shell saved project');await page.getByRole('button',{name:'Create project',exact:true}).click();await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+$/);const savedURL=page.url();
+ await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await page.setViewportSize({width:390,height:844});
+ const opener=page.getByRole('button',{name:'Open workspace navigation',exact:true});await opener.click();await page.getByRole('dialog').getByRole('link',{name:'Settings',exact:true}).click();await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('button',{name:'Open workspace navigation',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'My projects',exact:true}).click();await page.getByRole('link',{name:'Continue',exact:true}).click();await expect(page).toHaveURL(savedURL);await expect(page.getByLabel('Project title')).toHaveValue('Shell saved project');
+ await page.getByRole('button',{name:'Open workspace navigation',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page).toHaveURL(/\/login$/);
+ await page.goto('/settings');await expect(page).toHaveURL(/\/login\?next=/);await expect(page.getByTestId('workspace-shell')).toHaveCount(0);
+});

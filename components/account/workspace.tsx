@@ -13,19 +13,13 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/account-ui";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { useAccount } from "./provider";
 import { browserSupabase } from "@/lib/supabase/browser";
 import { projectRequest } from "@/lib/projects/client";
 import { EMPTY_DRAFT, type Project } from "@/lib/projects/model";
 import { cn } from "@/lib/utils";
-export function Shell({
-  children,
-  active = "Dashboard",
-}: {
-  children: React.ReactNode;
-  active?: string;
-}) {
+export function Shell({children}:{children:React.ReactNode}) {
   const { user, loading } = useAccount();
   const router = useRouter();
   useEffect(() => {
@@ -34,45 +28,9 @@ export function Shell({
       router.refresh();
     }
   }, [loading, user, router]);
-  return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a]">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <Logo />
-          <nav className="flex flex-wrap items-center gap-1">
-            {["Dashboard", "My Projects", "Settings"].map((item) => (
-              <Link
-                key={item}
-                href={
-                  item === "Dashboard"
-                    ? "/dashboard"
-                    : item === "My Projects"
-                      ? "/projects"
-                      : "/settings"
-                }
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-medium",
-                  active === item
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-500 hover:bg-slate-50",
-                )}
-              >
-                {item}
-              </Link>
-            ))}
-          </nav>
-          <Link href="/overlay-studio" className="text-sm font-semibold text-blue-600">Overlay Studio</Link>
-          <Link href="/projects/new">
-            <Button size="sm">
-              <Plus /> New project
-            </Button>
-          </Link>
-        </div>
-      </header>
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">{children}</div>
-    </div>
-  );
+  return <WorkspaceShell><main className="mx-auto max-w-7xl px-4 py-8 md:px-8">{children}</main></WorkspaceShell>;
 }
+
 function ProjectCard({
   project,
   onChange,
@@ -251,7 +209,7 @@ function ProjectWorkspace({ dashboard = false }: { dashboard?: boolean }) {
       ? user.user_metadata.display_name
       : "";
   return (
-    <Shell active={dashboard ? "Dashboard" : "My Projects"}>
+    <Shell>
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-semibold text-blue-600">Workspace</p>
@@ -367,7 +325,7 @@ export function NewProject() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
-    <Shell active="My Projects">
+    <Shell>
       <form
         className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6"
         onSubmit={async (event) => {
@@ -424,7 +382,7 @@ export function SettingsPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <Shell active="Settings">
+    <Shell>
       <div className="max-w-3xl">
         <p className="text-sm font-semibold text-blue-600">Account</p>
         <h1 className="mt-2 text-3xl font-bold">Settings</h1>

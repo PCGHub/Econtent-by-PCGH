@@ -222,3 +222,7 @@ their original local files. No source media is uploaded.
 Overlay Studio now supports [direct canvas editing](docs/DIRECT-MANIPULATION.md):
 mouse/touch positioning and resizing, crop repositioning, styled/rotated timed text,
 safe-area guides and spatial undo/redo, with shared preview/export rasterization.
+
+The [responsive workspace shell](docs/WORKSPACE-SHELL.md) unifies navigation across
+account pages, saved projects, Overlay Studio and Video Cutter. Desktop collapse
+and the accessible mobile drawer preserve active editor state while toggling.
