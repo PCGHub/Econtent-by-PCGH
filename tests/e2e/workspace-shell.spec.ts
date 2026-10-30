@@ -56,8 +56,8 @@ test('desktop shell collapse preserves live media, editing history and rendered 
   execFileSync('ffmpeg',['-v','error','-xerror','-i',after,'-f','null','-'])
   const info=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-of','json',after],{encoding:'utf8'}));expect(info.streams.map((s:{codec_name:string})=>s.codec_name)).toEqual(['h264','aac'])
   const nav=page.getByRole('navigation',{name:'Workspace navigation'});await expect(nav.getByRole('link',{name:'Overlay Studio',exact:true})).toHaveAttribute('aria-current','page')
-  await expect(nav.getByRole('link',{name:'Cinematic Titles coming soon',exact:true})).toHaveAttribute('aria-disabled','true')
-  await expect(nav.getByRole('link',{name:'Cinematic Titles coming soon',exact:true})).not.toHaveAttribute('href')
+  await expect(nav.getByRole('link',{name:'Transcription coming soon',exact:true})).toHaveAttribute('aria-disabled','true')
+  await expect(nav.getByRole('link',{name:'Transcription coming soon',exact:true})).not.toHaveAttribute('href')
   await nav.getByRole('link',{name:'Video Cutter',exact:true}).click();await expect(page).toHaveURL(/\/editor$/);await oneShell(page)
   await expect(page.getByLabel('Choose video',{exact:true})).toBeVisible();await expect(page.getByRole('navigation',{name:'Workspace navigation'}).getByRole('link',{name:'Video Cutter',exact:true})).toHaveAttribute('aria-current','page')
  }finally{rmSync(dir,{recursive:true,force:true})}

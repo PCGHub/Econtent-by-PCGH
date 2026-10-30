@@ -226,3 +226,8 @@ safe-area guides and spatial undo/redo, with shared preview/export rasterization
 The [responsive workspace shell](docs/WORKSPACE-SHELL.md) unifies navigation across
 account pages, saved projects, Overlay Studio and Video Cutter. Desktop collapse
 and the accessible mobile drawer preserve active editor state while toggling.
+
+[Cinematic Titles Studio](docs/CINEMATIC-TITLES-FRONTEND.md) is an interactive frontend
+at `/titles-studio`: scene templates, styled/timed text, local backgrounds and live
+animations. Rendered previews, MP4 exports and saved title projects await integration;
+its video-output actions are explicitly disabled.

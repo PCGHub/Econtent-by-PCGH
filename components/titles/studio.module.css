@@ -1,0 +1,128 @@
+.studio {
+  container-type: inline-size;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.preview {
+  order: 0;
+  min-width: 0;
+}
+.stage {
+  --title-preview-height: 360px;
+}
+.mobileTabs {
+  order: 1;
+}
+.scenes,
+.properties {
+  order: 2;
+  min-width: 0;
+}
+.timeline {
+  order: 3;
+  min-width: 0;
+}
+.panelHidden,
+.desktopTabs {
+  display: none;
+}
+@container (min-width:900px) {
+  .workspace {
+    grid-template-columns: 180px minmax(0, 1fr) 240px;
+  }
+  .scenes {
+    order: 0;
+    display: block;
+  }
+  .preview {
+    order: 1;
+  }
+  .properties {
+    order: 2;
+    display: block;
+  }
+  .mobileTabs {
+    display: none;
+  }
+  .desktopTabs {
+    display: block;
+  }
+  .stage {
+    --title-preview-height: 460px;
+  }
+  .timeline {
+    grid-column: 1 / -1;
+  }
+  .panelBody {
+    max-height: 680px;
+    overflow-y: auto;
+  }
+}
+.canvas {
+  position: relative;
+  margin: auto;
+  overflow: hidden;
+  isolation: isolate;
+  background: #070b11;
+  container-type: size;
+  box-shadow: 0 18px 55px #02061735;
+}
+.canvasTools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 10px;
+  color: #64748b;
+}
+.stage:fullscreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #030712;
+}
+.stage:fullscreen .canvasTools {
+  width: 100%;
+  padding: 0 16px;
+  color: #e2e8f0;
+}
+.stage:fullscreen .canvas {
+  width: min(100vw, calc((100vh - 52px) * var(--title-aspect))) !important;
+  max-width: none !important;
+  border-radius: 0;
+}
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.065;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' opacity='.8' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
+}
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(ellipse at center, transparent 32%, #0008 100%);
+}
+.ruler {
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(10% - 1px),
+    #cbd5e1 calc(10% - 1px),
+    #cbd5e1 10%
+  );
+}
+
+/* Keep the shared unlayered form reset from overriding this studio’s utility typography. */
+.studio :is(button, input) {
+  font: revert-layer;
+}

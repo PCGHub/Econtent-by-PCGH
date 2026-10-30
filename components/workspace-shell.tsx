@@ -12,6 +12,7 @@ const navigation = [
   {label:'Dashboard', href:'/dashboard', icon:LayoutDashboard},
   {label:'Video Cutter', href:'/editor', icon:Film},
   {label:'Overlay Studio', href:'/overlay-studio', icon:Clapperboard},
+  {label:'Cinematic Titles', href:'/titles-studio', icon:Sparkles},
   {label:'My projects', href:'/projects', icon:FolderKanban},
   {label:'Settings', href:'/settings', icon:Settings},
 ]
@@ -95,7 +96,7 @@ export function WorkspaceShell({children}:{children:ReactNode}) {
             </Link>
           })}
           <div className="my-4 border-t border-slate-100"/>
-          {([{label:'Cinematic Titles',icon:Sparkles},{label:'Transcription',icon:Subtitles}]).map(({label,icon:Icon})=><span key={label} role="link" aria-disabled="true" aria-label={label+' coming soon'} title={label+' · coming soon'} className={cn('flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400',collapsed&&'lg:justify-center lg:px-0')}>
+          {([{label:'Transcription',icon:Subtitles}]).map(({label,icon:Icon})=><span key={label} role="link" aria-disabled="true" aria-label={label+' coming soon'} title={label+' · coming soon'} className={cn('flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400',collapsed&&'lg:justify-center lg:px-0')}>
             <Icon aria-hidden="true" className="size-4 shrink-0"/><span className={cn('truncate',collapsed&&'lg:sr-only')}>{label}</span><span className={cn('ml-auto rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold',collapsed&&'lg:hidden')}>Soon</span>
           </span>)}
         </nav>
