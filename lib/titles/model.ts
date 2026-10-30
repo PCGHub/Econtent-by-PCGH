@@ -61,6 +61,7 @@ export interface TitleBackground {
   assetId?: string;
   fit: "contain" | "cover";
   loop: boolean;
+  volume?: number;
 }
 export interface TitleScene {
   id: string;
@@ -74,15 +75,22 @@ export interface TitleProject {
   title: string;
   ratio: TitleRatio;
   scenes: TitleScene[];
-  output: { shortEdge: 720 | 1080; fps: 24 | 30 };
+  output: { shortEdge: 360 | 480 | 720 | 1080; fps: 24 | 30 };
 }
-/** Future renderer boundary. The frontend never calls this interface until a real adapter exists. */
+/** Browser-local renderer boundary, independent of editor state. */
+export interface TitleRenderProgress {
+  stage: string;
+  fraction?: number;
+  completedFrames?: number;
+  totalFrames?: number;
+  startup?: import("../video/types").StartupProgress;
+}
 export interface TitlesRenderer {
   render(
     project: TitleProject,
     assets: ReadonlyMap<string, File>,
     signal: AbortSignal,
-    onProgress: (progress: { stage: string; fraction?: number }) => void,
+    onProgress: (progress: TitleRenderProgress) => void,
   ): Promise<Blob>;
 }
 export const clamp = (n: number, min = 0, max = 1) =>

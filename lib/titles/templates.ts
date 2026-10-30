@@ -355,6 +355,6 @@ export function initialProject(): TitleProject {
         id: "titles-initial-" + i + "-text-" + j,
       })),
     })),
-    output: { shortEdge: 1080, fps: 24 },
+    output: { shortEdge: 480, fps: 24 },
   };
 }

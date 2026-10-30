@@ -10,7 +10,7 @@
     "postinstall": "node scripts/prepare-ffmpeg.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test-isolation=none --import ./tests/register.mjs --test tests/*.test.ts",
-    "test:media": "node --test-isolation=none --import ./tests/register.mjs --test tests/media.integration.ts tests/composition.integration.ts tests/tracks.integration.ts",
+    "test:media": "node --test-isolation=none --import ./tests/register.mjs --test tests/media.integration.ts tests/composition.integration.ts tests/tracks.integration.ts tests/titles.integration.ts",
     "test:browser": "playwright test",
     "test:account:setup": "node scripts/account-test-stack.mjs && node scripts/account-test-env.mjs",
     "test:account": "playwright test -c tests/account/playwright.config.ts",

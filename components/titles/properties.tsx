@@ -1,5 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { requiredCreditSpeed } from "@/lib/titles/raster";
+import type { useTitlesRender } from "./use-render";
 import {
   EFFECTS,
   FONTS,
@@ -24,6 +26,7 @@ export function TitleProperties({
   onBackground,
   onUpload,
   onOutput,
+  render,
 }: {
   tab: ToolTab;
   scene: TitleScene;
@@ -38,6 +41,7 @@ export function TitleProperties({
   onBackground: (patch: Partial<TitleScene["background"]>) => void;
   onUpload: (file: File, kind: "image" | "video") => void;
   onOutput: (output: TitleProject["output"]) => void;
+  render: ReturnType<typeof useTitlesRender>;
 }) {
   const color = (
     name: string,
@@ -357,13 +361,36 @@ export function TitleProperties({
                     name="Credit speed (% canvas/s)"
                     value={text.creditSpeed}
                     min={5}
-                    max={40}
+                    max={500}
                     step={1}
                     onChange={(creditSpeed) => onText({ creditSpeed })}
                   />
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600"
+                    onClick={() => {
+                      const ctx = document
+                        .createElement("canvas")
+                        .getContext("2d")!;
+                      onText({
+                        creditSpeed: Math.min(
+                          500,
+                          requiredCreditSpeed(
+                            ctx,
+                            text,
+                            project.ratio,
+                            project.output.fps,
+                          ),
+                        ),
+                      });
+                    }}
+                  >
+                    Fit complete credit roll
+                  </button>
                   <p className="text-xs text-slate-500">
-                    Extend scene duration for longer credits. The preview shows
-                    the actual travel at this speed.
+                    Enter one name or role per line; reorder lines to reorder
+                    credits. Extend scene duration for longer credits. The
+                    preview shows the actual travel at this speed.
                   </p>
                 </>
               )}
@@ -463,6 +490,15 @@ export function TitleProperties({
                   ? `${asset.file.name} · ${(asset.file.size / 1048576).toFixed(1)} MiB`
                   : "Choose a browser-playable local file. Nothing is uploaded."}
               </p>
+              {!asset && scene.background.assetId && (
+                <button
+                  type="button"
+                  className="text-xs text-blue-600"
+                  onClick={() => onBackground({ assetId: undefined })}
+                >
+                  Use a different background
+                </button>
+              )}
               <Label name="Media fit">
                 <select
                   aria-label="Title background fit"
@@ -516,33 +552,36 @@ export function TitleProperties({
       )}
       {tab === "Export" && (
         <>
-          <div className="inline-flex rounded-full bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700">
-            FRONTEND MILESTONE
-          </div>
-          <h2 className="text-sm font-bold">From your vision to a film</h2>
+          <h2 className="text-sm font-bold">Render your cinematic sequence</h2>
           <p className="text-xs leading-5 text-slate-500">
-            Live title animation works now. Rendered previews and MP4 downloads
-            are awaiting rendering integration.
+            Local H.264/AAC encoding. Start with short sequences at 360 or 480
+            px on mobile. Keep this tab foregrounded. Encoding takes longer than
+            Fast Cut; no media is uploaded.
           </p>
-          <Label name="Planned output size">
+          <Label name="Output size">
             <select
-              aria-label="Planned title output size"
+              aria-label="Title output size"
               className={field}
               value={project.output.shortEdge}
               onChange={(e) =>
                 onOutput({
                   ...project.output,
-                  shortEdge: Number(e.target.value) as 720 | 1080,
+                  shortEdge: Number(
+                    e.target.value,
+                  ) as TitleProject["output"]["shortEdge"],
                 })
               }
             >
-              <option value="1080">1080 px short edge</option>
-              <option value="720">720 px short edge</option>
+              {[360, 480, 720, 1080].map((n) => (
+                <option key={n} value={n}>
+                  {n} px short edge{n === 480 ? " · recommended start" : ""}
+                </option>
+              ))}
             </select>
           </Label>
-          <Label name="Planned frame rate">
+          <Label name="Frame rate">
             <select
-              aria-label="Planned title frame rate"
+              aria-label="Title frame rate"
               className={field}
               value={project.output.fps}
               onChange={(e) =>
@@ -552,34 +591,97 @@ export function TitleProperties({
                 })
               }
             >
-              <option value="24">24 fps · cinematic</option>
-              <option value="30">30 fps</option>
+              <option value={24}>24 fps · cinematic</option>
+              <option value={30}>30 fps</option>
             </select>
           </Label>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <h3 className="text-xs font-semibold">Render Preview</h3>
-            <p className="mt-1 text-[10px] leading-4 text-slate-500">
-              A temporary playable MP4 of your composition. Not connected yet.
-            </p>
-            <Button
-              className="mt-3 w-full"
-              variant="outline"
-              size="sm"
-              disabled
+          <p className="text-[10px] leading-4 text-slate-500">
+            Scene joins are hard cuts. Timing is quantized to the selected frame
+            rate. System fonts vary across devices; live and encoded frames
+            share this browser’s canvas renderer. Background volume below the
+            live canvas also sets export audio.
+          </p>
+          <Button
+            className="w-full"
+            variant="outline"
+            size="sm"
+            disabled={render.state === "running" || importing}
+            onClick={render.render}
+          >
+            Render Preview
+          </Button>
+          <Button
+            className="w-full"
+            size="sm"
+            disabled={render.state === "running" || importing}
+            onClick={render.export}
+          >
+            {render.result ? "Download MP4" : "Export MP4"}
+          </Button>
+          {render.state === "running" && (
+            <div
+              role="status"
+              className="space-y-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-900"
             >
-              Render Preview · coming next
-            </Button>
-          </div>
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
-            <h3 className="text-xs font-semibold text-blue-900">Export MP4</h3>
-            <p className="mt-1 text-[10px] leading-4 text-blue-700">
-              Planned H.264/AAC output. No video file is generated in this
-              frontend.
+              <p className="break-words">{render.progress?.stage}</p>
+              {render.progress?.startup?.totalBytes ? (
+                <p>
+                  Asset bytes: {render.progress.startup.receivedBytes ?? 0} /{" "}
+                  {render.progress.startup.totalBytes}
+                </p>
+              ) : null}
+              {render.progress?.fraction !== undefined ? (
+                <progress
+                  aria-label="Title render progress"
+                  className="w-full"
+                  value={render.progress.fraction}
+                  max={1}
+                />
+              ) : (
+                <progress
+                  aria-label="Title render progress"
+                  className="w-full"
+                />
+              )}
+              <p>
+                {render.progress?.completedFrames ?? 0} /{" "}
+                {render.progress?.totalFrames ?? "—"} frames encoded ·{" "}
+                {render.elapsed.toFixed(1)} s elapsed
+              </p>
+            </div>
+          )}
+          {render.state === "cancelled" && (
+            <p role="status" className="text-xs text-slate-600">
+              Cancelled. No partial output accepted. Render Preview retries with
+              a fresh worker.
             </p>
-            <Button className="mt-3 w-full" size="sm" disabled>
-              Export MP4 · not connected
-            </Button>
-          </div>
+          )}
+          {render.error && (
+            <p role="alert" className="break-words text-xs text-red-700">
+              {render.error} Use Render Preview to retry with a fresh worker.
+            </p>
+          )}
+          {render.result && (
+            <div className="space-y-2">
+              <p role="status" className="text-xs text-emerald-700">
+                Validated H.264/AAC MP4 ·{" "}
+                {(render.result.blob.size / 1048576).toFixed(2)} MiB ·{" "}
+                {render.elapsed.toFixed(1)} s render
+              </p>
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                src={render.result.url}
+                aria-label="Rendered titles MP4"
+                className="w-full rounded-lg bg-black"
+              />
+              <p className="text-[10px] text-slate-500">
+                This is the encoded MP4. Download reuses this file until the
+                project changes.
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>

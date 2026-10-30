@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { DirectBox } from "@/components/overlay/direct-box";
 import {
   backgroundStyle,
-  FONTS,
   sample,
   clamp,
   type TitleScene,
@@ -12,77 +11,13 @@ import {
 } from "@/lib/titles/model";
 import type { LocalMedia } from "@/lib/composition/model";
 import styles from "./studio.module.css";
+import { drawTitleScene } from "@/lib/titles/raster";
 
-function AnimatedText({
-  text,
-  time,
-  scale,
-  canvasHeight,
-}: {
-  text: TitleText;
-  time: number;
-  scale: number;
-  canvasHeight: number;
-}) {
-  const s = sample(text, time);
-  const characters =
-    text.entrance === "letter-reveal"
-      ? Array.from(text.text)
-      : text.entrance === "word-reveal"
-        ? text.text.split(/(\s+)/u)
-        : undefined;
+function AnimatedText({ text, time }: { text: TitleText; time: number }) {
   return (
-    <div
-      data-testid={"title-content-" + text.id}
-      style={{
-        height: "100%",
-        whiteSpace: "pre-wrap",
-        overflowWrap: "anywhere",
-        fontFamily: FONTS[text.font],
-        fontSize: text.fontSize * scale,
-        fontWeight: text.weight,
-        lineHeight: text.lineHeight,
-        letterSpacing: `${text.tracking}em`,
-        color: text.color,
-        textAlign: text.align,
-        opacity: s.opacity,
-        transform: `translateY(${s.dy * canvasHeight}px) scale(${s.scale}) rotate(${text.rotation}deg)`,
-        transformOrigin: "center",
-        textShadow: text.shadow ? "0 2px 16px #0008" : undefined,
-        WebkitTextStroke: text.outline
-          ? `${text.outline * scale}px ${text.outlineColor}`
-          : undefined,
-        paintOrder: "stroke fill",
-        background:
-          text.background === "none"
-            ? undefined
-            : text.backgroundColor + (text.background === "tint" ? "b3" : ""),
-        borderRadius: 8,
-        padding: text.background === "none" ? 0 : 6,
-      }}
-    >
-      {characters
-        ? characters.slice(0, 240).map((c, i) => {
-            if (/^\s+$/.test(c)) return c;
-            const p = clamp(
-              (s.progress - (i / characters.length) * 0.65) / 0.35,
-            );
-            return (
-              <span
-                key={i}
-                style={{
-                  opacity: p,
-                  display: "inline-block",
-                  whiteSpace: "pre",
-                  transform: `translateY(${(1 - p) * 12 * scale}px)`,
-                }}
-              >
-                {c}
-              </span>
-            );
-          })
-        : s.text}
-    </div>
+    <span className="sr-only" data-testid={"title-content-" + text.id}>
+      {sample(text, time).text}
+    </span>
   );
 }
 
@@ -113,7 +48,8 @@ export function TitleCanvas({
 }) {
   const stage = useRef<HTMLDivElement>(null),
     canvas = useRef<HTMLDivElement>(null),
-    video = useRef<HTMLVideoElement>(null);
+    video = useRef<HTMLVideoElement>(null),
+    graphics = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ width: 640, height: 360 });
   useEffect(() => {
     const element = canvas.current;
@@ -127,6 +63,24 @@ export function TitleCanvas({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    const node = graphics.current;
+    if (!node) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    node.width = Math.round(size.width * dpr);
+    node.height = Math.round(size.height * dpr);
+    const ctx = node.getContext("2d");
+    if (ctx)
+      drawTitleScene(
+        ctx,
+        scene,
+        time,
+        node.width,
+        node.height,
+        undefined,
+        ["video", "image"].includes(scene.background.kind),
+      );
+  }, [scene, time, size]);
   useEffect(() => {
     const node = video.current;
     return () => {
@@ -157,8 +111,7 @@ export function TitleCanvas({
         );
     else if (!shouldPlay) node.pause();
   }, [time, playing, asset, volume, scene.background.loop, onError]);
-  const [rw, rh] = ratio.split(":").map(Number),
-    scale = Math.min(size.width, size.height) / 360;
+  const [rw, rh] = ratio.split(":").map(Number);
   return (
     <div
       ref={stage}
@@ -233,7 +186,11 @@ export function TitleCanvas({
               Reconnect a local {scene.background.kind} in Background.
             </div>
           )}
-        {scene.background.vignette && <div className={styles.vignette} />}
+        <canvas
+          ref={graphics}
+          aria-label="Deterministic title animation"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+        />
         {scene.text.map((t, index) => (
           <DirectBox
             key={t.id}
@@ -251,15 +208,9 @@ export function TitleCanvas({
             }
             onFinish={onFinish}
           >
-            <AnimatedText
-              text={t}
-              time={time}
-              scale={scale}
-              canvasHeight={size.height}
-            />
+            <AnimatedText text={t} time={time} />
           </DirectBox>
         ))}
-        {scene.background.grain && <div className={styles.grain} />}
         {!playing && selected && (
           <div
             className="pointer-events-none absolute inset-[5%] z-10 border border-dashed border-white/15"

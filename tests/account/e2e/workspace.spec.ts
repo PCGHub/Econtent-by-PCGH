@@ -372,3 +372,19 @@ test('shared shell keeps protected sidebar navigation, saved project URLs and mo
  await page.getByRole('button',{name:'Open workspace navigation',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page).toHaveURL(/\/login$/);
  await page.goto('/settings');await expect(page).toHaveURL(/\/login\?next=/);await expect(page.getByTestId('workspace-shell')).toHaveCount(0);
 });
+
+test('titles drafts save/reopen with local media verification when approved schema exists, otherwise fail clearly without a partial project',async({page,browser})=>{
+ const dir=mkdtempSync(join(tmpdir(),'econtent-title-account-'));
+ try{
+  execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=red:s=160x90','-frames:v','1',join(dir,'original.png')]);
+  execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=blue:s=160x90','-frames:v','1',join(dir,'wrong.png')]);
+  await register(page,'titles-'+randomUUID()+'@example.test');await page.goto('/titles-studio');await page.setViewportSize({width:1600,height:1100});
+  await page.getByLabel('Titles project name').fill('Account titles metadata');await page.getByRole('tab',{name:'Background',exact:true}).click();await page.getByLabel('Title background type').selectOption('image');await page.getByLabel('Upload title background').setInputFiles(join(dir,'original.png'));await expect(page.getByAltText('Local scene background')).toBeVisible();
+  const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/projects'&&r.request().method()==='POST');await page.getByRole('button',{name:'Save titles project',exact:true}).click();const saved=await response;
+  if(saved.status()===503){await expect(page.getByText('Titles cloud saving needs the approved additive development migration.',{exact:false})).toBeVisible();const list=await(await page.request.get('/api/projects')).json();expect(list.projects.some((p:{title:string})=>p.title==='Account titles metadata')).toBe(false);console.log('Titles cloud persistence BLOCKED: owner approval required; migration gate verified, no partial row created.');return;}
+  expect(saved.status()).toBe(201);const project=(await saved.json()).project;await page.goto('/projects/'+project.id);await expect(page.getByLabel('Titles project name')).toHaveValue('Account titles metadata');await expect(page.getByAltText('Local scene background')).toHaveCount(0);
+  await page.getByRole('tab',{name:'Background',exact:true}).click();await page.getByLabel('Upload title background').setInputFiles(join(dir,'wrong.png'));await expect(page.getByText('This file does not match the saved background.',{exact:false})).toBeVisible();await page.getByLabel('Upload title background').setInputFiles(join(dir,'original.png'));await expect(page.getByAltText('Local scene background')).toBeVisible();
+  await page.getByLabel('Titles project name').fill('Updated titles autosave');await expect.poll(async()=>{const data=await(await page.request.get('/api/projects/'+project.id)).json();return data.project?.title}).toBe('Updated titles autosave');await page.reload();await expect(page.getByLabel('Titles project name')).toHaveValue('Updated titles autosave');await expect(page.getByAltText('Local scene background')).toHaveCount(0);
+  const other=await browser.newContext();try{const tab=await other.newPage();await register(tab,'titles-other-'+randomUUID()+'@example.test');expect((await tab.request.get('/api/projects/'+project.id)).status()).toBe(404);await tab.goto('/projects/'+project.id);await expect(tab.getByLabel('Titles project name')).toHaveCount(0)}finally{await other.close()}
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

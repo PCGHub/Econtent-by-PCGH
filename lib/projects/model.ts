@@ -1,3 +1,4 @@
+import {parseTitlesDraft,type TitlesDraft} from "../titles/document";
 import {parseStudioDraft,type StudioDraft} from "../composition/studio-draft";
 import type {Json} from "../supabase/database.types";
 import {parseCompositionDraft,type CompositionDraft} from "../composition/draft";
@@ -28,6 +29,7 @@ export type ProjectStatus =
   | "failed";
 export interface ProjectDraft {
   title: string;
+  titles?: TitlesDraft | null;
   composition?: CompositionDraft | null;
   studioTracks?: StudioDraft | null;
   settings: EditorSettings;
@@ -55,7 +57,7 @@ export const EMPTY_DRAFT: ProjectDraft = {
   status: "draft",
 };
 export const PROJECT_COLUMNS =
-  "id,title,edit_mode,cut_start,cut_end,clip_duration,keep_remainder,compression,cut_strategy,source_metadata,composition,studio_tracks,status,revision,created_at,updated_at";
+  "*"; // Nullable future metadata columns remain compatible before additive migrations.
 export function isProjectId(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value,
@@ -106,7 +108,7 @@ function choice<T extends string>(
 }
 export function parseProjectDraft(input: unknown): ProjectDraft {
   const data = object(input, "Project");
-  keys(data, ["title", "settings", "source", "status", "composition", "studioTracks"]);
+  keys(data, ["title", "settings", "source", "status", "composition", "studioTracks", "titles"]);
   const cfg = object(data.settings, "Settings");
   keys(cfg, [
     "mode",
@@ -194,7 +196,10 @@ export function parseProjectDraft(input: unknown): ProjectDraft {
   const studioTracks=data.studioTracks==null?undefined:parseStudioDraft(data.studioTracks,settings.range.end-settings.range.start);
   if(studioTracks&&(!composition||!source||source.sizeBytes+composition.layer.sizeBytes+studioTracks.sources.reduce((n,a)=>n+a.sizeBytes,0)>256*1048576))throw new Error("Studio tracks require a composition within the source memory limit");
   if(composition?.settings.tracks)throw new Error("Persist timed tracks in studioTracks, not composition settings");
+  const titles=data.titles==null?undefined:parseTitlesDraft(data.titles);
+  if(titles&&(source||composition||studioTracks))throw new Error("Titles drafts cannot also contain cutter or overlay sources");
   return {
+    ...(titles?{titles}:{}),
     ...(studioTracks?{studioTracks}:{}),
     ...(composition?{composition}:{}),
     title: text(data.title, "Project title", 120),
@@ -209,6 +214,7 @@ export function parseProjectDraft(input: unknown): ProjectDraft {
 }
 export function toRow(draft: ProjectDraft) {
   return {
+    ...(draft.titles?{titles_draft:JSON.parse(JSON.stringify(draft.titles)) as Json}:{}),
     title: draft.title,
     edit_mode: draft.settings.mode,
     cut_start: draft.settings.range.start,
@@ -237,6 +243,7 @@ export function fromRow(row: Record<string, unknown>): Project {
     source: row.source_metadata,
     composition: row.composition,
     studioTracks: row.studio_tracks,
+    titles: row.titles_draft,
     status: row.status,
   });
   if (

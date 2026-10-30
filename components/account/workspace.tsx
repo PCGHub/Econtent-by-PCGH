@@ -78,12 +78,13 @@ function ProjectCard({
       </div>
       <div className="p-2">
         <h2 className="break-words font-semibold">{project.title}</h2>
+        {project.titles&&<p className="mt-1 text-xs font-semibold text-blue-600">Cinematic titles · {project.titles.document.ratio} · {project.titles.document.scenes.length} scenes</p>}
         {project.composition&&<p className="mt-1 text-xs font-semibold text-blue-600">Overlay composition · {project.composition.settings.ratio}</p>}
         <p className="mt-1 text-xs text-slate-500">
           Edited {new Date(project.updatedAt).toLocaleString()} ·{" "}
           {project.source
             ? project.source.durationSeconds.toFixed(1) + "s"
-            : "No video connected"}
+            : project.titles?"Local media reattachment may be needed":"No video connected"}
         </p>
         <div className="mt-4 flex items-center justify-between">
           <span

@@ -50,6 +50,11 @@ import { TitleProperties, type ToolTab } from "./properties";
 import { TitlesTimeline } from "./timeline";
 import { Label, NumberControl, field } from "./controls";
 import styles from "./studio.module.css";
+import Link from "next/link";
+import { fingerprint } from "@/lib/projects/fingerprint";
+import type { Project } from "@/lib/projects/model";
+import { useTitlesDraft } from "./use-draft";
+import { useTitlesRender } from "./use-render";
 const tabs: { name: ToolTab; icon: typeof Type }[] = [
   { name: "Scenes", icon: Layers },
   { name: "Text", icon: Type },
@@ -57,12 +62,22 @@ const tabs: { name: ToolTab; icon: typeof Type }[] = [
   { name: "Background", icon: ImageIcon },
   { name: "Export", icon: Download },
 ];
-export function TitlesStudio() {
-  const [project, setProject] = useState<TitleProject>(initialProject),
-    [time, setTime] = useState(2.4),
-    [playing, setPlaying] = useState(false),
-    [volume, setVolume] = useState(0);
-  const [selected, setSelected] = useState<string>("titles-initial-0-text-1"),
+export function TitlesStudio({ savedProject }: { savedProject?: Project }) {
+  const [project, setProject] = useState<TitleProject>(() =>
+      savedProject?.titles
+        ? { ...savedProject.titles.document, title: savedProject.title }
+        : initialProject(),
+    ),
+    [time, setTime] = useState(() =>
+      savedProject?.titles
+        ? Math.min(2.4, durationOf(savedProject.titles.document) / 2)
+        : 2.4,
+    ),
+    [playing, setPlaying] = useState(false);
+  const [selected, setSelected] = useState<string>(
+      savedProject?.titles?.document.scenes[0].text[0]?.id ??
+        "titles-initial-0-text-1",
+    ),
     [tab, setTab] = useState<ToolTab>("Text"),
     [gallery, setGallery] = useState(false),
     [error, setError] = useState(""),
@@ -81,6 +96,9 @@ export function TitlesStudio() {
     asset = scene.background.assetId
       ? assets[scene.background.assetId]
       : undefined;
+  const render = useTitlesRender(project, assets);
+  const draft = useTitlesDraft(savedProject, project, assets);
+  const volume = scene.background.volume ?? 0;
   useEffect(
     () => () => {
       uploadAbort.current?.abort();
@@ -130,7 +148,11 @@ export function TitlesStudio() {
           ? Math.min(2, target.duration / 2)
           : Math.min(before.time, target.duration - 0.001)),
     );
-    const used = new Set(next.scenes.map((s) => s.background.assetId)),
+    const used = new Set(
+        next.scenes
+          .filter((s) => ["image", "video"].includes(s.background.kind))
+          .map((s) => s.background.assetId),
+      ),
       kept: Record<string, LocalMedia> = {};
     for (const [id, media] of Object.entries(assetsRef.current)) {
       if (used.has(id)) kept[id] = media;
@@ -254,7 +276,30 @@ export function TitlesStudio() {
         throw Error(
           "Local title backgrounds are limited to 256 MiB combined. Remove an unused media background first.",
         );
-      const id = crypto.randomUUID();
+      const existing = doc.scenes.find((s) => s.id === target)?.background
+        .assetId;
+      const expected = savedProject?.titles?.sources.find(
+        (s) => s.id === existing,
+      );
+      if (expected && !assetsRef.current[expected.id]) {
+        const hash = await fingerprint(file, controller.signal);
+        controller.signal.throwIfAborted();
+        if (
+          expected.sha256 !== hash ||
+          expected.sizeBytes !== file.size ||
+          expected.kind !== kind ||
+          expected.width !== media.width ||
+          expected.height !== media.height ||
+          Math.abs(expected.duration - media.duration) > 0.05
+        )
+          throw Error(
+            "This file does not match the saved background. Choose the original file, or select “Use a different background” to replace it intentionally.",
+          );
+      }
+      const id =
+        expected && !assetsRef.current[expected.id]
+          ? expected.id
+          : crypto.randomUUID();
       assetsRef.current = { ...assetsRef.current, [id]: media };
       commit({
         ...doc,
@@ -369,7 +414,7 @@ export function TitlesStudio() {
                 Cinematic Titles Studio
               </h1>
               <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[9px] font-semibold text-blue-700">
-                FRONTEND PREVIEW
+                LOCAL RENDERING
               </span>
             </div>
             <p className="text-xs text-slate-500">
@@ -393,7 +438,9 @@ export function TitlesStudio() {
             onChange={(e) => commit({ ...project, title: e.target.value })}
           />
           <span className="text-[10px] text-slate-400">
-            Local session draft · refreshing clears this design
+            {draft.savedId
+              ? "Saved title workspace · original media stays local"
+              : "Unsaved session draft · refreshing clears this design"}
           </span>
         </div>
         {error && (
@@ -417,6 +464,60 @@ export function TitlesStudio() {
               Cancel import
             </button>
           </div>
+        )}
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={draft.saving || draft.account.loading}
+            onClick={draft.save}
+          >
+            {draft.saving ? "Saving metadata…" : "Save titles project"}
+          </Button>
+          {!draft.account.user && (
+            <Link className="text-blue-600" href="/login?next=/titles-studio">
+              Sign in for cloud drafts
+            </Link>
+          )}
+          {draft.savedId && (
+            <Link className="text-blue-600" href={"/projects/" + draft.savedId}>
+              Saved project
+            </Link>
+          )}
+          {draft.message && (
+            <span role="status" className="text-slate-500">
+              {draft.message}
+            </span>
+          )}
+          {draft.error && (
+            <p role="alert" className="text-red-700">
+              {draft.error}
+            </p>
+          )}
+        </div>
+        {render.state === "running" && (
+          <section
+            role="status"
+            aria-label="Active title render"
+            className="sticky top-16 z-30 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 shadow-sm"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="break-words font-semibold">
+                {render.progress?.stage}
+              </p>
+              <p>
+                {render.progress?.fraction !== undefined
+                  ? Math.floor(render.progress.fraction * 100) +
+                    "% of frames encoded · "
+                  : ""}
+                {render.elapsed.toFixed(1)} s elapsed. Editing cancels this
+                render.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={render.cancel}>
+              Cancel title render
+            </Button>
+          </section>
         )}
         <div className={styles.workspace}>
           <aside
@@ -703,7 +804,14 @@ export function TitlesStudio() {
                       volume ? "Mute titles preview" : "Unmute titles preview"
                     }
                     disabled={asset?.kind !== "video"}
-                    onClick={() => setVolume((v) => (v ? 0 : 0.6))}
+                    onClick={() =>
+                      editScene({
+                        background: {
+                          ...scene.background,
+                          volume: volume ? 0 : 0.6,
+                        },
+                      })
+                    }
                   >
                     {volume ? (
                       <Volume2 className="size-3.5" />
@@ -720,7 +828,14 @@ export function TitlesStudio() {
                     max={1}
                     step={0.05}
                     value={volume}
-                    onChange={(e) => setVolume(Number(e.target.value))}
+                    onChange={(e) =>
+                      editScene({
+                        background: {
+                          ...scene.background,
+                          volume: Number(e.target.value),
+                        },
+                      })
+                    }
                     className="w-16 accent-blue-600"
                   />
                 </label>
@@ -756,6 +871,7 @@ export function TitlesStudio() {
                 project={project}
                 asset={asset}
                 importing={importing}
+                render={render}
                 onText={(patch) => {
                   if (text) editText(text.id, patch);
                 }}
@@ -798,8 +914,8 @@ export function TitlesStudio() {
         </div>
         <p className="mt-4 text-center text-[10px] leading-5 text-slate-400">
           Your creative space, on your device. Media stays local. This title
-          draft lives in this tab; cloud saving and video rendering are not
-          connected.
+          draft stays local until you explicitly save metadata. Rendering
+          happens on this device.
         </p>
       </main>
     </WorkspaceShell>

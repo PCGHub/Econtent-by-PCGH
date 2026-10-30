@@ -101,16 +101,16 @@ test("cinematic titles scenes, templates, styling, timed animation and honest ex
   await page.getByRole("tab", { name: "Export", exact: true }).click();
   await expect(
     page.getByRole("button", {
-      name: "Render Preview · coming next",
+      name: "Render Preview",
       exact: true,
     }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", {
-      name: "Export MP4 · not connected",
+      name: "Export MP4",
       exact: true,
     }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   expect(workers).toBe(0);
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
@@ -173,12 +173,10 @@ test("mobile touch manipulation, four ratios, mobile tabs and shared drawer pres
     expect(
       Number(await page.getByLabel("Font size", { exact: true }).inputValue()),
     ).toBeGreaterThan(49);
+    const beforeRotation=await page.getByLabel("Deterministic title animation",{exact:true}).evaluate((node:HTMLCanvasElement)=>node.toDataURL());
     await page.getByLabel("Text rotation", { exact: true }).fill("12");
     await page.getByLabel("Text rotation", { exact: true }).press("Tab");
-    await expect(box.locator('[data-testid^="title-content-"]')).toHaveCSS(
-      "transform",
-      /matrix/,
-    );
+    await expect.poll(()=>page.getByLabel("Deterministic title animation",{exact:true}).evaluate((node:HTMLCanvasElement)=>node.toDataURL())).not.toBe(beforeRotation);
     for (const ratio of ["9:16", "4:5", "1:1", "16:9"]) {
       await page.getByLabel("Titles aspect ratio").selectOption(ratio);
       const r = await page.getByTestId("titles-canvas").boundingBox(),

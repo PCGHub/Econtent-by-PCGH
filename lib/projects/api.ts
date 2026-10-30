@@ -79,6 +79,8 @@ export async function body(
   }
 }
 export function apiError(error: unknown) {
+  const missingTitles=error&&typeof error==='object'&&'code'in error&&['PGRST204','42703'].includes(String(error.code))&&'message'in error&&String(error.message).includes('titles_draft');
+  if(missingTitles)return json({error:"Titles cloud saving needs the approved additive development migration. Your draft and media remain local; rendering and downloads are available."},503);
   return json(
     {
       error:

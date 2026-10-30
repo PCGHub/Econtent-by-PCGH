@@ -1,5 +1,8 @@
 # Cinematic Titles Studio — frontend handoff
 
+Historical frontend milestone. See [rendering integration](CINEMATIC-TITLES-RENDERING.md)
+for current MP4 rendering, shared rasterization and the pending Titles persistence migration.
+
 Branch: `feature/cinematic-titles-studio`.
 Base: verified workspace commit `448d81bc3b64c22215122fac523df4ba27cf7532`.
 Entry: `/titles-studio`, available to guests inside the existing WorkspaceShell.
