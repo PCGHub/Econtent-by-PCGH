@@ -373,7 +373,7 @@ test('shared shell keeps protected sidebar navigation, saved project URLs and mo
  await page.goto('/settings');await expect(page).toHaveURL(/\/login\?next=/);await expect(page.getByTestId('workspace-shell')).toHaveCount(0);
 });
 
-test('titles drafts save/reopen with local media verification when approved schema exists, otherwise fail clearly without a partial project',async({page,browser})=>{
+test('titles drafts save, reopen, autosave and verify local files with direct database RLS isolation',async({page,browser})=>{
  const dir=mkdtempSync(join(tmpdir(),'econtent-title-account-'));
  try{
   execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=red:s=160x90','-frames:v','1',join(dir,'original.png')]);
@@ -381,10 +381,17 @@ test('titles drafts save/reopen with local media verification when approved sche
   await register(page,'titles-'+randomUUID()+'@example.test');await page.goto('/titles-studio');await page.setViewportSize({width:1600,height:1100});
   await page.getByLabel('Titles project name').fill('Account titles metadata');await page.getByRole('tab',{name:'Background',exact:true}).click();await page.getByLabel('Title background type').selectOption('image');await page.getByLabel('Upload title background').setInputFiles(join(dir,'original.png'));await expect(page.getByAltText('Local scene background')).toBeVisible();
   const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/projects'&&r.request().method()==='POST');await page.getByRole('button',{name:'Save titles project',exact:true}).click();const saved=await response;
-  if(saved.status()===503){await expect(page.getByText('Titles cloud saving needs the approved additive development migration.',{exact:false})).toBeVisible();const list=await(await page.request.get('/api/projects')).json();expect(list.projects.some((p:{title:string})=>p.title==='Account titles metadata')).toBe(false);console.log('Titles cloud persistence BLOCKED: owner approval required; migration gate verified, no partial row created.');return;}
   expect(saved.status()).toBe(201);const project=(await saved.json()).project;await page.goto('/projects/'+project.id);await expect(page.getByLabel('Titles project name')).toHaveValue('Account titles metadata');await expect(page.getByAltText('Local scene background')).toHaveCount(0);
   await page.getByRole('tab',{name:'Background',exact:true}).click();await page.getByLabel('Upload title background').setInputFiles(join(dir,'wrong.png'));await expect(page.getByText('This file does not match the saved background.',{exact:false})).toBeVisible();await page.getByLabel('Upload title background').setInputFiles(join(dir,'original.png'));await expect(page.getByAltText('Local scene background')).toBeVisible();
   await page.getByLabel('Titles project name').fill('Updated titles autosave');await expect.poll(async()=>{const data=await(await page.request.get('/api/projects/'+project.id)).json();return data.project?.title}).toBe('Updated titles autosave');await page.reload();await expect(page.getByLabel('Titles project name')).toHaveValue('Updated titles autosave');await expect(page.getByAltText('Local scene background')).toHaveCount(0);
-  const other=await browser.newContext();try{const tab=await other.newPage();await register(tab,'titles-other-'+randomUUID()+'@example.test');expect((await tab.request.get('/api/projects/'+project.id)).status()).toBe(404);await tab.goto('/projects/'+project.id);await expect(tab.getByLabel('Titles project name')).toHaveCount(0)}finally{await other.close()}
+  const other=await browser.newContext();const otherEmail='titles-other-'+randomUUID()+'@example.test';try{const tab=await other.newPage();await register(tab,otherEmail);expect((await tab.request.get('/api/projects/'+project.id)).status()).toBe(404);await tab.goto('/projects/'+project.id);await expect(tab.getByLabel('Titles project name')).toHaveCount(0);
+   const key=readFileSync('.env.local','utf8').match(/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(.+)/)![1].trim();
+   const outsider=createClient('http://localhost:55321',key,{auth:{persistSession:false,autoRefreshToken:false}});expect((await outsider.auth.signInWithPassword({email:otherEmail,password})).error).toBeNull();
+   const read=await outsider.from('projects').select('titles_draft').eq('id',project.id);expect(read.error).toBeNull();expect(read.data).toEqual([]);
+   const changed=await outsider.from('projects').update({titles_draft:null}).eq('id',project.id).select('id');expect(changed.error).toBeNull();expect(changed.data).toEqual([]);
+   const removed=await outsider.from('projects').delete().eq('id',project.id).select('id');expect(removed.error).toBeNull();expect(removed.data).toEqual([]);
+   const malformed=await outsider.from('projects').insert({title:'Rejected malformed titles',titles_draft:{version:1,document:{},sources:[]}});expect(malformed.error?.code).toBe('23514');await outsider.auth.signOut();
+   expect((await(await page.request.get('/api/projects/'+project.id)).json()).project.title).toBe('Updated titles autosave');
+  }finally{await other.close()}
  }finally{rmSync(dir,{recursive:true,force:true})}
 });

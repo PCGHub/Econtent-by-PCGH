@@ -229,5 +229,6 @@ and the accessible mobile drawer preserve active editor state while toggling.
 
 [Cinematic Titles Studio](docs/CINEMATIC-TITLES-RENDERING.md) at `/titles-studio`
 implements scene templates, timed animated text, local backgrounds and real browser-local
-H.264/AAC MP4 previews/downloads. Cloud Titles drafts require the separately proposed,
-owner-approved additive development migration. Existing Cutter/Overlay drafts are unchanged.
+H.264/AAC MP4 previews/downloads. Authenticated Titles drafts save metadata using the
+approved additive development migration; source backgrounds stay local and must be
+reattached on reopening. Existing Cutter/Overlay drafts are unchanged.

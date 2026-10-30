@@ -71,7 +71,7 @@ when measured. Elapsed time is a clock, not an ETA. Cancel is available througho
 rendering. Keep the tab foregrounded; browser scheduling and memory pressure can
 interrupt local work. Animated encoding does not have Fast Cut performance.
 
-## Metadata persistence — approval gate
+## Metadata persistence — approved development migration
 
 Titles drafts use a separate versioned `TitlesDraft`: document plus local background
 fingerprints/name/dimensions/duration/type/size. No File, Blob URL, media bytes or
@@ -82,19 +82,30 @@ existing `/projects/:id` URL. First save is explicit; subsequent edits debounce 
 1.2 seconds. Reopened backgrounds must be reattached; SHA-256, size, dimensions,
 duration and type are verified. Replacing a background requires an explicit choice.
 
-The required additive SQL is **proposed, not applied**:
-[20261030195314_cinematic_titles_drafts.sql](proposed-migrations/20261030195314_cinematic_titles_drafts.sql).
+The approved proposal
+[20261030195314_cinematic_titles_drafts.sql](proposed-migrations/20261030195314_cinematic_titles_drafts.sql)
+was applied unchanged to `econtent-dev` (`wumkmbyohzxtxoovoaeb`) after compatibility
+checks and a successful disposable-database account run. Supabase recorded version
+`20261030220115`; the active repository migration
+[`20261030220115_cinematic_titles_drafts.sql`](../supabase/migrations/20261030220115_cinematic_titles_drafts.sql)
+matches that history. The archived proposal and active migration are byte-identical.
+
 It adds a nullable `titles_draft` JSONB column (32 KiB database limit; application
 metadata is capped at 24 KiB), a shape/size/exclusive-tool check and authenticated
-column grants. It changes no Auth setting, credential, owner policy or existing
-project. It is outside the auto-apply migration folder until owner approval.
+column grants. No Auth setting, credential, owner policy or existing project changed.
+Both existing hosted rows retained the exact original-column digest
+`918f40f44bd4bb827b724f156294096e`; both new fields are null. Owner RLS remained enabled
+and forced; policy digest `efcc5af3464eb661172f11b2a4326e03` was unchanged. All existing
+constraints and the new constraint are validated. Anonymous SELECT on the column
+is denied; authenticated INSERT/UPDATE grants are present. No production or other
+Supabase project was modified.
 
-Before approval, existing cutter/overlay project reads/writes continue against the
-old schema; Titles save fails clearly with no partial project. Application
-projections accept absent nullable future metadata, and legacy writes omit the new
-column. Full real Titles save/reopen/RLS tests remain gated on applying this SQL to
-the disposable test database, then the explicitly authorized Econtent development
-project. No production migration is authorized.
+The account regression now requires a successful Titles save rather than accepting
+the migration gate. It checks saved reopening/editing/autosave, exact local media
+reattachment, cross-account API denial and **direct authenticated PostgREST** SELECT,
+UPDATE and DELETE denial. Malformed Titles JSON must fail the database constraint.
+The unchanged application continues to fail clearly if deployed against a database
+that has not received the additive migration.
 
 ## Verification and limitations
 
@@ -118,13 +129,42 @@ Scene transitions, a standalone music track, title undo/redo and server renderin
 are outside this integration; background-video audio is supported. The original
 Cutter/Overlay functionality and hosted security configuration are preserved.
 
-Local validation: lint, TypeScript and production build passed; 64 unit and eight
-native media tests passed. A full 29-case browser run passed before the final audio
-loop/memory refinement; the final eight focused Titles checks passed afterward.
-All six local account checks passed on rerun: five exercise existing real Auth,
-project and RLS flows; the sixth verifies the Titles migration gate and no partial
-row creation. Real Titles cloud save/reopen/RLS is **not** claimed as verified.
-One initial account run hit a transient duplicate-element assertion during Overlay
-route hydration; the unchanged test passed in isolation and in the complete rerun.
-Hosted read-only inspection confirmed owner RLS is enabled/forced and the Titles
-column is absent. No hosted schema or Auth settings were changed.
+Local validation: lint, TypeScript and production build passed, with 64 unit tests,
+eight native media tests and the full 30-case browser suite. All six real local
+account regressions passed after the approved migration, including the full Titles
+path. The strengthened direct-PostgREST Titles isolation test also passed. Existing
+Cutter/Overlay and Auth behavior remains covered.
+
+## Hosted browser verification without permanent CA changes
+
+`scripts/verify-titles-preview-isolated.mjs PRIVATE_CONFIG_JSON` launches a disposable
+read-only container using existing system browser/libraries. The private JSON file
+contains `{origin, shareUrl}` for a verified immutable Econtent Preview deployment;
+never commit it. No password or service-role key is used. Temporary Vercel share
+access remains limited to that Preview. The browser is limited to two CPUs and
+2 GiB RAM; this is cloud desktop testing, not Android hardware.
+
+The supplied environment CA is imported **only into the container's tmpfs NSS
+store**. No host/browser permanent trust store is mounted or changed. The container
+uses `--rm`; its browser profile, local files, generated negative-control certificate
+and temporary trust store disappear on exit. TLS checking stays enabled, and an
+untrusted local self-signed HTTPS certificate must be rejected before testing the
+Preview. Host NSS certificates were checked unchanged afterward.
+
+The isolated browser verified TLS 1.3, Titles UI HTTP 200, actual FFmpeg loading,
+real MP4 rendering/playback/download with native H.264/AAC validation, login cloud
+configuration, protected Projects navigation, completed Cutter Fast Cut and mobile
+drawer/layout behavior. A synthetic one-second 640×360 title rendered in about
+4.9–5.4 seconds including cold startup in this container; no mobile-speed promise.
+
+These hosted browser checks are guest/account-configuration checks. Actual
+**hosted authenticated two-user writes** are not claimed: the connected SQL tool
+declined a rollback-only role-simulation test without providing a reason. That test
+did not run; no existing user was impersonated and no test row was created in the
+hosted database. Real authenticated save/reopen/edit and cross-user database checks
+were performed on the disposable local Auth/PostgreSQL stack; hosted policies,
+grants and row preservation were checked separately.
+
+The hosted security advisor reports no RLS finding. Its unchanged Auth warning is
+[leaked-password protection disabled](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+Auth settings and billing were left unchanged.
