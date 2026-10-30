@@ -1,2 +1,6 @@
 import { DashboardPage } from '@/components/account-ui'
-export default function DashboardRoute() { return <DashboardPage /> }
+import { WorkspaceShell } from '@/components/workspace-shell'
+
+export default function DashboardRoute() {
+  return <WorkspaceShell><DashboardPage /></WorkspaceShell>
+}

@@ -1,5 +1,6 @@
 import { OverlayStudio } from '@/components/overlay-studio'
+import { WorkspaceShell } from '@/components/workspace-shell'
 
 export default function OverlayStudioPage() {
-  return <OverlayStudio />
+  return <WorkspaceShell><OverlayStudio /></WorkspaceShell>
 }

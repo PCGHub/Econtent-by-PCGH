@@ -1,2 +1,6 @@
 import { ProjectsPage } from '@/components/account-ui'
-export default function ProjectsRoute() { return <ProjectsPage /> }
+import { WorkspaceShell } from '@/components/workspace-shell'
+
+export default function ProjectsRoute() {
+  return <WorkspaceShell><ProjectsPage /></WorkspaceShell>
+}
