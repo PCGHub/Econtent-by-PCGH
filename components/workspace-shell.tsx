@@ -26,7 +26,7 @@ const primaryNavigation = [
   { label: 'Video Cutter', href: '/', icon: Film },
   { label: 'Overlay Studio', href: '/overlay-studio', icon: Clapperboard },
   { label: 'Cinematic Titles', href: '/titles-studio', icon: Sparkles, soon: true },
-  { label: 'Transcription', href: '/transcription', icon: Subtitles, soon: true },
+  { label: 'Transcription', href: '/transcription-studio', icon: Subtitles },
   { label: 'My Projects', href: '/projects', icon: FolderKanban },
 ]
 
