@@ -88,3 +88,9 @@ checks worked, but account navigation correctly reported the unavailable environ
 A fresh Preview after binding the same existing URL/publishable key is required.
 This is deployment configuration ordering, not a credential rotation or Auth change.
 No Supabase schema, credential value or hosted Auth setting was modified.
+
+The guest navigation assertion now checks the login pathname and decoded `next`
+return path, allowing the existing `unavailable=1` marker when cloud configuration
+is absent. It passed with both configured and guest-only production builds; the
+original configured local build was restored without editing environment files.
+The fresh Preview's login page no longer shows the unconfigured-account warning.

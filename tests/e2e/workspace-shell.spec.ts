@@ -86,7 +86,7 @@ test('touch drawer traps focus, closes with Escape/backdrop/button and navigatio
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
   await open.tap();await dialog.getByRole('link',{name:'Video Cutter',exact:true}).tap();await expect(page).toHaveURL(/\/editor$/)
   await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.getByRole('button',{name:'Open workspace navigation',exact:true})).toHaveAttribute('aria-expanded','false');await oneShell(page)
-  await page.getByRole('button',{name:'Open workspace navigation',exact:true}).tap();await page.getByRole('dialog').getByRole('link',{name:'Dashboard',exact:true}).tap();await expect(page).toHaveURL(/\/login\?next=/)
+  await page.getByRole('button',{name:'Open workspace navigation',exact:true}).tap();await page.getByRole('dialog').getByRole('link',{name:'Dashboard',exact:true}).tap();await expect(page).toHaveURL(url=>url.pathname==='/login'&&url.searchParams.get('next')==='/dashboard')
   await expect(page.getByTestId('workspace-shell')).toHaveCount(0)
  }finally{await context.close();rmSync(dir,{recursive:true,force:true})}
 })
