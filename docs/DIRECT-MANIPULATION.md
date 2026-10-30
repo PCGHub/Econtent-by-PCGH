@@ -80,3 +80,9 @@ The 22-case pinned WASM import matrix also passed (20 exports, two explicit
 unsupported rejections). The final account test includes an actual pointer drag
 before autosave, duplicate and reopening, plus restoration of styling and local
 music fingerprint verification. No Android hardware result is claimed.
+
+A final undo regression check preserves metadata key ordering: undoing a size edit
+back to the rendered state immediately restores the existing valid MP4 download,
+without requiring another encode. Lint, TypeScript, all 58 units, a fresh build,
+four focused browser tests and the actual-drag account regression passed after
+this correction.
