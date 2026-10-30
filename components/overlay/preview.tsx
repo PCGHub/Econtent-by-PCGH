@@ -1,6 +1,8 @@
 'use client';
 import {useCallback,useEffect,useRef,useState,type RefObject} from 'react';
 import {geometry,type Composition,type LocalMedia} from '@/lib/composition/model';
+import {CropReposition} from './crop-reposition';
+import {DirectBox} from './direct-box';
 import {TextLayer} from './text-layer';
 import type {LocalAudio} from '@/lib/composition/tracks';
 import {Button} from '@/components/ui/button';
@@ -9,11 +11,16 @@ function MusicNode({id,source,nodes}:{id:string;source:LocalAudio;nodes:RefObjec
  useEffect(()=>{const node=element.current;if(!node)return;const map=nodes.current;map.set(id,node);return()=>{node.pause();node.removeAttribute('src');node.load();map.delete(id);};},[id,nodes]);
  return <audio ref={element} src={source.url} preload="metadata" aria-label={'Music preview '+id}/>;
 }
-export function CompositionPreview({main,secondary,settings,disabled=false,music=[],seekTo,onTime}:{main?:LocalMedia;secondary?:LocalMedia;settings:Composition;disabled?:boolean;music?:LocalAudio[];seekTo?:{time:number;serial:number};onTime?:(time:number)=>void}){
+export function CompositionPreview({main,secondary,settings:original,disabled=false,music=[],seekTo,onTime,onEdit}:{main?:LocalMedia;secondary?:LocalMedia;settings:Composition;disabled?:boolean;music?:LocalAudio[];seekTo?:{time:number;serial:number};onTime?:(time:number)=>void;onEdit?:(next:Composition)=>void}){
+  const [draft,setDraft]=useState<Composition>();const pending=useRef<Composition|undefined>(undefined);const [selected,setSelected]=useState('');const [safe,setSafe]=useState(true);const [reposition,setReposition]=useState<'main'|'layer'|''>('');
+  const settings=draft??original;
+  const change=(next:Composition)=>{pending.current=next;setDraft(next);};
+  const finish=(cancel:boolean)=>{if(!cancel&&pending.current)onEdit?.(pending.current);pending.current=undefined;setDraft(undefined);};
   const primary=useRef<HTMLVideoElement>(null),layer=useRef<HTMLVideoElement>(null),audioNodes=useRef(new Map<string,HTMLAudioElement>()),canvas=useRef<HTMLDivElement>(null);
   const [previewMuted,setPreviewMuted]=useState(false);const lastSeek=useRef(-1);
   useEffect(()=>{const nodes=audioNodes.current;return()=>{for(const node of nodes.values()){node.pause();node.removeAttribute('src');node.load();}};},[]);
   const [playing,setPlaying]=useState(false),[time,setTime]=useState(0),[error,setError]=useState('');
+  const pauseForEdit=()=>{primary.current?.pause();layer.current?.pause();for(const node of audioNodes.current.values())node.pause();setPlaying(false);};
   const duration=Math.max(0,settings.trimEnd-settings.trimStart),g=geometry(settings);
   useEffect(()=>{const video=primary.current;return()=>{if(video){video.pause();video.removeAttribute('src');video.load();}};},[main?.url]);
   useEffect(()=>{const video=layer.current;return()=>{if(video){video.pause();video.removeAttribute('src');video.load();}};},[secondary?.url]);
@@ -68,8 +75,13 @@ export function CompositionPreview({main,secondary,settings,disabled=false,music
           <img src={secondary.url} alt="Photo overlay" className="h-full w-full" style={{objectFit:settings.overlayFit,objectPosition:`${settings.cropX*100}% ${settings.cropY*100}%`}}/>:
           <video key={secondary.url} ref={layer} src={secondary.url} playsInline preload="auto" aria-label="Secondary composition video" className="h-full w-full" style={{objectFit:settings.overlayFit,objectPosition:`${settings.cropX*100}% ${settings.cropY*100}%`}} muted={previewMuted||settings.tracks?.muteSecondary||settings.audio==='none'||settings.audio==='main'} onLoadedMetadata={e=>{e.currentTarget.volume=settings.secondaryVolume;synchronize(time,playing);}} onError={()=>{primary.current?.pause();setPlaying(false);setError('Secondary video decoding failed. Convert it to H.264/AAC in Video Cutter first.');}}/>}
       </div>}
-      {settings.tracks?.text.filter(clip=>time>=clip.start&&time<clip.end).map(clip=><TextLayer key={clip.id} clip={clip} width={g.w} height={g.h}/>)}
+      {secondary&&secondaryVisible&&onEdit&&!reposition&&<DirectBox label="Secondary layer" box={{x:g.overlay.x/g.w,y:g.overlay.y/g.h,width:g.overlay.w/g.w,height:g.overlay.h/g.h}} selected={selected==='layer'} resizable={settings.layout==='pip'} onSelect={()=>{setSelected('layer');pauseForEdit();}} onMove={(x,y)=>{if(settings.layout==='pip')change({...settings,x:Math.max(0,Math.min(x,1-settings.width)),y:Math.max(0,Math.min(y,1-settings.height))});}} onResize={(sx,sy)=>change({...settings,width:Math.max(.05,Math.min(1-settings.x,settings.width*sx)),height:Math.max(.05,Math.min(1-settings.y,settings.height*sy))})} onFinish={finish}/>}
+      {settings.tracks?.text.filter(clip=>time>=clip.start&&time<clip.end).map(clip=><TextLayer key={clip.id} clip={clip} width={g.w} height={g.h} selected={selected===clip.id} onSelect={()=>{setSelected(clip.id);pauseForEdit();}} onEdit={onEdit?patch=>change({...settings,tracks:{...settings.tracks!,text:settings.tracks!.text.map(t=>t.id===clip.id?{...t,...patch}:t)}}):undefined} onFinish={finish}/>)}
+      {safe&&<div aria-label="Canvas safe area" className="pointer-events-none absolute inset-[5%] border border-dashed border-white/50"/>}
+      {selected&&<><div className="pointer-events-none absolute inset-y-0 left-1/2 border-l border-dashed border-blue-300/40"/><div className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-blue-300/40"/></>}
+      {reposition&&(reposition==='main'?settings.mainFit:settings.overlayFit)==='cover'&&((reposition==='main'&&main)||(reposition==='layer'&&secondary))&&<CropReposition role={reposition} media={(reposition==='main'?main:secondary)!} settings={settings} onChange={change} onFinish={finish} onSelect={pauseForEdit}/>}
     </div>
+    {onEdit&&<div className="mt-3 flex flex-wrap items-center gap-2 text-xs"><label><input type="checkbox" checked={safe} onChange={e=>setSafe(e.target.checked)}/> Safe area (5%)</label><Button size="sm" variant="outline" onClick={()=>{setReposition('');onEdit({...original,layout:'pip'});}}>Free layer positioning</Button>{(['main','layer'] as const).map(role=><Button size="sm" variant="outline" key={role} disabled={reposition!==role&&(role==='main'?settings.mainFit:settings.overlayFit)!=='cover'} title="Choose Fill and crop to reposition the visible portion" onClick={()=>{setReposition(reposition===role?'':role);}}>{reposition===role?'Done repositioning':'Reposition '+role}</Button>)}<span>Drag text or the layer; corner handle resizes. Arrow keys nudge. Fill can crop content; Fit shows the whole frame with black bars. Reposition adjusts a Fill crop. Free positioning enables layer resizing.</span></div>}
     {(settings.tracks?.audio??[]).map(clip=>{const source=music.find(s=>s.id===clip.sourceId);return source?<MusicNode key={clip.id+source.url} id={clip.id} source={source} nodes={audioNodes}/>:null;})}
     <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
       <Button variant="outline" size="sm" disabled={!main||disabled} onClick={()=>seek(time-1/settings.fps)} aria-label="Previous frame">− frame</Button>

@@ -8,3 +8,12 @@ test('timed tracks enforce identities, bounds, colors and music source ranges',(
  assert.throws(()=>parseStudioDraft({settings:value,sources:[]},4));
  assert.deepEqual(editClip(music,'move',50,4),{...music,start:3,end:4});assert.equal(editClip(music,'start',.25,4).sourceStart,.25);
 });
+
+test('new text styles round-trip while legacy tracks stay unchanged and unsafe fields are rejected',()=>{
+ const clip={id:'A',text:'One\nTwo',start:0,end:1,fontSize:32,color:'#ffffff',x:.4,y:.6,bold:true,italic:false};
+ const styled={...clip,rotation:25,outline:2,outlineColor:'#000000',shadow:true,background:'#008800',align:'center'};
+ assert.deepEqual(parseTracks({...EMPTY_TRACKS,text:[clip]},2).text[0],clip);
+ assert.deepEqual(parseTracks({...EMPTY_TRACKS,text:[styled]},2).text[0],styled);
+ for(const patch of [{rotation:181},{outline:9},{align:'justify'},{background:'url(secret)'},{shadow:'true'},{unknown:'field'}])assert.throws(()=>parseTracks({...EMPTY_TRACKS,text:[{...styled,...patch}]},2));
+ const draft=parseStudioDraft({settings:{...EMPTY_TRACKS,text:[styled]},sources:[]},2);assert.equal(draft.settings.text[0].rotation,25);
+});

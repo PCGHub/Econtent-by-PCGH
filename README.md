@@ -218,3 +218,7 @@ with one photo or secondary video, synchronized preview and actual H.264/AAC MP4
 composition export. It preserves the separate Fast Cut workflow; compositions require
 explicit video encoding. Signed-in users can save metadata-only drafts and reconnect
 their original local files. No source media is uploaded.
+
+Overlay Studio now supports [direct canvas editing](docs/DIRECT-MANIPULATION.md):
+mouse/touch positioning and resizing, crop repositioning, styled/rotated timed text,
+safe-area guides and spatial undo/redo, with shared preview/export rasterization.
