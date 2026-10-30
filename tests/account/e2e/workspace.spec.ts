@@ -312,3 +312,26 @@ test('browser renews an expiring session and protected pages remain accessible',
  await refreshed;
  await page.reload();await expect(page.getByRole('heading',{name:'Welcome back, Local Creator'})).toBeVisible();
 });
+
+test('overlay cloud drafts autosave, duplicate, reconnect exact local media and remain owner-only',async({page,browser})=>{
+ const dir=mkdtempSync(join(tmpdir(),'econtent-overlay-account-'));let other:Awaited<ReturnType<typeof browser.newContext>>|undefined;
+ try{
+  const input=join(dir,'main.mp4'),photo=join(dir,'photo.png'),wrong=join(dir,'wrong.mp4');
+  for(const [path,color]of [[input,'red'],[wrong,'blue']])execFileSync('ffmpeg',['-v','error','-f','lavfi','-i',`color=${color}:size=320x180:rate=24`,'-t','4','-c:v','libx264',path]);
+  execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=blue:size=160x160','-frames:v','1',photo]);
+  await register(page,'overlay-'+randomUUID()+'@example.test');await page.goto('/overlay-studio');await page.getByLabel('Composition project title').fill('Saved overlay draft');
+  await page.getByLabel('Upload main video',{exact:true}).setInputFiles(input);await page.getByLabel('Upload photo',{exact:true}).setInputFiles(photo);await page.getByLabel('Main trim start',{exact:true}).fill('0.5');await page.getByLabel('Main trim end',{exact:true}).fill('2.5');await page.getByLabel('Layer ends at / image duration end',{exact:true}).fill('2');await page.getByLabel('Composition layout',{exact:true}).selectOption('pip');
+  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Saved settings · source files remain local',{exact:true})).toBeVisible();
+  const url=await page.getByRole('link',{name:'Open saved project',exact:true}).getAttribute('href');expect(url).toMatch(/^\/projects\/[a-f0-9-]+$/);const id=url!.split('/').at(-1)!;
+  await page.getByLabel('Layer opacity',{exact:true}).fill('0.5');
+  await expect.poll(async()=>((await(await page.request.get('/api/projects/'+id)).json()).project.composition.settings.opacity)).toBe(.5);
+  const duplicate=await page.request.post('/api/projects/'+id+'/duplicate',{headers:{origin:'http://localhost:3000'}});expect(duplicate.status()).toBe(201);const copy=(await duplicate.json()).project;expect(copy.composition.settings.layout).toBe('pip');const renamed=await page.request.patch('/api/projects/'+copy.id,{headers:{origin:'http://localhost:3000'},data:{revision:copy.revision,title:'Renamed overlay'}});expect(renamed.status()).toBe(200);expect((await renamed.json()).project.composition.settings.layout).toBe('pip');
+  await page.goto(url!);await expect(page.getByText(/Reconnect both original local files/)).toBeVisible();await expect(page.getByLabel('Main composition video')).toHaveCount(0);await expect(page.getByLabel('Composition layout')).toHaveValue('pip');await expect(page.getByLabel('Main trim start')).toHaveValue('0.5');
+  await page.getByLabel('Upload main video',{exact:true}).setInputFiles(wrong);await expect(page.locator('p[role="alert"]')).toContainText('different original');await expect(page.getByLabel('Main composition video')).toHaveCount(0);
+  await page.getByLabel('Upload main video',{exact:true}).setInputFiles(input);await page.getByLabel('Upload photo',{exact:true}).setInputFiles(photo);await expect(page.getByLabel('Main composition video')).toBeVisible();await expect(page.getByLabel('Layer opacity')).toHaveValue('0.5');
+  await page.getByLabel('Approve local composition encoding').check();await page.getByRole('button',{name:'Export MP4',exact:true}).click();await expect(page.getByRole('heading',{name:'Completed',exact:true})).toBeVisible({timeout:60000});
+  other=await browser.newContext();const otherPage=await other.newPage();const otherEmail='overlay-other-'+randomUUID()+'@example.test';await register(otherPage,otherEmail);expect((await otherPage.request.get('/api/projects/'+id)).status()).toBe(404);expect((await otherPage.request.delete('/api/projects/'+id,{headers:{origin:'http://localhost:3000'}})).status()).toBe(404);
+  const config=readFileSync('.env.local','utf8'),key=config.match(/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(.+)/)![1];
+  const outsider=createClient('http://localhost:55321',key,{auth:{persistSession:false,autoRefreshToken:false}});expect((await outsider.auth.signInWithPassword({email:otherEmail,password})).error).toBeNull();const privateRead=await outsider.from('projects').select('composition').eq('id',id);expect(privateRead.error).toBeNull();expect(privateRead.data).toEqual([]);const update=await outsider.from('projects').update({composition:null}).eq('id',id).select('id');expect(update.data).toEqual([]);await outsider.auth.signOut();
+ }finally{await other?.close();rmSync(dir,{recursive:true,force:true});}
+});

@@ -61,6 +61,7 @@ export function Shell({
               </Link>
             ))}
           </nav>
+          <Link href="/overlay-studio" className="text-sm font-semibold text-blue-600">Overlay Studio</Link>
           <Link href="/projects/new">
             <Button size="sm">
               <Plus /> New project
@@ -119,6 +120,7 @@ function ProjectCard({
       </div>
       <div className="p-2">
         <h2 className="break-words font-semibold">{project.title}</h2>
+        {project.composition&&<p className="mt-1 text-xs font-semibold text-blue-600">Overlay composition · {project.composition.settings.ratio}</p>}
         <p className="mt-1 text-xs text-slate-500">
           Edited {new Date(project.updatedAt).toLocaleString()} ·{" "}
           {project.source

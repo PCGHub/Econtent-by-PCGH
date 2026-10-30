@@ -136,3 +136,10 @@ test("autosave failure retains edits and does not advance revision", async () =>
   await queue.flush();
   assert.deepEqual(revisions, [1, 1]);
 });
+
+test('composition metadata round trips with strict local-only source identities',()=>{
+ const value={title:'Overlay draft',settings:{mode:'manual-trim',range:{start:0,end:2},clipDuration:30,keepRemainder:true,compression:'off',cutStrategy:'precision'},source:{name:'main.mp4',sizeBytes:100,durationSeconds:4,width:320,height:180,mimeType:'video/mp4',sha256:'a'.repeat(64)},status:'draft',composition:{settings:{version:1,layout:'pip',ratio:'9:16',resolution:360,fps:30,trimStart:0,trimEnd:2,overlayStart:0,overlayEnd:2,secondaryStart:0,split:.5,x:.65,y:.65,width:.3,height:.3,opacity:1,mainFit:'cover',overlayFit:'cover',mainCropX:.5,mainCropY:.5,cropX:.5,cropY:.5,audio:'main',mainVolume:1,secondaryVolume:1},layer:{kind:'image',name:'photo.png',sizeBytes:100,durationSeconds:0,width:160,height:160,mimeType:'image/png',sha256:'b'.repeat(64)}}};
+ const parsed=parseProjectDraft(value),row=toRow(parsed);assert.deepEqual(row.composition,parsed.composition);
+ assert.throws(()=>parseProjectDraft({...value,composition:{...value.composition,layer:{...value.composition.layer,url:'https://example.com'}}}));
+ assert.throws(()=>parseProjectDraft({...value,composition:{...value.composition,settings:{...value.composition.settings,trimEnd:3}}}));
+});

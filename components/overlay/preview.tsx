@@ -6,6 +6,8 @@ export function CompositionPreview({main,secondary,settings,disabled=false}:{mai
   const primary=useRef<HTMLVideoElement>(null),layer=useRef<HTMLVideoElement>(null);
   const [playing,setPlaying]=useState(false),[time,setTime]=useState(0),[error,setError]=useState('');
   const duration=Math.max(0,settings.trimEnd-settings.trimStart),g=geometry(settings);
+  useEffect(()=>{const video=primary.current;return()=>{if(video){video.pause();video.removeAttribute('src');video.load();}};},[main?.url]);
+  useEffect(()=>{const video=layer.current;return()=>{if(video){video.pause();video.removeAttribute('src');video.load();}};},[secondary?.url]);
   useEffect(()=>{if(primary.current)primary.current.volume=settings.mainVolume;if(layer.current)layer.current.volume=settings.secondaryVolume;},[settings.mainVolume,settings.secondaryVolume]);
   const secondaryVisible=time>=settings.overlayStart&&time<settings.overlayEnd;
   const synchronize=useCallback((at:number,play:boolean)=>{
@@ -26,7 +28,7 @@ export function CompositionPreview({main,secondary,settings,disabled=false}:{mai
     const frame=()=>{
       const at=Math.max(0,video.currentTime-settings.trimStart);
       if(at>=duration){video.pause();layer.current?.pause();setPlaying(false);setTime(duration);return;}
-      synchronize(at,true);
+      synchronize(at,!video.paused&&video.readyState>=3);
       if(performance.now()-last>80){setTime(at);last=performance.now();}
       raf=requestAnimationFrame(frame);
     };

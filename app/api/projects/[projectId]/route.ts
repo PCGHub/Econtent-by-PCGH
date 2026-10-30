@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     if (
       Object.keys(input).some(
         (key) =>
-          !["revision", "title", "settings", "source", "status"].includes(key),
+          !["revision", "title", "settings", "source", "status", "composition"].includes(key),
       )
     )
       throw new ApiError(400, "Unexpected project fields");
@@ -58,6 +58,7 @@ export async function PATCH(request: NextRequest, context: Context) {
         settings: input.settings ?? project.settings,
         source: input.source === undefined ? project.source : input.source,
         status: input.status ?? project.status,
+        composition: input.composition === undefined ? project.composition : input.composition,
       }),
     );
     const { data, error } = await client

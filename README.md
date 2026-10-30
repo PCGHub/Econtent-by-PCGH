@@ -210,3 +210,11 @@ for the expanded remux policy, precise rejection reasons and desktop benchmark l
 See [browser video import and standard MP4 export](docs/VIDEO-IMPORT.md) for the current
 verified format matrix, HEVC conversion, audio-only conversion, source timing, mobile
 memory safeguards, limitations and reproducible tests.
+
+## Video Overlay Studio (integration Preview)
+
+The browser-local [Overlay Studio](docs/OVERLAY-STUDIO.md) combines one main video
+with one photo or secondary video, synchronized preview and actual H.264/AAC MP4
+composition export. It preserves the separate Fast Cut workflow; compositions require
+explicit video encoding. Signed-in users can save metadata-only drafts and reconnect
+their original local files. No source media is uploaded.
