@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
 import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
-import { brotliCompressSync, brotliDecompressSync, constants } from 'node:zlib'
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 await mkdir('public/ffmpeg', {recursive:true})
 await cp('node_modules/@ffmpeg/ffmpeg/dist/esm','public/ffmpeg/ffmpeg',{recursive:true})
@@ -10,18 +9,17 @@ await cp('workers/ffmpeg-core-loader.js','public/ffmpeg/core-loader.js')
 const coreVersion=JSON.parse(await readFile('node_modules/@ffmpeg/core/package.json','utf8')).version
 const wrapperVersion=JSON.parse(await readFile('node_modules/@ffmpeg/ffmpeg/package.json','utf8')).version
 const wasm=await readFile('public/ffmpeg/core/ffmpeg-core.wasm'), wasmSha256=hash(wasm)
-const cacheDir='node_modules/.cache/econtent';await mkdir(cacheDir,{recursive:true})
-const packedPath=`${cacheDir}/${wasmSha256}-br11-v1.br`
-let packed
-try {const bytes=await readFile(packedPath);if(hash(brotliDecompressSync(bytes))===wasmSha256)packed=bytes}catch{}
-if(!packed){packed=brotliCompressSync(wasm,{params:{[constants.BROTLI_PARAM_QUALITY]:11,[constants.BROTLI_PARAM_SIZE_HINT]:wasm.length}});await writeFile(packedPath,packed)}
+// Serve the exact WASM bytes. A .wasm URL containing Brotli bytes without
+// Content-Encoding: br cannot pass WebAssembly magic/integrity checks.
+// The browser may still receive HTTP compression when the host negotiates it.
+const packed=wasm
 await cp('node_modules/@noble/hashes/LICENSE','public/ffmpeg/noble-hashes.LICENSE')
 await mkdir('public/ffmpeg/hash',{recursive:true})
 for(const name of ['sha2.js','_md.js','_u64.js','utils.js'])await cp('node_modules/@noble/hashes/'+name,'public/ffmpeg/hash/'+name)
 const files=['hash/sha2.js','hash/_md.js','hash/_u64.js','hash/utils.js','startup-worker.js','core-loader.js','ffmpeg/worker.js','ffmpeg/const.js','ffmpeg/errors.js','core/ffmpeg-core.js']
 const assets={}
 for(const name of files){const bytes=await readFile('public/ffmpeg/'+name);assets[name]={bytes:bytes.length,sha256:hash(bytes)}}
-const metadata={coreVersion,wrapperVersion,wasmSha256,coreSha256:assets['core/ffmpeg-core.js'].sha256,wasmBytes:wasm.length,wasmWireBytes:packed.length,wasmEncoding:'br',wasmWireSha256:hash(packed),assets}
+const metadata={coreVersion,wrapperVersion,wasmSha256,coreSha256:assets['core/ffmpeg-core.js'].sha256,wasmBytes:wasm.length,wasmWireBytes:packed.length,wasmEncoding:'identity',wasmWireSha256:hash(packed),assets}
 const release=hash(JSON.stringify(metadata)),releasePath='/ffmpeg/releases/'+release
 const manifest={...metadata,releasePath}
 await mkdir('public'+releasePath+'/hash',{recursive:true});
