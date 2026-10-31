@@ -36,7 +36,7 @@ export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (m
       let mod: {pipeline: (task:string,model:string,opts:Record<string,unknown>)=>Promise<Pipeline>}
       try {
         const moduleUrl = 'https://esm.sh/@huggingface/transformers@3.7.6?bundle&target=es2022'
-        mod = await bounded(import(/* webpackIgnore: true */ moduleUrl) as Promise<typeof mod>,30000,'runtime')
+        mod = await bounded(import(/* webpackIgnore: true */ moduleUrl) as Promise<{pipeline: (task:string,model:string,opts:Record<string,unknown>)=>Promise<Pipeline>}>,30000,'runtime')
       } catch(e) {throw classify('runtime',e)}
       onStatus('Downloading and initializing English speech model…')
       try {return await bounded(mod.pipeline('automatic-speech-recognition','onnx-community/whisper-tiny.en',{device:'wasm',dtype:'q8'}),90000,'model')}
