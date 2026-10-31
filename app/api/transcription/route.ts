@@ -22,8 +22,9 @@ export async function POST(request:NextRequest) {
   const language=String(form.get('language')||'English')
   const upstream=new FormData()
   upstream.append('file',file,file.name)
-  upstream.append('model','gpt-4o-mini-transcribe')
-  upstream.append('response_format','json')
+  upstream.append('model','whisper-1')
+  upstream.append('response_format','verbose_json')
+  upstream.append('timestamp_granularities[]','segment')
   if(LANGUAGES[language])upstream.append('language',LANGUAGES[language])
   try {
     const controller=new AbortController()
@@ -35,9 +36,9 @@ export async function POST(request:NextRequest) {
       const detail=await response.text()
       return NextResponse.json({code:'PROVIDER_ERROR',stage:'provider',error:`Speech provider returned HTTP ${response.status}.`,recommendation:response.status===401?'Check the server-side API credential.':response.status===429?'Check API rate limits, billing and quota.':'Check supported media encoding and provider availability.',detail:detail.slice(0,300)},{status:502})
     }
-    const result=await response.json() as {text?:string}
+    const result=await response.json() as {text?:string;segments?:Array<{start:number;end:number;text:string}>}
     if(!result.text?.trim())return NextResponse.json({code:'EMPTY_TRANSCRIPT',error:'The speech provider returned no recognized text.'},{status:422})
-    return NextResponse.json({text:result.text.trim(),language,provider:'OpenAI',timestamps:'none'})
+    return NextResponse.json({text:result.text.trim(),segments:(result.segments||[]).filter(x=>Number.isFinite(x.start)&&Number.isFinite(x.end)&&x.end>x.start&&x.text?.trim()).map(x=>({start:x.start,end:x.end,text:x.text.trim()})),language,provider:'OpenAI Whisper',timestamps:'segment'})
   } catch(error){
     return NextResponse.json({code:'PROVIDER_UNREACHABLE',stage:'provider',error:'Server transcription failed or timed out.',recommendation:'Check the provider connection and try a shorter recording.',detail:error instanceof Error?error.message:'Unknown error'},{status:504})
   }
