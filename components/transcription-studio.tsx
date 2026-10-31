@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { serializeSubtitles, type SubtitleSegment } from '@/lib/transcription/subtitles'
+import { parseSubtitles, serializeSubtitles, type SubtitleSegment } from '@/lib/transcription/subtitles'
 import {
   AudioLines,
   Check,
@@ -54,6 +54,7 @@ export function TranscriptionStudio() {
   const [media, setMedia] = useState<{name:string;url:string;type:string;size:number}|null>(null)
   const mediaRef = useRef<HTMLVideoElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const captionsRef = useRef<HTMLInputElement>(null)
   const [duration,setDuration] = useState(0)
   const [position,setPosition] = useState(0)
   const [error,setError] = useState('')
@@ -78,6 +79,16 @@ export function TranscriptionStudio() {
   function seconds(time:string) {const parts=time.split(':').map(Number);return parts.length===2&&parts.every(Number.isFinite)?parts[0]*60+parts[1]:NaN}
   function addSegment() {const start=Math.max(0,position),end=Math.min(duration||start+3,start+3);const id=Date.now();setSegments(p=>[...p,{id,start:formatTime(start),end:formatTime(Math.max(start+0.1,end)),speaker:'Speaker 1',text:''}]);setActiveId(id)}
   function formatTime(t:number) {if(!Number.isFinite(t)||t<0)t=0;return String(Math.floor(t/60)).padStart(2,'0')+':'+(t%60).toFixed(2).padStart(5,'0')}
+  async function importCaptions(file?:File) {
+    if(!file)return
+    try {const format=file.name.toLowerCase().endsWith('.vtt')?'vtt':file.name.toLowerCase().endsWith('.srt')?'srt':null
+      if(!format)throw new Error('Select an SRT or VTT subtitle file')
+      if(file.size>2*1024*1024)throw new Error('Subtitle file exceeds 2 MB')
+      const parsed=parseSubtitles(await file.text(),format)
+      setSegments(parsed.map((x,i)=>({id:i+1,start:formatTime(x.start),end:formatTime(x.end),speaker:'Speaker 1',text:x.text})))
+      setActiveId(parsed.length?1:0);setError('')
+    }catch(e){setError(e instanceof Error?e.message:'Unable to import subtitles')}
+  }
   function download(format:'txt'|'srt'|'vtt') {
     try {const cues:SubtitleSegment[]=segments.map(x=>({start:seconds(x.start),end:seconds(x.end),text:x.text}));const body=serializeSubtitles(cues,format);if(!body.trim()||body.trim()==='WEBVTT'){setError('Add transcript text before exporting');return}
       const blob=new Blob([body],{type:format==='vtt'?'text/vtt;charset=utf-8':'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='transcript.'+format;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),30000);setError('')
@@ -105,7 +116,7 @@ export function TranscriptionStudio() {
 
         <section className={cn('min-w-0 bg-slate-50 p-4 dark:bg-slate-950 sm:p-6', mobilePanel !== 'transcript' && 'hidden lg:block')}>
           <div className="mx-auto flex max-w-4xl flex-col gap-5"><div className="rounded-2xl border border-slate-200 bg-slate-950 p-4 text-white shadow-sm dark:border-slate-800"><div className="flex aspect-[16/6] items-center justify-center rounded-xl bg-gradient-to-br from-slate-800 via-blue-950 to-slate-900">{media ? <video ref={mediaRef} src={media.url} controls playsInline className="h-full max-h-80 w-full object-contain" onLoadedMetadata={e=>setDuration(e.currentTarget.duration||0)} onTimeUpdate={e=>setPosition(e.currentTarget.currentTime)} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} /> :<div className="text-center"><button type="button" disabled className="mx-auto flex size-12 items-center justify-center rounded-full bg-white text-slate-950 transition-transform hover:scale-105" aria-label={playing ? 'Pause preview' : 'Play preview'}>{playing ? <Pause className="size-5" /> : <Play className="ml-0.5 size-5" />}</button><p className="mt-3 text-xs text-slate-300">Import media to preview playback</p></div> }</div><div className="mt-4 flex items-center gap-3"><span className="font-mono text-[11px] text-slate-400">{formatTime(position)}</span><div className="relative flex h-8 flex-1 items-center gap-0.5 overflow-hidden">{waveform.map((height, index) => <span key={index} className={cn('w-1 shrink-0 rounded-full', index < 14 ? 'bg-blue-400' : 'bg-slate-600')} style={{ height: `${height}%` }} />)}</div><span className="font-mono text-[11px] text-slate-400">{formatTime(duration)}</span></div><div className="mt-2 flex items-center justify-between text-[11px] text-slate-400"><span>Waveform preview</span><span>Playback follows selected segment</span></div></div>
-            <div className="flex items-center justify-between"><div><SectionTitle icon={FileText}>Transcript</SectionTitle><p className="mt-1 text-xs text-slate-500">Create and edit manual captions with timestamps. Automatic transcription is pending.</p></div><div className="flex items-center gap-1"><Button size="sm" variant="outline" onClick={addSegment}><Plus className="size-4"/>Add caption</Button><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-white" aria-label="Undo"><Undo2 className="size-4" /></button><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-white" aria-label="Redo"><Redo2 className="size-4" /></button></div></div>
+            <div className="flex items-center justify-between"><div><SectionTitle icon={FileText}>Transcript</SectionTitle><p className="mt-1 text-xs text-slate-500">Create and edit manual captions with timestamps. Automatic transcription is pending.</p></div><div className="flex items-center gap-1"><Button size="sm" variant="outline" onClick={addSegment}><Plus className="size-4"/>Add caption</Button><input ref={captionsRef} type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" className="hidden" onChange={e=>{void importCaptions(e.target.files?.[0]);e.target.value=""}}/><Button size="sm" variant="outline" onClick={()=>captionsRef.current?.click()}>Import SRT/VTT</Button><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-white" aria-label="Undo"><Undo2 className="size-4" /></button><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-white" aria-label="Redo"><Redo2 className="size-4" /></button></div></div>
             <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800"><button type="button" onClick={() => setTab('transcript')} className={cn('border-b-2 px-3 py-2 text-xs font-semibold', tab === 'transcript' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500')}>Transcript</button><button type="button" onClick={() => setTab('subtitles')} className={cn('border-b-2 px-3 py-2 text-xs font-semibold', tab === 'subtitles' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500')}>Subtitle preview</button></div>
             {tab === 'transcript' ? <div className="flex flex-col gap-2">{visibleSegments.length ? visibleSegments.map((segment) => <button type="button" key={segment.id} onClick={() => {setActiveId(segment.id);if(mediaRef.current){mediaRef.current.currentTime=seconds(segment.start)||0}}} className={cn('flex gap-3 rounded-xl border p-3 text-left transition-colors', activeId === segment.id ? 'border-blue-400 bg-blue-50/70 shadow-sm dark:border-blue-500/60 dark:bg-blue-500/10' : 'border-slate-200 bg-white hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900')}><span className="shrink-0 pt-1 font-mono text-[10px] text-slate-400">{segment.start}</span><span className="min-w-0 flex-1"><span className="mb-1 flex items-center gap-2 text-[11px] font-bold text-blue-700 dark:text-blue-300"><UserRound className="size-3" />{segment.speaker}</span><span className="block text-sm leading-6 text-slate-700 dark:text-slate-200">{segment.text}</span></span><MoreHorizontal className="size-4 shrink-0 text-slate-400" /></button>) : <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">No transcript segments yet. Add a caption to begin.</div>}</div> : <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900"><Sparkles className="mx-auto size-8 text-blue-500" /><p className="mt-3 text-sm font-semibold">Subtitle preview</p><p className="mt-1 text-xs text-slate-500">Your styled subtitle preview will appear here after transcription is available.</p></div>}
           </div>
