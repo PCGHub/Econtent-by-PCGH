@@ -56,16 +56,11 @@ export default async function loadCore(options) {
         report({phase:'compile', receivedBytes:received, totalBytes:manifest.wasmBytes});
       },
     }));
-    let compilationStream=monitored,cacheWrite;
-    if(storage&&!cachedResponse){
-      const streams=monitored.tee();compilationStream=streams[0];
-      // put() commits atomically only after the validation stream closes successfully.
-      cacheWrite=storage.put(cacheKey,new Response(streams[1],{headers:{'Content-Type':'application/wasm','x-econtent-sha256':manifest.wasmSha256}})).then(()=>true,()=>false);
-    }
-    // Compile as bytes arrive, rather than retaining another full binary on the main thread.
-    const compiledModule = typeof WebAssembly.compileStreaming === 'function'
-      ? await WebAssembly.compileStreaming(new Response(compilationStream, {headers:{'Content-Type':'application/wasm'}}))
-      : await WebAssembly.compile(await new Response(compilationStream).arrayBuffer());
+    // Avoid compileStreaming + tee(CacheStorage) on browsers where simultaneous
+    // stream consumers can abort with "Failed to read from a ReadableStream".
+    // Fully validate the response before compiling; do not cache partial bytes.
+    const verifiedBytes = await new Response(monitored).arrayBuffer();
+    const compiledModule = await WebAssembly.compile(verifiedBytes);
     const compiledAt=performance.now();
     const timing=performance.getEntriesByName(asset('core/ffmpeg-core.wasm')).at(-1);
     const measured=timing && timing.decodedBodySize>0;
@@ -75,14 +70,6 @@ export default async function loadCore(options) {
       compileFinalizeMs:compiledAt-bodyEnded,transferBytes,
       networkBodyBytes:cachedResponse?0:measured?(timing.transferSize>0?timing.encodedBodySize:0):undefined,
       cached:cachedResponse|| (measured?timing.transferSize===0:undefined),cacheStorage:cachedResponse,cacheLookupMs,cacheAvailable:!!storage,cacheStored:cachedResponse};
-    if(cacheWrite){
-      report({phase:'cache',...metrics});const savingAt=performance.now();let timer;
-      metrics.cacheStored=await Promise.race([cacheWrite,new Promise(resolve=>{timer=setTimeout(()=>resolve(false),5000);})]);
-      clearTimeout(timer);metrics.cacheWriteMs=performance.now()-savingAt;
-      if(metrics.cacheStored){
-        try{for(const request of await storage.keys())if(request.url!==cacheKey)await storage.delete(request);}catch{}
-      }
-    }
     report({phase:'initialize',...metrics});
     const initializedAt=performance.now();
     let rejectInstantiation;
