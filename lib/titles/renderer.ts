@@ -259,12 +259,12 @@ export class BrowserTitlesRenderer implements TitlesRenderer {
       }
       const chunks: string[] = [];
       let retainedBytes = 0;
-      // Bound uncompressed frame working set at 16 MiB, and at most one second per batch.
+      // Bound uncompressed frame working set at 16 MiB, and at most three seconds per batch; JPEG intermediates reduce worker memory pressure.
       const batch = Math.max(
         1,
         Math.min(
-          project.output.fps,
-          Math.floor((16 * 1048576) / (budget.width * budget.height * 4)),
+          project.output.fps * 3,
+          Math.floor((48 * 1048576) / (budget.width * budget.height * 4)),
         ),
       );
       let activeId: string | undefined;
@@ -346,11 +346,12 @@ export class BrowserTitlesRenderer implements TitlesRenderer {
               canvas.toBlob(
                 (b) =>
                   b ? resolve(b) : reject(Error("Frame rasterization failed")),
-                "image/png",
+                "image/jpeg",
+                0.9,
               ),
             );
             signal.throwIfAborted();
-            const path = `frame-${String(f).padStart(3, "0")}.png`;
+            const path = `frame-${String(f).padStart(3, "0")}.jpg`;
             paths.add(path);
             framePaths.push(path);
             const bytes = new Uint8Array(await blob.arrayBuffer());
