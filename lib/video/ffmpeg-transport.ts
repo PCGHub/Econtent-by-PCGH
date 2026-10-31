@@ -2,7 +2,7 @@ import { FFMPEG_RELEASE_PATH } from "./ffmpeg-assets-generated";
 import type { FFmpegWorker } from "./ffmpeg-browser";
 import type { StartupProgress } from "./types";
 
-export const STARTUP_LIMITS = { worker: 15_000, downloadIdle: 30_000, downloadTotal: 300_000, compile: 60_000, initialize: 60_000, cache:10_000 };
+export const STARTUP_LIMITS = { worker: 15_000, downloadIdle: 30_000, downloadTotal: 180_000, compile: 60_000, initialize: 60_000, cache:10_000 };
 const labels: Record<string, string> = {
   worker: "Start module worker", core: "Download/import FFmpeg JavaScript", download: "Download FFmpeg WASM",
   cache:"Check/save verified FFmpeg asset cache", compile: "Compile FFmpeg WebAssembly", initialize: "Initialize FFmpeg memory/runtime", ready: "FFmpeg runtime ready",
@@ -46,7 +46,7 @@ export class FFmpegTransport implements FFmpegWorker {
       const advancing = Number.isSafeInteger(data.receivedBytes) && data.receivedBytes! > this.received;
       if (changed || advancing) this.deadline(`${stageName} stalled: no new asset bytes for 30 seconds`, this.limits.downloadIdle);
       if (advancing) this.received = data.receivedBytes!;
-      if (changed) this.total = setTimeout(() => this.fail(new Error(`${stageName} exceeded its five-minute asset-read limit. Retry on a stable connection if the asset is not cached. No encoding started.`)), this.limits.downloadTotal);
+      if (changed) this.total = setTimeout(() => this.fail(new Error(`${stageName} exceeded its three-minute asset-read limit. Retry on a stable connection if the asset is not cached. No encoding started.`)), this.limits.downloadTotal);
     } else if (changed) {
       if (data.phase === "compile") this.deadline("WebAssembly compilation did not finish within 60 seconds", this.limits.compile);
       if (data.phase === "initialize") this.deadline("FFmpeg memory/runtime initialization did not finish within 60 seconds; device memory may be insufficient", this.limits.initialize);
