@@ -11,7 +11,7 @@ export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (m
     modelPromise = (async () => {
       // Load from a pinned ESM CDN URL without adding a new build dependency.
       // Browser compatibility and network access are required.
-      const moduleUrl = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6'
+      const moduleUrl = 'https://esm.sh/@huggingface/transformers@3.7.6?bundle&target=es2022'
       const mod = await import(/* webpackIgnore: true */ moduleUrl) as {pipeline: (task: string, model: string, opts: Record<string, unknown>) => Promise<Pipeline>}
       return mod.pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', {device: 'wasm', dtype: 'q8'})
     })().catch(error => {modelPromise = null;throw error})
