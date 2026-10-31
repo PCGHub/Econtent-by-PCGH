@@ -157,7 +157,44 @@ export class BrowserTitlesRenderer implements TitlesRenderer {
             this.guard.progress();
           }
         });
-        await worker.load({ coreURL: "", wasmURL: "" });
+        try {
+          await worker.load({ coreURL: "", wasmURL: "" });
+        } catch (startupError) {
+          // A failed startup terminates its worker. Retry only immediate network/
+          // worker failures; never repeat a lengthy stalled model/asset download.
+          const message = startupError instanceof Error ? startupError.message : String(startupError);
+          if (signal.aborted || /exceeded|stalled|timeout|memory|compilation/i.test(message)) {
+            throw new Error("Cinematic Titles could not initialize FFmpeg: " + message);
+          }
+          report("Retrying FFmpeg startup once with a fresh worker");
+          worker.terminate();
+          signal.throwIfAborted();
+          worker = new FFmpegTransport((startup) =>
+            onProgress({
+              stage: startup.label || startup.phase,
+              startup,
+              completedFrames: done,
+              totalFrames: budget.frames,
+            }),
+          );
+          this.worker = worker;
+          worker.on("log", ({ message }) => {
+            this.log = (this.log + "\n" + message).slice(-4096);
+          });
+          worker.on("progress", ({ time }) => {
+            if (time > this.lastTime) {
+              this.lastTime = time;
+              this.guard.progress();
+            }
+          });
+          try {
+            await worker.load({ coreURL: "", wasmURL: "" });
+          } catch (retryError) {
+            throw new Error("Cinematic Titles FFmpeg startup failed twice. " +
+              (retryError instanceof Error ? retryError.message : String(retryError)) +
+              " Check whether the FFmpeg assets load in this Preview deployment.");
+          }
+        }
       }
       signal.throwIfAborted();
       const sourcePaths = new Map<string, string>(),
