@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { prepareSpeechAudio } from '@/lib/transcription/audio-preparation'
 import { parseSubtitles, serializeSubtitles, type SubtitleSegment } from '@/lib/transcription/subtitles'
 import {
   AudioLines,
@@ -58,6 +59,10 @@ export function TranscriptionStudio() {
   const [duration,setDuration] = useState(0)
   const [position,setPosition] = useState(0)
   const [error,setError] = useState('')
+  const [audioInfo,setAudioInfo] = useState('')
+  const [preparing,setPreparing] = useState(false)
+  const selectedFile = useRef<File|null>(null)
+  const audioAbort = useRef<AbortController|null>(null)
   useEffect(() => () => { if (media) URL.revokeObjectURL(media.url) }, [media])
   const [preset, setPreset] = useState('YouTube')
   const [status, setStatus] = useState<'idle' | 'processing' | 'saved'>('idle')
@@ -75,11 +80,18 @@ export function TranscriptionStudio() {
     setStatus('idle')
   }
 
+  async function benchmarkAudio() {
+    if(!selectedFile.current||preparing)return
+    const controller=new AbortController();audioAbort.current=controller;setPreparing(true);setAudioInfo('');setError('')
+    try {const started=performance.now();const audio=await prepareSpeechAudio(selectedFile.current,controller.signal);setAudioInfo(`Prepared ${audio.durationSeconds.toFixed(1)}s of mono 16 kHz audio (${audio.samples.length} samples) in ${((performance.now()-started)/1000).toFixed(1)}s. No speech recognition performed.`)}
+    catch(e){setError(e instanceof Error?e.message:'Audio preparation failed')}
+    finally{setPreparing(false);audioAbort.current=null}
+  }
   function loadFile(file?:File) {
     if (!file) return
     if (!(file.type.startsWith('video/') || file.type.startsWith('audio/'))) {setError('Select a supported audio or video file');return}
     if (file.size > 2*1024*1024*1024) {setError('File exceeds 2 GB');return}
-    setError('');setMedia({name:file.name,url:URL.createObjectURL(file),type:file.type,size:file.size});setDuration(0);setPosition(0);setPlaying(false);setSegments([]);setActiveId(0)
+    audioAbort.current?.abort();selectedFile.current=file;setAudioInfo('');setError('');setMedia({name:file.name,url:URL.createObjectURL(file),type:file.type,size:file.size});setDuration(0);setPosition(0);setPlaying(false);setSegments([]);setActiveId(0)
   }
   function seconds(time:string) {const parts=time.split(':').map(Number);return parts.length===2&&parts.every(Number.isFinite)?parts[0]*60+parts[1]:NaN}
   function addSegment() {snapshot();const start=Math.max(0,position),end=Math.min(duration||start+3,start+3);const id=Date.now();setSegments(p=>[...p,{id,start:formatTime(start),end:formatTime(Math.max(start+0.1,end)),speaker:'Speaker 1',text:''}]);setActiveId(id)}
@@ -127,7 +139,7 @@ export function TranscriptionStudio() {
 
       <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)_330px]">
         <aside className={cn('border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 lg:border-b-0 lg:border-r', mobilePanel !== 'media' && 'hidden lg:block')}>
-          <div className="flex flex-col gap-6"><SectionTitle icon={FileAudio}>Media</SectionTitle><div className="rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 p-4 text-center dark:border-blue-500/40 dark:bg-blue-500/10"><Upload className="mx-auto mb-2 size-7 text-blue-600" /><p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Drop media here</p><p className="mt-1 text-xs text-slate-500">MP4, MOV, MP3, WAV up to 2GB</p><input ref={fileRef} type="file" accept="audio/*,video/*" className="hidden" onChange={e=>loadFile(e.target.files?.[0])} /><Button variant="outline" size="sm" className="mt-3" onClick={() => fileRef.current?.click()}><Plus data-icon="inline-start" />{media ? 'Change file' : 'Choose file'}</Button></div><div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"><div className="flex items-center gap-3"><div className="flex size-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"><FileAudio className="size-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{media?.name ?? "No file selected"}</p><p className="text-[11px] text-slate-500">{media ? (media.size/1048576).toFixed(1)+" MB" : "Choose audio or video"}</p></div><button type="button" className="text-slate-400" aria-label="Remove media" onClick={()=>{setMedia(null);setSegments([]);setDuration(0)}}><X className="size-4" /></button></div></div><div><SectionTitle icon={Languages}>Language</SectionTitle><button type="button" className="mt-3 flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-700"><span>English (US)</span><ChevronDown className="size-4 text-slate-400" /></button></div><div><SectionTitle icon={UserRound}>Speakers</SectionTitle><div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-700"><span>2 speakers</span><button type="button" className="text-blue-600"><Plus className="size-4" /></button></div></div><div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-center justify-between"><span className="text-xs font-semibold">Transcription status</span><span className="size-2 rounded-full bg-amber-400" /></div><p className="mt-2 text-[11px] leading-5 text-slate-500">{status === 'processing' ? 'Preparing transcription…' : status === 'saved' ? 'Draft saved locally' : 'Manual editing available. Automatic speech recognition is not connected.'}</p><Button className="mt-3 w-full" size="sm" disabled title="Automatic speech recognition is not yet connected"><WandSparkles data-icon="inline-start" />{status === 'processing' ? 'Preparing…' : 'Transcribe media'}</Button></div></div>
+          <div className="flex flex-col gap-6"><SectionTitle icon={FileAudio}>Media</SectionTitle><div className="rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 p-4 text-center dark:border-blue-500/40 dark:bg-blue-500/10"><Upload className="mx-auto mb-2 size-7 text-blue-600" /><p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Drop media here</p><p className="mt-1 text-xs text-slate-500">MP4, MOV, MP3, WAV up to 2GB</p><input ref={fileRef} type="file" accept="audio/*,video/*" className="hidden" onChange={e=>loadFile(e.target.files?.[0])} /><Button variant="outline" size="sm" className="mt-3" onClick={() => fileRef.current?.click()}><Plus data-icon="inline-start" />{media ? 'Change file' : 'Choose file'}</Button></div><div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"><div className="flex items-center gap-3"><div className="flex size-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"><FileAudio className="size-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{media?.name ?? "No file selected"}</p><p className="text-[11px] text-slate-500">{media ? (media.size/1048576).toFixed(1)+" MB" : "Choose audio or video"}</p></div><button type="button" className="text-slate-400" aria-label="Remove media" onClick={()=>{audioAbort.current?.abort();selectedFile.current=null;setMedia(null);setAudioInfo('');setSegments([]);setDuration(0)}}><X className="size-4" /></button></div></div><div><SectionTitle icon={Languages}>Language</SectionTitle><button type="button" className="mt-3 flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-700"><span>English (US)</span><ChevronDown className="size-4 text-slate-400" /></button></div><div><SectionTitle icon={UserRound}>Speakers</SectionTitle><div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-700"><span>2 speakers</span><button type="button" className="text-blue-600"><Plus className="size-4" /></button></div></div><div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-center justify-between"><span className="text-xs font-semibold">Transcription status</span><span className="size-2 rounded-full bg-amber-400" /></div><p className="mt-2 text-[11px] leading-5 text-slate-500">{status === 'processing' ? 'Preparing transcription…' : status === 'saved' ? 'Draft saved locally' : 'Manual editing is available. Test audio preparation below; automatic speech recognition is not connected.'}</p><Button className="mt-3 w-full" size="sm" disabled title="Automatic speech recognition is not yet connected"><WandSparkles data-icon="inline-start" />Transcribe media (coming soon)</Button><Button variant="outline" size="sm" className="mt-2 w-full" disabled={!media||preparing} onClick={()=>{void benchmarkAudio()}}>{preparing?"Preparing audio…":"Test audio preparation"}</Button>{preparing&&<button type="button" className="mt-2 text-xs text-red-600" onClick={()=>audioAbort.current?.abort()}>Cancel preparation</button>}{audioInfo&&<p role="status" className="mt-2 text-xs text-slate-600">{audioInfo}</p>}</div></div>
         </aside>
 
         <section className={cn('min-w-0 bg-slate-50 p-4 dark:bg-slate-950 sm:p-6', mobilePanel !== 'transcript' && 'hidden lg:block')}>
