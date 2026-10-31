@@ -171,8 +171,8 @@ export function parseTitleProject(value: unknown): TitleProject {
         end,
         entrance,
         exit: choice(t.exit, ["none", "fade", "slide-up", "zoom"]),
-        animationDuration: num(t.animationDuration, 0.05, 10),
-        creditSpeed: num(t.creditSpeed, 1, 500),
+        animationDuration: num(t.animationDuration, 0.01, 1000),
+        creditSpeed: num(t.creditSpeed, 0.01, 1000),
       };
     });
     return {
