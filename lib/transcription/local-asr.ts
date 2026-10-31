@@ -11,6 +11,14 @@ export class SpeechRecognitionFailure extends Error {
 }
 type Pipeline = (audio: Float32Array, options?: Record<string, unknown>) => Promise<{text?: string}>
 let modelPromise: Promise<Pipeline> | null = null
+let progressListener: ((message: string) => void) | null = null
+let lastProgressAt = 0
+function reportProgress(event: {status?: string; file?: string; progress?: number; loaded?: number; total?: number}) {
+  lastProgressAt = Date.now()
+  const file = event.file?.split('/').pop() || 'model asset'
+  const percent = typeof event.progress === 'number' ? ` (${Math.round(event.progress)}%)` : event.total && event.loaded ? ` (${Math.round(event.loaded/event.total*100)}%)` : ''
+  progressListener?.(`AI model: ${event.status || 'loading'} ${file}${percent}`)
+}
 function messageOf(error: unknown): string {return error instanceof Error ? error.message : String(error)}
 function classify(stage: SpeechStage, error: unknown): SpeechRecognitionFailure {
   if(error instanceof SpeechRecognitionFailure)return error
@@ -30,6 +38,7 @@ async function bounded<T>(work: Promise<T>, ms: number, stage: SpeechStage): Pro
 }
 export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (message: string) => void): Promise<SpeechResult> {
   if(!samples.length)throw new SpeechRecognitionFailure('inference','EMPTY_AUDIO','Audio contains no samples.','Upload a recording with audible speech.','Audio buffer was empty.')
+  progressListener = onStatus
   if(!modelPromise) {
     modelPromise = (async()=>{
       onStatus('Loading speech recognition runtime…')
@@ -39,7 +48,20 @@ export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (m
         mod = await bounded(import(/* webpackIgnore: true */ moduleUrl) as Promise<{pipeline: (task:string,model:string,opts:Record<string,unknown>)=>Promise<Pipeline>}>,30000,'runtime')
       } catch(e) {throw classify('runtime',e)}
       onStatus('Downloading and initializing English speech model…')
-      try {return await bounded(mod.pipeline('automatic-speech-recognition','onnx-community/whisper-tiny.en',{device:'wasm',dtype:'q8'}),90000,'model')}
+      lastProgressAt = Date.now()
+      try {
+        const loading = mod.pipeline('automatic-speech-recognition','onnx-community/whisper-tiny.en',{device:'wasm',dtype:'q8',progress_callback:reportProgress})
+        const stallCheck = new Promise<never>((_, reject) => {
+          const id = setInterval(() => {
+            if (Date.now() - lastProgressAt > 60000) {
+              clearInterval(id)
+              reject(new SpeechRecognitionFailure('model','DOWNLOAD_STALLED','No AI model download progress for 60 seconds.','Check whether huggingface.co and cdn-lfs.huggingface.co are accessible. Try a different network or browser; if blocked, the app needs first-party model hosting.','Model progress callback was silent for 60 seconds.'))
+            }
+          }, 3000)
+          void loading.finally(() => clearInterval(id)).catch(() => {})
+        })
+        return await bounded(Promise.race([loading,stallCheck]),180000,'model')
+      }
       catch(e) {throw classify('model',e)}
     })().catch(error=>{modelPromise=null;throw error})
   } else onStatus('Reusing cached English speech model…')
