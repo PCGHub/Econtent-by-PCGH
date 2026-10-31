@@ -19,7 +19,7 @@ export function frameEncodeArgs(fps: number, frames: number, path: string) {
     "-framerate",
     String(fps),
     "-i",
-    "frame-%03d.png",
+    "frame-%03d.jpg",
     "-frames:v",
     String(frames),
     "-vf",
