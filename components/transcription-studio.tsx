@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { transcribeLocalEnglish } from '@/lib/transcription/local-asr'
+import { SpeechRecognitionFailure, transcribeLocalEnglish } from '@/lib/transcription/local-asr'
 import { prepareSpeechAudio } from '@/lib/transcription/audio-preparation'
 import { parseSubtitles, serializeSubtitles, type SubtitleSegment } from '@/lib/transcription/subtitles'
 import {
@@ -63,6 +63,7 @@ export function TranscriptionStudio() {
   const [error,setError] = useState('')
   const [audioInfo,setAudioInfo] = useState('')
   const [recognizing,setRecognizing] = useState(false)
+  const [recognitionFailure,setRecognitionFailure] = useState<{stage:string;code:string;message:string;recommendation:string;detail:string}|null>(null)
   const [aiReview,setAiReview] = useState<'none'|'pending'|'approved'>('none')
   const [preparing,setPreparing] = useState(false)
   const [audioStage,setAudioStage] = useState('')
@@ -105,20 +106,23 @@ export function TranscriptionStudio() {
     if(!selectedFile.current||recognizing)return
     if(captionLanguage!=='English'){setError('Experimental speech recognition currently supports English only. Other languages remain available for manual captions.');return}
     if(!window.confirm('Experimental English transcription downloads a speech model to your browser and may be slow or fail on mobile. The file stays on your device. Continue?'))return
-    setRecognizing(true);setError('');setAudioInfo('Preparing audio…')
+    setRecognizing(true);setRecognitionFailure(null);setError('');setAudioInfo('Preparing audio…')
     try {
       const audio=await Promise.race([prepareSpeechAudio(selectedFile.current,undefined,setAudioInfo),new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('Audio decoding took over 45 seconds. Try a short WAV or MP3 audio recording.')),45000))])
       const result=await transcribeLocalEnglish(audio.samples,setAudioInfo)
       snapshot();const id=Date.now();setSegments([{id,start:formatTime(0),end:formatTime(audio.durationSeconds),speaker:'Speaker 1',text:result.text}]);setActiveId(id);setTab('transcript');setMobilePanel('transcript');setAiReview('pending')
       setAudioInfo(`Experimental English transcription completed in ${result.elapsedSeconds.toFixed(1)}s. Review and split the generated caption manually; word-level timestamps are not available.`)
-    } catch(e) {setError(e instanceof Error?e.message:'Speech recognition failed')}
+    } catch(e) {
+      const failure=e instanceof SpeechRecognitionFailure ? e : {stage:'audio preparation',code:'AUDIO_PREPARATION_ERROR',message:e instanceof Error?e.message:'Unable to prepare audio',recommendation:'Try a short WAV or MP3 file. If decoding fails repeatedly, the browser audio decoder needs investigation.',detail:e instanceof Error?e.message:String(e)}
+      setRecognitionFailure(failure);setAudioInfo('Recognition failed. See diagnosis below.');setMobilePanel('transcript');setTab('transcript')
+    }
     finally {setRecognizing(false)}
   }
   function loadFile(file?:File) {
     if (!file) return
     if (!(file.type.startsWith('video/') || file.type.startsWith('audio/'))) {setError('Select a supported audio or video file');return}
     if (file.size > 2*1024*1024*1024) {setError('File exceeds 2 GB');return}
-    audioAbort.current?.abort();selectedFile.current=file;setAiReview('none');setAudioInfo('');setError('');setMedia({name:file.name,url:URL.createObjectURL(file),type:file.type,size:file.size});setDuration(0);setPosition(0);setPlaying(false);setSegments([]);setActiveId(0)
+    audioAbort.current?.abort();selectedFile.current=file;setAiReview('none');setRecognitionFailure(null);setAudioInfo('');setError('');setMedia({name:file.name,url:URL.createObjectURL(file),type:file.type,size:file.size});setDuration(0);setPosition(0);setPlaying(false);setSegments([]);setActiveId(0)
   }
   function seconds(time:string) {const parts=time.split(':').map(Number);return parts.length===2&&parts.every(Number.isFinite)?parts[0]*60+parts[1]:NaN}
   function addSegment() {snapshot();const start=Math.max(0,position),end=Math.min(duration||start+3,start+3);const id=Date.now();setSegments(p=>[...p,{id,start:formatTime(start),end:formatTime(Math.max(start+0.1,end)),speaker:'Speaker 1',text:''}]);setActiveId(id)}
@@ -161,6 +165,7 @@ export function TranscriptionStudio() {
         <div className="flex items-center gap-2"><Button variant="ghost" size="sm" onClick={restoreDraft} disabled={!draftAvailable} title="Restore last locally saved caption draft"><History data-icon="inline-start" />Restore draft</Button><Button variant="outline" size="sm" onClick={saveDraft} title="Save captions on this device, not in the cloud"><Check data-icon="inline-start" />{status === 'saved' ? 'Saved locally' : 'Save draft'}</Button><Button size="sm" disabled={!segments.some(x=>x.text.trim())||aiReview==="pending"} onClick={()=>download("srt")}><Download data-icon="inline-start" />Export SRT</Button></div>
       </header>
 
+      {recognitionFailure&&<section role="alert" aria-label="Speech recognition failure report" className="mx-4 my-3 rounded-xl border-2 border-red-500 bg-red-950 p-4 text-white sm:mx-6"><h3 className="text-lg font-bold">AI transcription failed — no transcript was generated</h3><p className="mt-2 text-sm"><strong>Failed stage:</strong> {recognitionFailure.stage} · <strong>Code:</strong> {recognitionFailure.code}</p><p className="mt-2 text-sm">{recognitionFailure.message}</p><p className="mt-2 text-sm"><strong>What to do:</strong> {recognitionFailure.recommendation}</p><details className="mt-3 text-sm"><summary className="cursor-pointer underline">Technical details for troubleshooting</summary><pre className="mt-2 whitespace-pre-wrap break-all rounded bg-slate-950 p-3 text-xs">{recognitionFailure.detail}</pre></details><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>{void navigator.clipboard?.writeText(JSON.stringify({stage:recognitionFailure.stage,code:recognitionFailure.code,message:recognitionFailure.message,recommendation:recognitionFailure.recommendation,detail:recognitionFailure.detail,browser:navigator.userAgent},null,2))}}>Copy failure report</Button><Button size="sm" onClick={()=>{setRecognitionFailure(null);void recognizeEnglish()}}>Retry transcription</Button></div></section>}
       {error && <p role="alert" className="bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
       <div className="flex border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950 md:hidden"><div className="grid w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">{([['media', 'Media'], ['transcript', 'Transcript'], ['style', 'Subtitle style']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setMobilePanel(value)} className={cn('rounded-lg px-2 py-2 text-xs font-semibold', mobilePanel === value ? 'bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300' : 'text-slate-500')}>{label}</button>)}</div></div>
 
