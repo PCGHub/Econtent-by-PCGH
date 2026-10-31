@@ -12,6 +12,7 @@ export class SpeechRecognitionFailure extends Error {
 type Pipeline = (audio: Float32Array, options?: Record<string, unknown>) => Promise<{text?: string}>
 let modelPromise: Promise<Pipeline> | null = null
 let progressListener: ((message: string) => void) | null = null
+let loadingGeneration = 0
 let lastProgressAt = 0
 function reportProgress(event: {status?: string; file?: string; progress?: number; loaded?: number; total?: number}) {
   lastProgressAt = Date.now()
@@ -32,7 +33,7 @@ async function bounded<T>(work: Promise<T>, ms: number, stage: SpeechStage): Pro
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([work, new Promise<never>((_,reject) => {
-      timer = setTimeout(()=>reject(new SpeechRecognitionFailure(stage,'TIMEOUT','Speech recognition timed out during '+stage+'.',stage==='model' ? 'The model download or initialization is stalled. Check your connection and browser network restrictions, then retry. If this repeats, we need to replace the model-loading integration.' : 'Try a shorter recording or a faster desktop browser. If this repeats, the recognition engine needs performance or compatibility work.','No completion within '+Math.round(ms/1000)+' seconds.')),ms)
+      timer = setTimeout(()=>reject(new SpeechRecognitionFailure(stage,'TIMEOUT','Speech recognition timed out during '+stage+'.',stage==='model' ? 'The compact AI model could not download or initialize. Check the progress details and network access, then retry. If this repeats, we need to replace the model-loading integration.' : 'Try a shorter recording or a faster desktop browser. If this repeats, the recognition engine needs performance or compatibility work.','No completion within '+Math.round(ms/1000)+' seconds.')),ms)
     })])
   } finally {if(timer)clearTimeout(timer)}
 }
@@ -40,6 +41,7 @@ export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (m
   if(!samples.length)throw new SpeechRecognitionFailure('inference','EMPTY_AUDIO','Audio contains no samples.','Upload a recording with audible speech.','Audio buffer was empty.')
   progressListener = onStatus
   if(!modelPromise) {
+    const generation = ++loadingGeneration
     modelPromise = (async()=>{
       onStatus('Loading speech recognition runtime…')
       let mod: {pipeline: (task:string,model:string,opts:Record<string,unknown>)=>Promise<Pipeline>}
@@ -50,7 +52,7 @@ export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (m
       onStatus('Downloading and initializing English speech model…')
       lastProgressAt = Date.now()
       try {
-        const loading = mod.pipeline('automatic-speech-recognition','onnx-community/whisper-tiny.en',{device:'wasm',dtype:'q8',progress_callback:reportProgress})
+        const loading = mod.pipeline('automatic-speech-recognition','onnx-community/whisper-tiny.en',{device:'wasm',dtype:'q4',progress_callback:reportProgress})
         const stallCheck = new Promise<never>((_, reject) => {
           const id = setInterval(() => {
             if (Date.now() - lastProgressAt > 60000) {
@@ -63,9 +65,11 @@ export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (m
         return await bounded(Promise.race([loading,stallCheck]),180000,'model')
       }
       catch(e) {throw classify('model',e)}
-    })().catch(error=>{modelPromise=null;throw error})
+    })().catch(error=>{if(generation===loadingGeneration)modelPromise=null;throw error})
   } else onStatus('Reusing cached English speech model…')
-  const model = await modelPromise
+  let model: Pipeline
+  try {model = await modelPromise}
+  catch(error) {modelPromise = null; throw error}
   onStatus('Recognizing English speech (up to 2 minutes)…')
   const start=performance.now()
   try {
