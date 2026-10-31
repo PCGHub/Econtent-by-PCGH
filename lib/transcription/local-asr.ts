@@ -1,25 +1,54 @@
-/** Experimental browser-local Whisper transcription. Model downloads on first use.
- * This is deliberately opt-in; accuracy and browser compatibility vary.
+/** Experimental local speech recognition with bounded stages and actionable errors.
+ * Timeouts stop waiting, but cannot forcibly interrupt an in-flight WASM operation.
  */
 export type SpeechResult = {text: string; elapsedSeconds: number}
+export type SpeechStage = 'runtime' | 'model' | 'inference'
+export class SpeechRecognitionFailure extends Error {
+  constructor(public readonly stage: SpeechStage, public readonly code: string, message: string, public readonly recommendation: string, public readonly detail: string) {
+    super(message)
+    this.name = 'SpeechRecognitionFailure'
+  }
+}
 type Pipeline = (audio: Float32Array, options?: Record<string, unknown>) => Promise<{text?: string}>
 let modelPromise: Promise<Pipeline> | null = null
+function messageOf(error: unknown): string {return error instanceof Error ? error.message : String(error)}
+function classify(stage: SpeechStage, error: unknown): SpeechRecognitionFailure {
+  if(error instanceof SpeechRecognitionFailure)return error
+  const detail = messageOf(error).slice(0, 500)
+  const network = /fetch|network|failed to load|cdn|http|cors|offline|blocked/i.test(detail)
+  const memory = /memory|allocation|out of memory|wasm/i.test(detail)
+  const recommendation = network ? 'Check internet access and whether browser extensions or network policies block esm.sh or Hugging Face model downloads. Retry on a stable connection.' : memory ? 'Close other tabs, use a desktop browser with more available memory, or try a shorter recording.' : stage === 'runtime' ? 'Verify that the browser permits third-party JavaScript modules, then retry with an updated Chrome or Edge browser.' : stage === 'model' ? 'Verify access to model files from Hugging Face and retry on a stable connection. A model-hosting or browser compatibility fix may be needed.' : 'Try a short clear English recording in Chrome or Edge. If the failure repeats, inspect the technical detail below.'
+  return new SpeechRecognitionFailure(stage, network ? 'NETWORK_OR_DOWNLOAD' : memory ? 'BROWSER_MEMORY_OR_WASM' : 'ENGINE_ERROR', 'Speech recognition failed during '+stage+'.', recommendation, detail)
+}
+async function bounded<T>(work: Promise<T>, ms: number, stage: SpeechStage): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([work, new Promise<never>((_,reject) => {
+      timer = setTimeout(()=>reject(new SpeechRecognitionFailure(stage,'TIMEOUT','Speech recognition timed out during '+stage+'.',stage==='model' ? 'The model download or initialization is stalled. Check your connection and browser network restrictions, then retry. If this repeats, we need to replace the model-loading integration.' : 'Try a shorter recording or a faster desktop browser. If this repeats, the recognition engine needs performance or compatibility work.','No completion within '+Math.round(ms/1000)+' seconds.')),ms)
+    })])
+  } finally {if(timer)clearTimeout(timer)}
+}
 export async function transcribeLocalEnglish(samples: Float32Array, onStatus: (message: string) => void): Promise<SpeechResult> {
-  if (!samples.length) throw new Error('Audio contains no samples')
-  onStatus('Loading speech model (first download may be large)…')
-  if (!modelPromise) {
-    modelPromise = (async () => {
-      // Load from a pinned ESM CDN URL without adding a new build dependency.
-      // Browser compatibility and network access are required.
-      const moduleUrl = 'https://esm.sh/@huggingface/transformers@3.7.6?bundle&target=es2022'
-      const mod = await import(/* webpackIgnore: true */ moduleUrl) as {pipeline: (task: string, model: string, opts: Record<string, unknown>) => Promise<Pipeline>}
-      return mod.pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', {device: 'wasm', dtype: 'q8'})
-    })().catch(error => {modelPromise = null;throw error})
-  }
+  if(!samples.length)throw new SpeechRecognitionFailure('inference','EMPTY_AUDIO','Audio contains no samples.','Upload a recording with audible speech.','Audio buffer was empty.')
+  if(!modelPromise) {
+    modelPromise = (async()=>{
+      onStatus('Loading speech recognition runtime…')
+      let mod: {pipeline: (task:string,model:string,opts:Record<string,unknown>)=>Promise<Pipeline>}
+      try {
+        const moduleUrl = 'https://esm.sh/@huggingface/transformers@3.7.6?bundle&target=es2022'
+        mod = await bounded(import(/* webpackIgnore: true */ moduleUrl) as Promise<typeof mod>,30000,'runtime')
+      } catch(e) {throw classify('runtime',e)}
+      onStatus('Downloading and initializing English speech model…')
+      try {return await bounded(mod.pipeline('automatic-speech-recognition','onnx-community/whisper-tiny.en',{device:'wasm',dtype:'q8'}),90000,'model')}
+      catch(e) {throw classify('model',e)}
+    })().catch(error=>{modelPromise=null;throw error})
+  } else onStatus('Reusing cached English speech model…')
   const model = await modelPromise
-  onStatus('Recognizing English speech on this device…')
-  const start = performance.now()
-  const output = await model(samples, {return_timestamps: false})
-  if (!output.text?.trim()) throw new Error('The model returned no recognizable speech')
-  return {text: output.text.trim(), elapsedSeconds: (performance.now() - start) / 1000}
+  onStatus('Recognizing English speech (up to 2 minutes)…')
+  const start=performance.now()
+  try {
+    const output=await bounded(model(samples,{return_timestamps:false}),120000,'inference')
+    if(!output.text?.trim())throw new SpeechRecognitionFailure('inference','NO_SPEECH','The model returned no recognizable speech.','Confirm the recording contains clear English speech and try a short sample.','Empty transcript returned by model.')
+    return {text:output.text.trim(),elapsedSeconds:(performance.now()-start)/1000}
+  } catch(e) {throw classify('inference',e)}
 }
