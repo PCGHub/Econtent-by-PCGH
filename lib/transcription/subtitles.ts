@@ -35,3 +35,38 @@ export function serializeSubtitles(segments: SubtitleSegment[], format: 'txt' | 
   })
   return (format === 'vtt' ? 'WEBVTT\n\n' : '') + cues.join('\n\n') + (cues.length ? '\n' : '')
 }
+
+/** Parse common SRT/VTT cue blocks for manual correction. Reject malformed timing. */
+export function parseSubtitles(input: string, format: 'srt' | 'vtt'): SubtitleSegment[] {
+  const normalized = input.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '').trim()
+  if (format === 'vtt' && !/^WEBVTT(?:[ \t].*)?(?:\n|$)/.test(normalized)) {
+    throw new Error('Missing WEBVTT header')
+  }
+  const body = format === 'vtt' ? normalized.replace(/^WEBVTT[^\n]*\n?/, '').trim() : normalized
+  if (!body) return []
+  const blocks = body.split(/\n\s*\n/)
+  const result: SubtitleSegment[] = []
+  for (const block of blocks) {
+    const lines = block.split('\n')
+    if (format === 'vtt' && /^(NOTE|STYLE|REGION)(?:\s|$)/.test(lines[0])) continue
+    const timingIndex = lines.findIndex((line, index) => index <= 1 && line.includes(' --> '))
+    if (timingIndex < 0) throw new Error('Malformed subtitle cue')
+    const timing = lines[timingIndex].match(/^\s*((?:\d{2}:)?\d{2}:\d{2}[,.]\d{3})\s+-->\s+((?:\d{2}:)?\d{2}:\d{2}[,.]\d{3})(?:\s+.*)?$/)
+    if (!timing) throw new Error('Invalid subtitle timestamp')
+    const start = parseTimestamp(timing[1])
+    const end = parseTimestamp(timing[2])
+    const text = lines.slice(timingIndex + 1).join('\n').trim()
+    result.push({start, end, text})
+  }
+  return validateSubtitleSegments(result)
+}
+
+function parseTimestamp(value: string): number {
+  const chunks = value.replace(',', '.').split(':')
+  if (chunks.length !== 2 && chunks.length !== 3) throw new Error('Invalid timestamp')
+  const seconds = Number(chunks[chunks.length - 1])
+  const minutes = Number(chunks[chunks.length - 2])
+  const hours = chunks.length === 3 ? Number(chunks[0]) : 0
+  if (![seconds, minutes, hours].every(Number.isFinite) || seconds >= 60 || minutes >= 60) throw new Error('Invalid timestamp')
+  return hours * 3600 + minutes * 60 + seconds
+}
