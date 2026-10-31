@@ -346,13 +346,13 @@ export function TitleProperties({
               <NumberControl
                 name="Animation duration (s)"
                 value={text.animationDuration}
-                min={0.05}
-                max={5}
-                step={0.05}
+                min={0.01}
+                max={1000}
+                step={0.01}
                 onChange={(animationDuration) => onText({ animationDuration })}
               />
               <p className="text-[10px] leading-4 text-slate-400">
-                Entrance and exit each use at most half the text clip. Word and
+                Set any duration from 0.01 to 1000 seconds. Actual animation is limited by the text clip and scene length. Entrance and exit each use at most half the text clip. Word and
                 letter effects support up to 240 characters.
               </p>
               {text.entrance === "credit-roll" && (
@@ -360,9 +360,9 @@ export function TitleProperties({
                   <NumberControl
                     name="Credit speed (% canvas/s)"
                     value={text.creditSpeed}
-                    min={5}
-                    max={500}
-                    step={1}
+                    min={0.01}
+                    max={1000}
+                    step={0.01}
                     onChange={(creditSpeed) => onText({ creditSpeed })}
                   />
                   <button
@@ -374,7 +374,7 @@ export function TitleProperties({
                         .getContext("2d")!;
                       onText({
                         creditSpeed: Math.min(
-                          500,
+                          1000,
                           requiredCreditSpeed(
                             ctx,
                             text,
