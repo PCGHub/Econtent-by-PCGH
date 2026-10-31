@@ -13,6 +13,7 @@ const navigation = [
   {label:'Video Cutter', href:'/editor', icon:Film},
   {label:'Overlay Studio', href:'/overlay-studio', icon:Clapperboard},
   {label:'Cinematic Titles', href:'/titles-studio', icon:Sparkles},
+  {label:'Transcription', href:'/transcription-studio', icon:Subtitles},
   {label:'My projects', href:'/projects', icon:FolderKanban},
   {label:'Settings', href:'/settings', icon:Settings},
 ]
