@@ -158,3 +158,37 @@ It rejects untrusted TLS, inspects real asset HTTP headers, exports the actual
 27-second project cold and warm, validates full decode/frame count/text/playback,
 and checks the verified warm cache. Its config and authentication must stay private.
 This cannot run until an authorized protected Preview access method is available.
+
+## Repaired Preview is READY — hosted export approval pending
+
+Pushed code: `d837200b09d118cd87cf54289ffc027dc15c7795` (includes `f59ffb7`).
+Vercel deployment: `dpl_6Jw3YCCDwgN2vGJHuUZKRWWbTCdy`.
+Verified READY, exact Git SHA, project `prj_YsA3dzOVReUknCrEe2ihUHdnihSs`,
+team `team_NNNDTnxxVfbPxHr8cr7aiKXF`, target null (Preview, NOT production).
+URL: https://econtent-by-pcgh-dxt2gor4o-pcgrowthhub-2263s-projects.vercel.app/titles-studio
+
+No hosted export PASS is claimed yet. The prepared protected browser test needs
+explicit approval for a temporary share link, requested for this exact deployment.
+The user may instead test directly with their existing Vercel session. Do not bypass
+SSO, invent an OIDC token, use an anonymous project or disable certificate checking.
+The test helper's CA trust stays inside a disposable tmpfs container; no host trust
+store is modified. The access JSON and temporary link must never be committed/logged.
+
+Next action after approval: obtain supported Vercel share access for the exact origin,
+write private `{origin,shareUrl}` JSON with mode 0600 outside Git, run the prepared
+`titles-recovery` isolated helper, inspect all actual outputs and record results.
+If sharing is declined, retain this Preview and report hosted verification BLOCKED.
+Prior transcription work remains safely committed separately at `1f278db` and was
+not cherry-picked, reset or discarded during this Titles-only repair.
+
+GitHub Actions inspection for code commit d837200:
+https://github.com/PCGHub/Econtent-by-PCGH/actions/runs/41285870467
+The `verify` job failed at global `npm run lint`; later steps in that CI job were
+skipped. Local execution of those checks is recorded above; do not describe CI as
+green. The separate `accounts` job passed setup and production build and was still
+running its account tests at this checkpoint. No workflow was weakened to hide the
+unrelated Transcription lint issue.
+
+This handoff may be followed by documentation-only commits. The exact code Preview
+and tested code SHA remain the immutable deployment listed above; compare runtime
+files before choosing another deployment. No hosted test has been run without approval.
