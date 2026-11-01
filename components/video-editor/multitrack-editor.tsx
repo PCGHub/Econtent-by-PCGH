@@ -99,9 +99,9 @@ export function MultitrackEditor(){
         if(c.kind==='image')args.push('-loop','1','-framerate','24','-t',String(c.end-c.start),'-i',name)
         else args.push('-ss',String(c.start),'-t',String(c.end-c.start),'-i',name)
       }
+      for(let i=0;i<hooks.length;i++){await ff.writeFile(`hook${i}.png`,await hookPng(hooks[i].text));args.push('-loop','1','-framerate','24','-i',`hook${i}.png`)}
       const musicEnabled=audio.length>0&&!musicMuted&&musicVolume>0
       if(musicEnabled){for(let i=0;i<audio.length;i++){const c=audio[i];const ext=c.file.name.split('.').pop()?.replace(/[^a-z0-9]/gi,'')||'mp3';const name=`music${i}.${ext}`;await ff.writeFile(name,new Uint8Array(await c.file.arrayBuffer()));args.push('-ss',String(c.start),'-t',String(c.end-c.start),'-i',name)}}
-      for(let i=0;i<hooks.length;i++){await ff.writeFile(`hook${i}.png`,await hookPng(hooks[i].text));args.push('-loop','1','-framerate','24','-i',`hook${i}.png`)}
       const filters=visuals.map((c,i)=>`[${i}:v]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p,setpts=(PTS-STARTPTS)/${c.kind==='video'?c.speed:1}[v${i}]`)
       filters.push(visuals.map((_,i)=>`[v${i}]`).join('')+`concat=n=${visuals.length}:v=1:a=0[vbase]`)
       let outputLabel='vbase';for(let i=0;i<hooks.length;i++){const next=`vhook${i}`;const h=hooks[i];filters.push(`[${outputLabel}][${visuals.length+i}:v]overlay=0:0:enable='between(t,${h.start},${h.end})':shortest=1[${next}]`);outputLabel=next}
