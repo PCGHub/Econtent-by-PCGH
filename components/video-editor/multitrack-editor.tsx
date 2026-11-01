@@ -92,17 +92,18 @@ export function MultitrackEditor(){
         if(c.kind==='image')args.push('-loop','1','-framerate','24','-t',String(c.end-c.start),'-i',name)
         else args.push('-ss',String(c.start),'-t',String(c.end-c.start),'-i',name)
       }
-      if(music&&!musicMuted&&musicVolume>0){await ff.writeFile('music.'+(music.file.name.split('.').pop()||'mp3'),new Uint8Array(await music.file.arrayBuffer()));args.push('-stream_loop','-1','-ss',String(music.start),'-i','music.'+(music.file.name.split('.').pop()||'mp3'))}
+      const musicEnabled=audio.length>0&&!musicMuted&&musicVolume>0
+      if(musicEnabled){for(let i=0;i<audio.length;i++){const c=audio[i];const ext=c.file.name.split('.').pop()?.replace(/[^a-z0-9]/gi,'')||'mp3';const name=`music${i}.${ext}`;await ff.writeFile(name,new Uint8Array(await c.file.arrayBuffer()));args.push('-ss',String(c.start),'-t',String(c.end-c.start),'-i',name)}}
       const filters=visuals.map((c,i)=>`[${i}:v]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p,setpts=PTS-STARTPTS[v${i}]`)
       filters.push(visuals.map((_,i)=>`[v${i}]`).join('')+`concat=n=${visuals.length}:v=1:a=0[vout]`)
       args.push('-filter_complex',filters.join(';'),'-map','[vout]')
-      const musicEnabled=Boolean(music&&!musicMuted&&musicVolume>0)
+      if(musicEnabled){for(let i=0;i<audio.length;i++)filters.push(`[${visuals.length+i}:a]aresample=async=1,asetpts=PTS-STARTPTS,volume=${musicVolume}[m${i}]`);filters.push(audio.map((_,i)=>`[m${i}]`).join('')+`concat=n=${audio.length}:v=0:a=1,apad,atrim=duration=${total}[musicbed]`)}
       const originalEnabled=visuals.length===1&&visuals[0].kind==='video'&&!videoMuted&&videoVolume>0
-      if(musicEnabled&&originalEnabled){filters.push(`[0:a]volume=${videoVolume}[original]`,`[${visuals.length}:a]volume=${musicVolume}[music]`,`[original][music]amix=inputs=2:duration=longest:dropout_transition=0[aout]`);args.splice(args.indexOf('-filter_complex')+1,1,filters.join(';'));args.push('-map','[aout]','-t',String(total),'-c:a','aac','-b:a','128k')}
-      else if(musicEnabled){args.push('-map',`${visuals.length}:a:0`,'-af',`volume=${musicVolume}`,'-t',String(total),'-c:a','aac','-b:a','128k')}
+      if(musicEnabled&&originalEnabled){filters.push(`[0:a]volume=${videoVolume}[original]`,`[original][musicbed]amix=inputs=2:duration=first:dropout_transition=0[aout]`);args.splice(args.indexOf('-filter_complex')+1,1,filters.join(';'));args.push('-map','[aout]','-t',String(total),'-c:a','aac','-b:a','128k')}
+      else if(musicEnabled){args.splice(args.indexOf('-filter_complex')+1,1,filters.join(';'));args.push('-map','[musicbed]','-t',String(total),'-c:a','aac','-b:a','128k')}
       else if(originalEnabled){args.push('-map','0:a:0?','-af',`volume=${videoVolume}`,'-c:a','aac','-b:a','128k')}
       else args.push('-an')
-      if(visuals.length>1&&!videoMuted)setStatus('Multi-clip export currently uses music only; original clip audio mixing needs a separate rendering pass.')
+      if(visuals.length>1&&!videoMuted)setStatus('Multi-clip export uses edited music; original audio across multiple videos is not yet mixed.')
       args.push('-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p','-threads','1','-movflags','+faststart','export.mp4')
       ff.on('progress',(p:{progress:number;time:number})=>setProgress(Math.min(99,Math.round((p.time/1000000)/Math.max(total,.1)*100))))
       setStatus('Encoding MP4…')
