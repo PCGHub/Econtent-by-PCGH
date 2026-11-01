@@ -1,0 +1,65 @@
+{
+  "environment": "Desktop Chromium; actual UI and FFmpeg WASM; no Android hardware",
+  "records": [
+    {
+      "case": "7-second cold",
+      "elapsedMs": 4095.198733,
+      "bytes": 714048,
+      "duration": 7,
+      "frames": 168,
+      "width": 640,
+      "height": 360,
+      "fps": 24
+    },
+    {
+      "case": "27-second default three scenes warm new worker",
+      "elapsedMs": 17258.74944,
+      "bytes": 5542817,
+      "duration": 27,
+      "frames": 648,
+      "width": 854,
+      "height": 480,
+      "fps": 24
+    },
+    {
+      "case": "60-second three scenes warm new worker",
+      "elapsedMs": 27348.869621,
+      "bytes": 7217274,
+      "duration": 60,
+      "frames": 1800,
+      "width": 640,
+      "height": 360,
+      "fps": 30
+    },
+    {
+      "case": "7-second 720p/30 warm",
+      "elapsedMs": 12163.061481999997,
+      "bytes": 4262950,
+      "duration": 7.010667,
+      "frames": 210,
+      "width": 1280,
+      "height": 720,
+      "fps": 30
+    }
+  ],
+  "startup": [
+    {
+      "phase": "ready",
+      "downloadMs": 0,
+      "cacheReadMs": 504.9000000001397,
+      "compileFinalizeMs": 65.5,
+      "transferBytes": 0,
+      "networkBodyBytes": 0,
+      "cached": true,
+      "cacheStorage": true,
+      "cacheLookupMs": 17.700000000186265,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 14
+    }
+  ],
+  "capabilities": {
+    "webCodecs": true,
+    "mediaRecorderMP4": false
+  }
+}

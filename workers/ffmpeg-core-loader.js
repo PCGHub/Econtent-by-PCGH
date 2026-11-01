@@ -30,36 +30,32 @@ export default async function loadCore(options) {
     if(found?.item?.headers.get('x-econtent-sha256')===manifest.wasmSha256){response=found.item;cachedResponse=true;}
     report({phase:'download',receivedBytes:0,totalBytes:manifest.wasmBytes,cacheStorage:cachedResponse});
     if(!response)response=await responseFor('core/ffmpeg-core.wasm', /application\/wasm/i);
-    abort = () => response.body?.cancel().catch(()=>{});
     if (!response.body) throw Error('FFmpeg WASM response has no readable body.');
-    const downloadStarted=performance.now();
-    let bodyEnded=downloadStarted;
-    let received = 0, lastReported = 0, lastReportedAt = 0, prefix = [];
-    const digest=sha256.create();
-    const rejectStream = message => { streamFailure = Error(message); throw streamFailure; };
-    const monitored = response.body.pipeThrough(new TransformStream({
-      transform(chunk, controller) {
-        for(let i=0;i<chunk.length && prefix.length<4;i++) prefix.push(chunk[i]);
-        if(prefix.length===4 && prefix.join(',')!=='0,97,115,109') rejectStream('Invalid FFmpeg WASM magic bytes; asset is damaged or an HTML/protection response.');
-        received += chunk.byteLength; digest.update(chunk);
-        if(received > manifest.wasmBytes) rejectStream('FFmpeg WASM exceeds the pinned asset size; refresh to avoid mixed versions.');
-        if(lastReported===0 || received-lastReported>=131072 || Date.now()-lastReportedAt>=250 || received===manifest.wasmBytes) {
-          report({phase:'download', receivedBytes:received, totalBytes:manifest.wasmBytes,cacheStorage:cachedResponse}); lastReported=received; lastReportedAt=Date.now();
-        }
-        controller.enqueue(chunk);
-      },
-      flush() {
-        if(received !== manifest.wasmBytes) rejectStream(`FFmpeg WASM truncated: ${received} of ${manifest.wasmBytes} bytes received.`);
-        const actual=Array.from(digest.digest(),byte=>byte.toString(16).padStart(2,'0')).join('');
-        if(actual!==manifest.wasmSha256)rejectStream('FFmpeg WASM integrity check failed. Retry to download the pinned asset.');
-        bodyEnded=performance.now();
-        report({phase:'compile', receivedBytes:received, totalBytes:manifest.wasmBytes});
-      },
-    }));
-    // Avoid compileStreaming + tee(CacheStorage) on browsers where simultaneous
-    // stream consumers can abort with "Failed to read from a ReadableStream".
-    // Fully validate the response before compiling; do not cache partial bytes.
-    const verifiedBytes = await new Response(monitored).arrayBuffer();
+    const reader=response.body.getReader();abort=()=>reader.cancel().catch(()=>{});
+    const downloadStarted=performance.now();let bodyEnded=downloadStarted;
+    let received=0,lastReported=0,lastReportedAt=0;
+    const digest=sha256.create(),verifiedBytes=new Uint8Array(manifest.wasmBytes);
+    // One bounded destination buffer. No TransformStream, Response reconstruction,
+    // compileStreaming or tee consumers competing for this response body.
+    while(true){
+      let result;try{result=await reader.read()}catch(error){throw Error(`FFmpeg WASM response decoding/read failed after ${received} of ${manifest.wasmBytes} decoded bytes. Check Content-Encoding against the actual body, connection and Preview authorization. ${error?.message??error}`)}
+      if(result.done)break;const chunk=result.value;
+      if(received+chunk.byteLength>verifiedBytes.byteLength)throw Error('FFmpeg WASM exceeds the pinned asset size; refresh to avoid mixed versions.');
+      verifiedBytes.set(chunk,received);received+=chunk.byteLength;digest.update(chunk);
+      if(received>=4&&(verifiedBytes[0]!==0||verifiedBytes[1]!==97||verifiedBytes[2]!==115||verifiedBytes[3]!==109))throw Error('Invalid FFmpeg WASM magic bytes; asset is damaged or an HTML/protection response.');
+      if(lastReported===0||received-lastReported>=131072||Date.now()-lastReportedAt>=250||received===manifest.wasmBytes){report({phase:'download',receivedBytes:received,totalBytes:manifest.wasmBytes,cacheStorage:cachedResponse});lastReported=received;lastReportedAt=Date.now();}
+    }
+    reader.releaseLock();
+    if(received!==manifest.wasmBytes)throw Error(`FFmpeg WASM truncated: ${received} of ${manifest.wasmBytes} bytes received.`);
+    const actual=Array.from(digest.digest(),byte=>byte.toString(16).padStart(2,'0')).join('');
+    if(actual!==manifest.wasmSha256)throw Error('FFmpeg WASM integrity check failed. Retry to download the pinned asset.');
+    bodyEnded=performance.now();let cacheStored=cachedResponse;
+    if(storage&&!cachedResponse){
+      report({phase:'cache',receivedBytes:received,totalBytes:manifest.wasmBytes});let timer;
+      try{cacheStored=await Promise.race([storage.put(cacheKey,new Response(verifiedBytes,{headers:{'Content-Type':'application/wasm','x-econtent-sha256':manifest.wasmSha256}})).then(()=>true,()=>false),new Promise(resolve=>{timer=setTimeout(()=>resolve(false),1000)})]);}finally{clearTimeout(timer)}
+    }
+    report({phase:'compile',receivedBytes:received,totalBytes:manifest.wasmBytes});
+    const compileStarted=performance.now();
     const compiledModule = await WebAssembly.compile(verifiedBytes);
     const compiledAt=performance.now();
     const timing=performance.getEntriesByName(asset('core/ffmpeg-core.wasm')).at(-1);
@@ -67,9 +63,9 @@ export default async function loadCore(options) {
     const transferBytes=cachedResponse?0:measured?timing.transferSize:undefined;
     const metrics={downloadMs:cachedResponse?0:measured?timing.responseEnd-timing.startTime:bodyEnded-downloadStarted,
       cacheReadMs:cachedResponse?bodyEnded-downloadStarted:undefined,
-      compileFinalizeMs:compiledAt-bodyEnded,transferBytes,
+      compileFinalizeMs:compiledAt-compileStarted,transferBytes,
       networkBodyBytes:cachedResponse?0:measured?(timing.transferSize>0?timing.encodedBodySize:0):undefined,
-      cached:cachedResponse|| (measured?timing.transferSize===0:undefined),cacheStorage:cachedResponse,cacheLookupMs,cacheAvailable:!!storage,cacheStored:cachedResponse};
+      cached:cachedResponse|| (measured?timing.transferSize===0:undefined),cacheStorage:cachedResponse,cacheLookupMs,cacheAvailable:!!storage,cacheStored};
     report({phase:'initialize',...metrics});
     const initializedAt=performance.now();
     let rejectInstantiation;

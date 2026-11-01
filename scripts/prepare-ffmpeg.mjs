@@ -1,3 +1,4 @@
+import {brotliCompressSync,brotliDecompressSync,constants} from 'node:zlib'
 import { createHash } from 'node:crypto'
 import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
@@ -9,17 +10,21 @@ await cp('workers/ffmpeg-core-loader.js','public/ffmpeg/core-loader.js')
 const coreVersion=JSON.parse(await readFile('node_modules/@ffmpeg/core/package.json','utf8')).version
 const wrapperVersion=JSON.parse(await readFile('node_modules/@ffmpeg/ffmpeg/package.json','utf8')).version
 const wasm=await readFile('public/ffmpeg/core/ffmpeg-core.wasm'), wasmSha256=hash(wasm)
-// Serve the exact WASM bytes. A .wasm URL containing Brotli bytes without
+// Publish a verified Brotli body, matching the Content-Encoding: br HTTP contract.
+// Serve the exact decoded WASM bytes. A .wasm URL containing Brotli bytes without
 // Content-Encoding: br cannot pass WebAssembly magic/integrity checks.
-// The browser may still receive HTTP compression when the host negotiates it.
-const packed=wasm
+// The response body and header must be tested together in a browser.
+await mkdir('node_modules/.cache/econtent',{recursive:true});
+const packedPath='node_modules/.cache/econtent/ffmpeg-'+wasmSha256+'-br9.br';let packed;
+try{packed=await readFile(packedPath);if(hash(brotliDecompressSync(packed))!==wasmSha256)throw Error('Invalid compressed cache');}catch{packed=brotliCompressSync(wasm,{params:{[constants.BROTLI_PARAM_QUALITY]:9}});await writeFile(packedPath,packed);}
+if(wasm.readUInt32LE(0)!==0x6d736100||!brotliDecompressSync(packed).equals(wasm))throw Error('FFmpeg delivery verification failed');
 await cp('node_modules/@noble/hashes/LICENSE','public/ffmpeg/noble-hashes.LICENSE')
 await mkdir('public/ffmpeg/hash',{recursive:true})
 for(const name of ['sha2.js','_md.js','_u64.js','utils.js'])await cp('node_modules/@noble/hashes/'+name,'public/ffmpeg/hash/'+name)
 const files=['hash/sha2.js','hash/_md.js','hash/_u64.js','hash/utils.js','startup-worker.js','core-loader.js','ffmpeg/worker.js','ffmpeg/const.js','ffmpeg/errors.js','core/ffmpeg-core.js']
 const assets={}
 for(const name of files){const bytes=await readFile('public/ffmpeg/'+name);assets[name]={bytes:bytes.length,sha256:hash(bytes)}}
-const metadata={coreVersion,wrapperVersion,wasmSha256,coreSha256:assets['core/ffmpeg-core.js'].sha256,wasmBytes:wasm.length,wasmWireBytes:packed.length,wasmEncoding:'identity',wasmWireSha256:hash(packed),assets}
+const metadata={coreVersion,wrapperVersion,wasmSha256,coreSha256:assets['core/ffmpeg-core.js'].sha256,wasmBytes:wasm.length,wasmWireBytes:packed.length,wasmEncoding:'br',wasmWireSha256:hash(packed),assets}
 const release=hash(JSON.stringify(metadata)),releasePath='/ffmpeg/releases/'+release
 const manifest={...metadata,releasePath}
 await mkdir('public'+releasePath+'/hash',{recursive:true});
