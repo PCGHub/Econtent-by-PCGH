@@ -1,62 +1,662 @@
 "use client";
-import {useEffect,useRef,useState} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {useRouter} from "next/navigation";
-import {Bell,Clapperboard,Clock3,CreditCard,Film,FolderKanban,Grid2X2,HelpCircle,LayoutDashboard,LayoutList,Menu,MoreHorizontal,PanelLeftClose,PanelLeftOpen,Plus,Search,Settings,Sparkles,Subtitles,Wallet,X,Play,RectangleHorizontal,Square,Instagram,Youtube,Facebook,Mic2,AudioLines,Scissors,ImageMinus,MessageSquareText,LogOut,ArrowUpRight,RefreshCw} from "lucide-react";
-import {useAccount} from "@/components/account/provider";
-import {browserSupabase} from "@/lib/supabase/browser";
-import {projectRequest} from "@/lib/projects/client";
-import type {Project} from "@/lib/projects/model";
-import {cn} from "@/lib/utils";
-
-const nav=[{name:"Dashboard",icon:LayoutDashboard,href:"/dashboard"},{name:"My Projects",icon:FolderKanban,href:"/projects"},{name:"Video Editor",icon:Film,href:"/video-editor"},{name:"Video Cutter",icon:Scissors,href:"/editor"},{name:"Overlay Studio",icon:Clapperboard,href:"/overlay-studio"},{name:"Cinematic Titles",icon:Sparkles,href:"/titles-studio"},{name:"Social Media Studio",icon:Clapperboard},{name:"AI Studio",icon:Sparkles},{name:"Transcription",icon:Subtitles,href:"/transcription-studio"},{name:"Credits & Billing",icon:Wallet},{name:"Subscription Plans",icon:CreditCard},{name:"Settings",icon:Settings,href:"/settings"},{name:"Help & Support",icon:HelpCircle}];
-const presets=[{title:"YouTube Shorts",desc:"Vertical storytelling · 9:16",icon:Youtube,tone:"text-red-600 bg-red-50"},{title:"TikTok Videos",desc:"Short-form creative · 9:16",icon:Play,tone:"text-slate-800 bg-slate-100"},{title:"Instagram Reels",desc:"Reels and stories · 9:16",icon:Instagram,tone:"text-pink-600 bg-pink-50"},{title:"Facebook Videos",desc:"Social-first videos",icon:Facebook,tone:"text-blue-600 bg-blue-50"},{title:"Landscape Videos",desc:"Widescreen · 16:9",icon:RectangleHorizontal,tone:"text-indigo-600 bg-indigo-50"},{title:"Square Videos",desc:"Feed-ready · 1:1",icon:Square,tone:"text-cyan-700 bg-cyan-50"},{title:"Custom Project",desc:"Choose your own format",icon:Scissors,tone:"text-violet-700 bg-violet-50"}];
-const ai=[{title:"AI Transcription",desc:"Turn speech into text",icon:Mic2},{title:"Automatic Subtitles",desc:"Captions synced to your video",icon:Subtitles},{title:"AI Voiceover",desc:"Narration in a few clicks",icon:AudioLines},{title:"AI Video Highlights",desc:"Find your strongest moments",icon:Sparkles},{title:"AI Caption Generator",desc:"Write social-ready captions",icon:MessageSquareText},{title:"Background Removal",desc:"Separate subjects from scenes",icon:ImageMinus}];
-const card="rounded-2xl border border-slate-200/90 bg-white shadow-[0_3px_18px_rgba(15,23,42,.035)]";
-function IconBox({icon:Icon,cls="bg-blue-50 text-blue-600"}:{icon:typeof Film;cls?:string}){return <span className={cn("inline-flex size-11 shrink-0 items-center justify-center rounded-xl",cls)}><Icon className="size-5" aria-hidden="true"/></span>}
-function Soon({children="Coming Soon"}:{children?:React.ReactNode}){return <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold tracking-wide text-slate-500">{children}</span>}
-function FormatTime({seconds}:{seconds?:number}){if(seconds==null||!Number.isFinite(seconds))return <>Duration unavailable</>;return <>{Math.floor(seconds/60)}:{String(Math.floor(seconds%60)).padStart(2,"0")}</>}
-export function CreatorDashboard(){
- const {user,loading:accountLoading}=useAccount();const router=useRouter();
- const [collapsed,setCollapsed]=useState(false),[drawer,setDrawer]=useState(false),[profile,setProfile]=useState(false),[notifications,setNotifications]=useState(false);
- const [projects,setProjects]=useState<Project[]>([]),[busy,setBusy]=useState(true),[error,setError]=useState(""),[search,setSearch]=useState(""),[view,setView]=useState<"grid"|"list">("grid"),[menu,setMenu]=useState<string|null>(null),[reload,setReload]=useState(0);
- const drawerClose=useRef<HTMLButtonElement>(null),drawerOpen=useRef<HTMLButtonElement>(null);
- useEffect(()=>{if(!accountLoading&&!user){router.replace("/login?next=%2Fdashboard");router.refresh()}},[accountLoading,user,router]);
- useEffect(()=>{const abort=new AbortController();setBusy(true);projectRequest("?sort=recent",{signal:abort.signal}).then(r=>{if(!abort.signal.aborted){setProjects(r.projects);setError("")}}).catch(e=>{if(!abort.signal.aborted)setError(e instanceof Error?e.message:"Could not load projects")}).finally(()=>{if(!abort.signal.aborted)setBusy(false)});return()=>abort.abort()},[reload]);
- useEffect(()=>{if(!drawer)return;const old=document.body.style.overflow;document.body.style.overflow="hidden";drawerClose.current?.focus();const key=(e:KeyboardEvent)=>{if(e.key==="Escape")setDrawer(false);if(e.key==="Tab"){const nodes=Array.from(document.querySelectorAll<HTMLElement>("#dashboard-sidebar a[href],#dashboard-sidebar button:not([disabled])")).filter(x=>x.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};document.addEventListener("keydown",key);return()=>{document.body.style.overflow=old;document.removeEventListener("keydown",key);drawerOpen.current?.focus()}},[drawer]);
- const name=typeof user?.user_metadata?.display_name==="string"&&user.user_metadata.display_name.trim()?user.user_metadata.display_name.trim():user?.email?.split("@")[0]||"Creator";
- const filtered=projects.filter(p=>p.title.toLowerCase().includes(search.trim().toLowerCase()));
- return <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
- <a href="#dashboard-main" className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:not-sr-only focus:rounded-lg focus:bg-white focus:p-3">Skip to dashboard</a>
- {drawer&&<button className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" aria-label="Close navigation" tabIndex={-1} onClick={()=>setDrawer(false)}/>}
- <aside id="dashboard-sidebar" aria-label="Dashboard navigation" role={drawer?"dialog":undefined} aria-modal={drawer?true:undefined} className={cn("fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200 bg-white transition-[width,transform] duration-200 motion-reduce:transition-none lg:translate-x-0",collapsed?"lg:w-[82px]":"lg:w-[252px]",drawer?"w-[280px] translate-x-0":"w-[280px] -translate-x-full")}>
- <div className="flex h-[78px] items-center justify-between border-b border-slate-100 px-5"><Link href="/dashboard" onClick={()=>setDrawer(false)} className="flex min-w-0 items-center gap-3"><img src="/pcgh-logo.webp" width="40" height="40" alt="PCGH logo" className="size-10 rounded-xl object-contain"/><span className={cn("min-w-0",collapsed&&"lg:hidden")}><strong className="block text-[16px] font-extrabold tracking-tight">econtent</strong><span className="block text-[10px] font-bold uppercase tracking-[.18em] text-blue-600">by PCGH</span></span></Link><button ref={drawerClose} className="rounded-lg p-2 hover:bg-slate-100 lg:hidden" aria-label="Close navigation" onClick={()=>setDrawer(false)}><X className="size-5"/></button></div>
- <div className={cn("px-5 pb-2 pt-7 text-[10px] font-bold uppercase tracking-[.18em] text-slate-400",collapsed&&"lg:sr-only")}>Workspace</div>
- <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-5">{nav.map(({name,icon:Icon,href})=>href?<Link key={name} href={href} onClick={()=>setDrawer(false)} aria-current={name==="Dashboard"?"page":undefined} title={name} className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",name==="Dashboard"?"bg-blue-600 text-white shadow-sm shadow-blue-200":"text-slate-600 hover:bg-blue-50 hover:text-blue-700",collapsed&&"lg:justify-center")}><Icon className="size-[18px] shrink-0"/><span className={cn(collapsed&&"lg:sr-only")}>{name}</span></Link>:<div key={name} title={name+" — Coming Soon"} aria-disabled="true" className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400",collapsed&&"lg:justify-center")}><Icon className="size-[18px] shrink-0"/><span className={cn("min-w-0 flex-1",collapsed&&"lg:sr-only")}>{name}</span><span className={cn(collapsed&&"lg:hidden")}><Soon/></span></div>)}</nav>
- <div className={cn("m-3 rounded-2xl bg-blue-50 p-4",collapsed&&"lg:hidden")}><p className="text-xs font-bold text-blue-800">Your creative workspace</p><p className="mt-1 text-xs leading-5 text-blue-700">Create, edit and keep your work in one place.</p><Link href="/video-editor" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-blue-700">Open editor <ArrowUpRight className="size-3"/></Link></div>
- <button className="hidden min-h-12 items-center justify-center gap-2 border-t border-slate-100 text-sm font-semibold text-slate-500 hover:text-blue-600 lg:flex" onClick={()=>setCollapsed(x=>!x)} aria-label={collapsed?"Expand sidebar":"Collapse sidebar"}>{collapsed?<PanelLeftOpen className="size-5"/>:<PanelLeftClose className="size-5"/>}<span className={cn(collapsed&&"lg:sr-only")}>{collapsed?"Expand":"Collapse"} sidebar</span></button>
- </aside>
- <div className={cn("min-w-0 transition-[margin] duration-200 motion-reduce:transition-none",collapsed?"lg:ml-[82px]":"lg:ml-[252px]")}>
- <header className="sticky top-0 z-30 flex min-h-[78px] items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 xl:px-9">
- <button ref={drawerOpen} onClick={()=>setDrawer(true)} className="flex size-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100 lg:hidden" aria-label="Open navigation" aria-expanded={drawer}><Menu className="size-5"/></button>
- <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">Welcome, {name}</p><p className="hidden text-xs text-slate-500 sm:block">Your content creation command center</p></div>
- <label className="hidden h-11 w-full max-w-[310px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 md:flex"><Search className="size-4 shrink-0 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search projects..." aria-label="Search projects" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/></label>
- <span className="hidden rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 sm:inline-flex">Plan: Not connected</span>
- <span className="hidden rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 xl:inline-flex">Credits: Unavailable</span>
- <div className="relative"><button onClick={()=>setNotifications(v=>!v)} aria-label="Notifications" aria-expanded={notifications} className="flex size-11 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-50"><Bell className="size-[19px]"/></button>{notifications&&<div role="status" className="absolute right-0 top-12 z-40 w-64 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-xl"><strong>Notifications</strong><p className="mt-2 text-slate-500">Notifications are coming soon.</p></div>}</div>
- <div className="relative"><button aria-label="Profile menu" aria-expanded={profile} onClick={()=>setProfile(v=>!v)} className="flex size-11 items-center justify-center rounded-full bg-blue-600 font-bold text-white">{name.slice(0,1).toUpperCase()}</button>{profile&&<div className="absolute right-0 top-12 z-40 w-56 rounded-xl border border-slate-200 bg-white p-2 text-sm shadow-xl"><p className="truncate border-b p-3 text-xs text-slate-500">{user?.email||"Account"}</p><Link href="/settings" className="flex items-center gap-2 rounded-lg p-3 hover:bg-slate-50"><Settings className="size-4"/>Account settings</Link><button className="flex w-full items-center gap-2 rounded-lg p-3 text-left text-red-700 hover:bg-red-50" onClick={async()=>{const client=browserSupabase();if(client){const {error}=await client.auth.signOut();if(!error){router.replace("/login");router.refresh()}else setError(error.message)}}}><LogOut className="size-4"/>Sign out</button></div>}</div>
- </header>
- <main id="dashboard-main" className="mx-auto max-w-[1520px] px-4 pb-14 pt-7 sm:px-6 xl:px-9">
- <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-blue-600"><span className="size-2 rounded-full bg-blue-500"/>Creator workspace</div><h1 className="text-2xl font-extrabold tracking-tight sm:text-[30px]">Welcome back! Ready to create something amazing?</h1><p className="mt-2 text-sm text-slate-500">Everything you need to turn ideas into content, all in one place.</p></div><Link href="/projects/new" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-md shadow-blue-100 hover:bg-blue-700"><Plus className="size-4"/>Create New Project</Link></div>
- <section aria-label="Workspace overview" className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
- {[{label:"Total Projects",value:busy?"…":error?"—":String(projects.length),note:"Saved in your workspace",icon:FolderKanban},{label:"Videos Exported",value:"Unavailable",note:"Export history not tracked",icon:Film},{label:"Available Credits",value:"Not connected",note:"Credits system coming soon",icon:Wallet},{label:"Current Plan",value:"Not connected",note:"Plans coming soon",icon:CreditCard}].map((item,i)=><div key={item.label} className={cn(card,"flex min-h-[150px] flex-col justify-between p-5")}><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-500">{item.label}</p><IconBox icon={item.icon} cls={i===0?"bg-blue-50 text-blue-600":i===1?"bg-indigo-50 text-indigo-600":i===2?"bg-sky-50 text-sky-600":"bg-violet-50 text-violet-600"}/></div><div><p className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">{item.value}</p><p className="mt-1 text-xs text-slate-500">{item.note}</p></div></div>)}</section>
- <section className="mt-8"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-extrabold tracking-tight">What would you like to create today?</h2><p className="mt-1 text-sm text-slate-500">Choose a creative format to get started.</p></div><Link href="/video-editor" className="text-sm font-bold text-blue-700 hover:underline">Open video editor →</Link></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{presets.map(p=><div key={p.title} className={cn(card,"relative flex min-h-[122px] items-center gap-4 p-4")}><IconBox icon={p.icon} cls={p.tone}/><div className="min-w-0"><h3 className="text-sm font-bold">{p.title}</h3><p className="mt-1 text-xs text-slate-500">{p.desc}</p><div className="mt-2"><Soon/></div></div></div>)}</div><p className="mt-3 text-xs text-slate-500">Format presets are planned. Use the existing video editor for supported manual editing today.</p></section>
- <section className="mt-9"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-extrabold tracking-tight">Recent Projects</h2><p className="mt-1 text-sm text-slate-500">Pick up where you left off.</p></div><div className="flex items-center gap-2"><button onClick={()=>setView("grid")} aria-label="Grid view" aria-pressed={view==="grid"} className={cn("rounded-lg p-2.5",view==="grid"?"bg-blue-100 text-blue-700":"bg-white text-slate-500")}><Grid2X2 className="size-4"/></button><button onClick={()=>setView("list")} aria-label="List view" aria-pressed={view==="list"} className={cn("rounded-lg p-2.5",view==="list"?"bg-blue-100 text-blue-700":"bg-white text-slate-500")}><LayoutList className="size-4"/></button><Link href="/projects" className="ml-2 text-sm font-bold text-blue-700 hover:underline">View all</Link></div></div>
- <label className="mb-4 flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 md:hidden"><Search className="size-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search projects" aria-label="Search projects" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/></label>
- {busy?<div role="status" className={cn(card,"p-10 text-center text-sm text-slate-500")}>Loading your projects…</div>:error?<div role="alert" className={cn(card,"p-8 text-sm text-red-700")}>Unable to load projects: {error} <button onClick={()=>setReload(v=>v+1)} className="ml-2 inline-flex items-center gap-1 font-bold underline"><RefreshCw className="size-3"/>Retry</button></div>:filtered.length?<div className={cn("grid gap-4",view==="grid"?"sm:grid-cols-2 xl:grid-cols-3":"grid-cols-1")}>{filtered.slice(0,6).map(p=><article key={p.id} className={cn(card,"flex min-w-0 overflow-hidden",view==="grid"?"flex-col":"flex-col sm:flex-row")}><div className={cn("flex shrink-0 items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-blue-600",view==="grid"?"aspect-[2.1]":"h-36 sm:w-52")}><Clapperboard className="size-10 text-white/70" aria-label="Project thumbnail unavailable"/></div><div className="min-w-0 flex-1 p-4"><div className="flex items-start justify-between gap-2"><h3 className="truncate text-sm font-bold">{p.title}</h3><div className="relative"><button aria-label={"Actions for "+p.title} aria-expanded={menu===p.id} onClick={()=>setMenu(v=>v===p.id?null:p.id)} className="rounded-lg p-2 hover:bg-slate-100"><MoreHorizontal className="size-4"/></button>{menu===p.id&&<div className="absolute right-0 z-10 w-36 rounded-lg border bg-white p-2 text-xs shadow-lg"><Link href={"/projects/"+p.id} className="block rounded p-2 hover:bg-slate-50">Open project</Link><Link href="/projects" className="block rounded p-2 hover:bg-slate-50">Manage projects</Link></div>}</div></div><p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="size-3"/>Edited {new Date(p.updatedAt).toLocaleDateString()}</p><div className="mt-3 flex flex-wrap items-center gap-2"><span className={cn("rounded-full px-2 py-1 text-[10px] font-bold",p.status==="completed"?"bg-green-50 text-green-700":"bg-amber-50 text-amber-700")}>{p.status}</span><span className="text-xs text-slate-500"><FormatTime seconds={p.source?.durationSeconds}/></span></div><Link href={"/projects/"+p.id} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50">Continue Editing <ArrowUpRight className="size-3"/></Link></div></article>)}</div>:<div className={cn(card,"flex flex-col items-center px-5 py-12 text-center")}><IconBox icon={FolderKanban}/><h3 className="mt-4 font-bold">{search?"No matching projects":"Your next great idea starts here"}</h3><p className="mt-2 max-w-sm text-sm text-slate-500">{search?"Try another search term.":"Create your first project and your saved work will appear here."}</p><Link href="/projects/new" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white"><Plus className="size-4"/>Create Your First Project</Link></div>}
- <p className="mt-3 text-xs text-slate-500">Saved projects reopen through your existing project workspace. Local media may need to be reattached on a different device.</p></section>
- <div className="mt-9 grid gap-5 xl:grid-cols-2"><section className={cn(card,"p-5 sm:p-6")}><div className="flex items-center gap-3"><IconBox icon={Wallet}/><div><h2 className="font-extrabold">PCGH Credits</h2><p className="text-xs text-slate-500">Credit wallet preview</p></div></div><div className="mt-6 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Available balance</p><p className="mt-2 text-lg font-bold">Not connected</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Credits used</p><p className="mt-2 text-lg font-bold">Not tracked</p></div></div><p className="mt-4 text-xs text-slate-500">Recent credit activity will appear after wallet integration.</p><div className="mt-4 flex items-center justify-between"><Soon/><span className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-400">Add Credits · Soon</span></div></section><section className={cn(card,"p-5 sm:p-6")}><div className="flex items-center gap-3"><IconBox icon={CreditCard} cls="bg-violet-50 text-violet-700"/><div><h2 className="font-extrabold">Subscription</h2><p className="text-xs text-slate-500">Your plan and benefits</p></div></div><p className="mt-6 text-sm font-semibold">Current plan <span className="ml-2 text-slate-500">Not connected</span></p><p className="mt-2 text-xs text-slate-500">Free · Starter · Pro · Business</p><div className="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">Plan benefits and upgrades will appear when subscription services are available.</div><div className="mt-4 flex items-center justify-between"><Soon/><span className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-400">Upgrade Plan · Soon</span></div></section></div>
- <section className="mt-9"><div className="mb-4 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-blue-600">Future-ready tools</p><h2 className="mt-1 text-xl font-extrabold tracking-tight">Create Smarter with AI</h2><p className="mt-1 text-sm text-slate-500">More ways to bring your ideas to life.</p></div><Soon/></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{ai.map(x=><div key={x.title} className={cn(card,"flex items-center gap-4 p-4")}><IconBox icon={x.icon} cls="bg-blue-50 text-blue-700"/><div className="min-w-0 flex-1"><h3 className="text-sm font-bold">{x.title}</h3><p className="mt-1 text-xs text-slate-500">{x.desc}</p></div><Soon/></div>)}</div></section>
- <footer className="mt-12 border-t border-slate-200 pt-5 text-xs text-slate-500">© 2026 Econtent by PCGH · Built for creators. <Link href="/settings" className="ml-2 font-semibold text-blue-700 hover:underline">Account settings</Link></footer>
- </main></div></div>;
+import localFont from "next/font/local";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
+  CreditCard,
+  FileText,
+  FolderKanban,
+  Grid2X2,
+  LayoutList,
+  Plus,
+  RefreshCw,
+  SearchX,
+  ShieldCheck,
+  Sparkles,
+  TriangleAlert,
+  Wallet,
+} from "lucide-react";
+import { useAccount } from "./provider";
+import { browserSupabase } from "@/lib/supabase/browser";
+import { projectRequest } from "@/lib/projects/client";
+import type { Project } from "@/lib/projects/model";
+import {
+  dashboardCounts,
+  dashboardProjects,
+  type ProjectFilter,
+  type ProjectSort,
+} from "@/lib/projects/dashboard";
+import { cn } from "@/lib/utils";
+import {
+  DashboardHeader,
+  DashboardSidebar,
+  DASHBOARD_TOOLS,
+} from "./dashboard/navigation";
+import { ProjectCard } from "./dashboard/project-card";
+import styles from "./creator-dashboard.module.css";
+const inter = localFont({
+  src: "../../public/fonts/inter-latin.woff2",
+  weight: "400 700",
+  display: "swap",
+  fallback: ["Arial", "sans-serif"],
+});
+type Snapshot = {
+  ownerId: string | null;
+  status: "loading" | "ready" | "error";
+  projects: Project[];
+  error: string;
+};
+const filters: { id: ProjectFilter; label: string }[] = [
+  { id: "all", label: "All projects" },
+  { id: "completed", label: "Completed" },
+  { id: "attention", label: "Needs attention" },
+  { id: "draft", label: "Drafts" },
+];
+const card =
+  "rounded-2xl border border-slate-200 bg-white shadow-[0_2px_8px_rgba(15,23,42,.025)]";
+export function CreatorDashboard() {
+  const { user, loading: accountLoading } = useAccount(),
+    router = useRouter();
+  const [collapsed, setCollapsed] = useState(false),
+    [drawer, setDrawer] = useState(false),
+    [search, setSearch] = useState(""),
+    [filter, setFilter] = useState<ProjectFilter>("all"),
+    [sort, setSort] = useState<ProjectSort>("recent"),
+    [view, setView] = useState<"grid" | "list">("grid"),
+    [reload, setReload] = useState(0),
+    [signingOut, setSigningOut] = useState(false),
+    [accountError, setAccountError] = useState("");
+  const [snapshot, setSnapshot] = useState<Snapshot>({
+    ownerId: null,
+    status: "loading",
+    projects: [],
+    error: "",
+  });
+  const opener = useRef<HTMLButtonElement>(null),
+    heading = useRef<HTMLHeadingElement>(null),
+    ownerId = user?.id;
+  const closeDrawer = useCallback(() => setDrawer(false), []);
+  useEffect(() => {
+    if (!accountLoading && !user) {
+      router.replace("/login?next=%2Fdashboard");
+      router.refresh();
+    }
+  }, [accountLoading, user, router]);
+  useEffect(() => {
+    if (accountLoading || !ownerId) return;
+    const controller = new AbortController();
+    void projectRequest("?sort=recent", { signal: controller.signal })
+      .then((r) => {
+        if (!controller.signal.aborted)
+          setSnapshot({
+            ownerId,
+            status: "ready",
+            projects: r.projects,
+            error: "",
+          });
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setSnapshot({
+            ownerId,
+            status: "error",
+            projects: [],
+            error: e instanceof Error ? e.message : "Could not load projects",
+          });
+      });
+    return () => controller.abort();
+  }, [accountLoading, ownerId, reload]);
+  useEffect(() => {
+    const query = matchMedia("(min-width:1024px)"),
+      change = () => {
+        if (query.matches) setDrawer(false);
+      };
+    query.addEventListener("change", change);
+    try {
+      if (localStorage.getItem("econtent-dashboard-collapsed") === "true")
+        queueMicrotask(() => setCollapsed(true));
+    } catch {}
+    return () => query.removeEventListener("change", change);
+  }, []);
+  const toggleSidebar = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem("econtent-dashboard-collapsed", String(next));
+    } catch {}
+  };
+  const busy =
+      accountLoading ||
+      !user ||
+      snapshot.ownerId !== ownerId ||
+      snapshot.status === "loading",
+    error = !busy && snapshot.status === "error" ? snapshot.error : "",
+    projects = !busy && !error ? snapshot.projects : [],
+    available = !busy && !error,
+    counts = dashboardCounts(projects),
+    filtered = dashboardProjects(projects, search, filter, sort),
+    visible = filtered.slice(0, 6);
+  const rawName =
+      typeof user?.user_metadata?.display_name === "string"
+        ? user.user_metadata.display_name.trim()
+        : "",
+    name = rawName || user?.email?.split("@")[0] || "Creator";
+  const focusProjects = () => {
+    heading.current?.scrollIntoView({
+      block: "start",
+      behavior: matchMedia("(prefers-reduced-motion:reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+    heading.current?.focus({ preventScroll: true });
+  };
+  const selectFilter = (next: ProjectFilter) => {
+    setFilter(next);
+    focusProjects();
+  };
+  const retry = () => {
+    setSnapshot((s) => ({ ...s, status: "loading", error: "" }));
+    setReload((value) => value + 1);
+  };
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setAccountError("");
+    try {
+      const client = browserSupabase();
+      if (!client)
+        throw Error(
+          "Account services are unavailable. Please reload and try again.",
+        );
+      const { error } = await client.auth.signOut();
+      if (error) throw error;
+      router.replace("/login");
+      router.refresh();
+    } catch (e) {
+      setAccountError(
+        e instanceof Error
+          ? e.message
+          : "Unable to sign out. Please try again.",
+      );
+    } finally {
+      setSigningOut(false);
+    }
+  }
+  const metrics = [
+    {
+      id: "all" as const,
+      label: "Saved projects",
+      note: "Your cloud workspace",
+      icon: FolderKanban,
+    },
+    {
+      id: "completed" as const,
+      label: "Completed",
+      note: "Saved edits ready to reopen",
+      icon: CheckCircle2,
+    },
+    {
+      id: "attention" as const,
+      label: "Needs attention",
+      note: "Review and retry failed edits",
+      icon: TriangleAlert,
+    },
+    {
+      id: "draft" as const,
+      label: "Draft projects",
+      note: "Ideas ready to continue",
+      icon: FileText,
+    },
+  ];
+  return (
+    <div
+      data-testid="creator-dashboard"
+      className={cn(inter.className, styles.workspace, "min-h-dvh")}
+    >
+      <a
+        href="#dashboard-main"
+        inert={drawer}
+        className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:not-sr-only focus:rounded-lg focus:bg-white focus:p-3 focus:text-sm focus:font-semibold"
+      >
+        Skip to dashboard
+      </a>
+      <DashboardSidebar
+        collapsed={collapsed}
+        toggle={toggleSidebar}
+        drawer={drawer}
+        close={closeDrawer}
+        opener={opener}
+      />
+      <div
+        inert={drawer}
+        className={cn(
+          "min-w-0 transition-[margin] duration-200 motion-reduce:transition-none",
+          collapsed ? "lg:ml-[72px]" : "lg:ml-56",
+        )}
+      >
+        <DashboardHeader
+          user={user}
+          name={name}
+          drawer={drawer}
+          setDrawer={setDrawer}
+          opener={opener}
+          search={search}
+          setSearch={setSearch}
+          onSearchSubmit={focusProjects}
+          attention={counts.attention}
+          available={available}
+          onAttention={() => selectFilter("attention")}
+          onRetry={retry}
+          onSignOut={() => void signOut()}
+          signingOut={signingOut}
+        />
+        <main
+          id="dashboard-main"
+          tabIndex={-1}
+          className="mx-auto max-w-[1440px] px-4 pb-8 pt-7 outline-none sm:px-6 lg:px-8"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[.13em] text-slate-500">
+                Creator workspace
+              </p>
+              <h1 className="mt-1.5 text-2xl font-semibold tracking-tight sm:text-[28px]">
+                Your creative workspace
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Welcome back,{" "}
+                <span className="font-medium text-slate-700">
+                  {name.length > 40 ? name.slice(0, 40) + "…" : name}
+                </span>
+                . Pick up your latest edit or start something new.
+              </p>
+            </div>
+            <Link
+              href="/projects/new"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#155DFC] px-4 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              New project
+            </Link>
+          </div>
+          {accountError && (
+            <p
+              role="alert"
+              className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"
+            >
+              {accountError}
+            </p>
+          )}
+          <section
+            aria-label="Workspace overview"
+            className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4"
+          >
+            {metrics.map(({ id, label, note, icon: Icon }) => (
+              <button
+                type="button"
+                key={id}
+                disabled={!available}
+                onClick={() => selectFilter(id)}
+                aria-label={`Show ${label.toLowerCase()}`}
+                aria-pressed={filter === id}
+                className={cn(
+                  card,
+                  "group flex min-h-[108px] items-start justify-between gap-2 p-4 text-left transition-colors hover:border-blue-300 disabled:cursor-default disabled:hover:border-slate-200 sm:p-5",
+                )}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">{label}</p>
+                  <p
+                    data-testid={`metric-${id}`}
+                    className="mt-2 text-[26px] font-semibold leading-none tracking-tight"
+                  >
+                    {available ? counts[id] : "—"}
+                  </p>
+                  <p className="mt-2 hidden text-[11px] leading-4 text-slate-500 sm:block">
+                    {note}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-lg p-2",
+                    id === "attention" && available && counts.attention > 0
+                      ? "bg-rose-50 text-rose-700"
+                      : "bg-slate-50 text-slate-500",
+                  )}
+                >
+                  <Icon className="size-[17px]" aria-hidden="true" />
+                </span>
+              </button>
+            ))}
+          </section>
+          {available && projects.length === 200 && (
+            <p className="mt-2 text-xs text-slate-500">
+              Counts reflect the 200 most recently updated saved projects.
+            </p>
+          )}
+          <section aria-labelledby="quick-create-heading" className="mt-7">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2
+                  id="quick-create-heading"
+                  className="text-[15px] font-semibold tracking-tight"
+                >
+                  Quick create
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Open a working studio and make it yours.
+                </p>
+              </div>
+              <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                Source media stays local
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {DASHBOARD_TOOLS.map(
+                ({ name, href, description, icon: Icon, color }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      card,
+                      "group flex items-center gap-3 p-4 transition-colors hover:border-blue-300 xl:block",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex size-9 shrink-0 items-center justify-center rounded-lg",
+                        color,
+                      )}
+                    >
+                      <Icon className="size-[18px]" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 xl:mt-3">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                        {name}
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="size-3.5 text-slate-400 transition-transform group-hover:translate-x-0.5"
+                        />
+                      </h3>
+                      <p className="mt-1 text-[11px] leading-[18px] text-slate-500">
+                        {description}
+                      </p>
+                    </div>
+                  </Link>
+                ),
+              )}
+            </div>
+          </section>
+          <section aria-labelledby="recent-projects-heading" className="mt-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2
+                  id="recent-projects-heading"
+                  ref={heading}
+                  tabIndex={-1}
+                  className="scroll-mt-24 rounded text-[15px] font-semibold tracking-tight outline-none"
+                >
+                  Recent projects
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Reopen a saved edit. Exported files and original media stay on
+                  your device.
+                </p>
+              </div>
+              <Link
+                href="/projects"
+                className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-[#155DFC] hover:underline"
+              >
+                View all projects{" "}
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div
+                role="group"
+                aria-label="Project status filter"
+                className="flex max-w-full flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-1"
+              >
+                {filters.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={filter === item.id}
+                    onClick={() => setFilter(item.id)}
+                    className={cn(
+                      "min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors",
+                      filter === item.id
+                        ? "bg-blue-50 text-[#155DFC]"
+                        : "text-slate-500 hover:bg-slate-50",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="sr-only" htmlFor="dashboard-sort">
+                  Sort recent projects
+                </label>
+                <select
+                  id="dashboard-sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as ProjectSort)}
+                  className="h-9 max-w-[155px] rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-600"
+                >
+                  <option value="recent">Most recent</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="name">Project name</option>
+                </select>
+                <div
+                  role="group"
+                  aria-label="Project view"
+                  className="flex rounded-lg border border-slate-200 bg-white p-0.5"
+                >
+                  <button
+                    type="button"
+                    aria-label="Grid view"
+                    aria-pressed={view === "grid"}
+                    onClick={() => setView("grid")}
+                    className={cn(
+                      "rounded-md p-2",
+                      view === "grid"
+                        ? "bg-blue-50 text-[#155DFC]"
+                        : "text-slate-500 hover:bg-slate-50",
+                    )}
+                  >
+                    <Grid2X2 className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="List view"
+                    aria-pressed={view === "list"}
+                    onClick={() => setView("list")}
+                    className={cn(
+                      "rounded-md p-2",
+                      view === "list"
+                        ? "bg-blue-50 text-[#155DFC]"
+                        : "text-slate-500 hover:bg-slate-50",
+                    )}
+                  >
+                    <LayoutList className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            {busy ? (
+              <div
+                role="status"
+                className={cn(
+                  card,
+                  "flex min-h-40 items-center justify-center gap-2 text-sm text-slate-500",
+                )}
+              >
+                <RefreshCw
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+                Loading your projects…
+              </div>
+            ) : error ? (
+              <div role="alert" className={cn(card, "p-6")}>
+                <h3 className="text-sm font-semibold text-rose-800">
+                  We couldn’t load your projects
+                </h3>
+                <p className="mt-2 text-xs leading-5 text-slate-500">{error}</p>
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  <RefreshCw className="size-3.5" />
+                  Retry loading projects
+                </button>
+              </div>
+            ) : visible.length ? (
+              <>
+                <div
+                  data-testid="dashboard-projects"
+                  className={cn(
+                    "grid gap-4",
+                    view === "grid"
+                      ? "sm:grid-cols-2 2xl:grid-cols-3"
+                      : "grid-cols-1",
+                  )}
+                >
+                  {visible.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      list={view === "list"}
+                    />
+                  ))}
+                </div>
+                <p
+                  aria-live="polite"
+                  className="mt-3 text-[11px] text-slate-500"
+                >
+                  {search || filter !== "all"
+                    ? `${filtered.length} matching ${filtered.length === 1 ? "project" : "projects"}`
+                    : `${projects.length} saved ${projects.length === 1 ? "project" : "projects"}`}
+                  {filtered.length > 6
+                    ? " · Showing the first 6. Open all projects for the full list."
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <div
+                className={cn(
+                  card,
+                  "flex min-h-48 flex-col items-center justify-center p-6 text-center",
+                )}
+              >
+                <span className="rounded-xl bg-slate-50 p-3 text-slate-400">
+                  {projects.length ? (
+                    <SearchX className="size-6" />
+                  ) : (
+                    <FolderKanban className="size-6" />
+                  )}
+                </span>
+                <h3 className="mt-3 text-sm font-semibold">
+                  {projects.length
+                    ? "No matching projects"
+                    : "A fresh space for your next idea"}
+                </h3>
+                <p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">
+                  {projects.length
+                    ? "Try another title or project status. Your saved projects are still in your workspace."
+                    : "Create a project to save your edit settings and return to them later."}
+                </p>
+                {projects.length ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setFilter("all");
+                    }}
+                    className="mt-4 min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700"
+                  >
+                    Clear filters
+                  </button>
+                ) : (
+                  <Link
+                    href="/projects/new"
+                    className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#155DFC] px-4 text-xs font-semibold text-white hover:bg-blue-700"
+                  >
+                    <Plus className="size-3.5" />
+                    Create your first project
+                  </Link>
+                )}
+              </div>
+            )}
+          </section>
+          <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <section
+              aria-label="Planned AI capabilities"
+              className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-blue-100 bg-[#edf3ff] p-5"
+            >
+              <div className="flex min-w-0 gap-3">
+                <span className="rounded-lg bg-white p-2 text-[#155DFC]">
+                  <Sparkles className="size-[18px]" aria-hidden="true" />
+                </span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm font-semibold">
+                      More creative possibilities
+                    </h2>
+                    <span className="rounded-full border border-blue-200 bg-white/70 px-2 py-0.5 text-[10px] font-medium text-blue-800">
+                      Coming soon
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                    AI voiceover, automatic highlights and background removal.
+                  </p>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                    These capabilities aren’t available yet. Explore the working
+                    studios above.
+                  </p>
+                </div>
+              </div>
+            </section>
+            <section
+              aria-label="Credits and subscriptions"
+              className={cn(card, "flex items-start gap-3 p-5")}
+            >
+              <span className="rounded-lg bg-slate-50 p-2 text-slate-500">
+                <Wallet className="size-[18px]" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold">Account services</h2>
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+                  <CreditCard className="size-3.5" aria-hidden="true" />
+                  Credits & subscriptions{" "}
+                  <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                    Unavailable
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                  Balances, billing and plan management are not connected.
+                </p>
+              </div>
+            </section>
+          </div>
+          <footer className="mt-7 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4 text-[11px] text-slate-500">
+            <span>Econtent by PCGH · Your creative workspace</span>
+            <Link
+              href="/settings"
+              className="rounded font-medium hover:text-[#155DFC]"
+            >
+              Account settings
+            </Link>
+          </footer>
+        </main>
+      </div>
+    </div>
+  );
 }
