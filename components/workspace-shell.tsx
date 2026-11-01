@@ -30,7 +30,7 @@ const focusable = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 
 function Brand() {
   return <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5" aria-label="Econtent dashboard">
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm"><Clapperboard aria-hidden="true" className="size-5"/></span>
+    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><img src="/pcgh-logo.webp" alt="Puricasie Creators Growth Hub logo" width="40" height="40" className="size-full object-contain"/></span>
     <span><span className="block text-[15px] font-bold leading-none">econtent</span><span className="mt-1 block text-[9px] font-semibold uppercase tracking-[.2em] text-slate-500">by PCGH</span></span>
   </Link>
 }
