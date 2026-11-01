@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
-import {Bell,BookOpen,Check,ChevronDown,Clapperboard,Clock3,CreditCard,Film,FolderKanban,Grid2X2,HelpCircle,LayoutDashboard,LayoutList,Menu,MoreHorizontal,PanelLeftClose,PanelLeftOpen,Plus,Search,Settings,Sparkles,Subtitles,UserCircle,Wallet,X,Play,RectangleVertical,RectangleHorizontal,Square,Instagram,Youtube,Facebook,Mic2,AudioLines,Scissors,ImageMinus,MessageSquareText,LogOut,ArrowUpRight,RefreshCw} from "lucide-react";
+import {Bell,Clapperboard,Clock3,CreditCard,Film,FolderKanban,Grid2X2,HelpCircle,LayoutDashboard,LayoutList,Menu,MoreHorizontal,PanelLeftClose,PanelLeftOpen,Plus,Search,Settings,Sparkles,Subtitles,Wallet,X,Play,RectangleHorizontal,Square,Instagram,Youtube,Facebook,Mic2,AudioLines,Scissors,ImageMinus,MessageSquareText,LogOut,ArrowUpRight,RefreshCw} from "lucide-react";
 import {useAccount} from "@/components/account/provider";
 import {browserSupabase} from "@/lib/supabase/browser";
 import {projectRequest} from "@/lib/projects/client";
@@ -26,7 +26,6 @@ export function CreatorDashboard(){
  useEffect(()=>{if(!drawer)return;const old=document.body.style.overflow;document.body.style.overflow="hidden";drawerClose.current?.focus();const key=(e:KeyboardEvent)=>{if(e.key==="Escape")setDrawer(false);if(e.key==="Tab"){const nodes=Array.from(document.querySelectorAll<HTMLElement>("#dashboard-sidebar a[href],#dashboard-sidebar button:not([disabled])")).filter(x=>x.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};document.addEventListener("keydown",key);return()=>{document.body.style.overflow=old;document.removeEventListener("keydown",key);drawerOpen.current?.focus()}},[drawer]);
  const name=typeof user?.user_metadata?.display_name==="string"&&user.user_metadata.display_name.trim()?user.user_metadata.display_name.trim():user?.email?.split("@")[0]||"Creator";
  const filtered=projects.filter(p=>p.title.toLowerCase().includes(search.trim().toLowerCase()));
- const completed=projects.filter(p=>p.status==="completed").length;
  return <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
  <a href="#dashboard-main" className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:not-sr-only focus:rounded-lg focus:bg-white focus:p-3">Skip to dashboard</a>
  {drawer&&<button className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" aria-label="Close navigation" tabIndex={-1} onClick={()=>setDrawer(false)}/>}
