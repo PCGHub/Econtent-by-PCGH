@@ -73,7 +73,7 @@ export function MultitrackEditor(){
       if(music)args.push('-map',`${visuals.length}:a:0`,'-t',String(total),'-c:a','aac','-b:a','128k')
       else args.push('-an')
       args.push('-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p','-threads','1','-movflags','+faststart','export.mp4')
-      ff.on('progress',p=>setProgress(Math.min(99,Math.round((p.time/1000000)/Math.max(total,.1)*100))))
+      ff.on('progress',(p:{progress:number;time:number})=>setProgress(Math.min(99,Math.round((p.time/1000000)/Math.max(total,.1)*100))))
       setStatus('Encoding MP4…')
       const code=await ff.exec(args)
       if(code!==0)throw Error('FFmpeg returned exit code '+code+'. Check source codecs and try shorter MP4 clips.')
