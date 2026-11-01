@@ -108,8 +108,11 @@ export function MultitrackEditor(){
   function editHook(id:string,patch:Partial<Hook>){setHooks(old=>old.map(h=>h.id===id?{...h,...patch}:h))}
   function moveHook(e:React.PointerEvent<HTMLDivElement>){const g=hookDrag.current;const box=previewBox.current;if(!g||!box)return;const r=box.getBoundingClientRect();editHook(g.id,{x:Math.max(5,Math.min(95,g.x+(e.clientX-g.pointerX)/r.width*100)),y:Math.max(8,Math.min(92,g.y+(e.clientY-g.pointerY)/r.height*100))})}
   async function hookPng(h:Hook):Promise<Uint8Array>{const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas unavailable');ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`bold ${h.size}px ${h.font}`;const words=h.text.split(/\s+/);const lines:string[]=[];let line='';for(const word of words){const test=(line+' '+word).trim();if(ctx.measureText(test).width>560&&line){lines.push(line);line=word}else line=test}if(line)lines.push(line);if(lines.length>3)throw Error('Hook text is too long (maximum 3 lines)');for(let i=0;i<lines.length;i++){const y=h.y*3.6+(i-(lines.length-1)/2)*(h.size+9);ctx.lineWidth=7;ctx.strokeStyle='#000';ctx.strokeText(lines[i],h.x*6.4,y);ctx.fillStyle=h.color;ctx.fillText(lines[i],h.x*6.4,y)}const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('PNG render failed')),'image/png'));return new Uint8Array(await blob.arrayBuffer())}
+  async function verifyExport(blob:Blob,expected:number){const url=URL.createObjectURL(blob);try{return await new Promise<string>((resolve,reject)=>{const video=document.createElement('video');video.preload='metadata';const timeout=setTimeout(()=>{video.removeAttribute('src');video.load();reject(Error('MP4 verification timed out'))},15000);video.onloadedmetadata=()=>{clearTimeout(timeout);const actual=video.duration;video.removeAttribute('src');video.load();if(!Number.isFinite(actual)||Math.abs(actual-expected)>Math.max(1.25,expected*.03))reject(Error('Exported duration '+fmt(actual)+' differs from project '+fmt(expected)));else resolve('Verified MP4 metadata: '+actual.toFixed(2)+'s')};video.onerror=()=>{clearTimeout(timeout);reject(Error('Browser could not read the exported MP4'))};video.src=url})}finally{URL.revokeObjectURL(url)}}
   async function exportMp4(){
     if(busy||!visuals.length)return
+    if(!Number.isFinite(total)||total<=0){setStatus('Cannot export: add a visual clip with a valid duration.');return}
+    if(visuals.some(c=>!Number.isFinite(c.start)||!Number.isFinite(c.end)||c.end<=c.start||c.speed<=0)){setStatus('Cannot export: check the trim bounds and speed of every clip.');return}
     if(total>90){setStatus('For this first release, export projects up to 90 seconds.');return}
     if([...new Set(clips.map(c=>c.file))].reduce((n,c)=>n+c.size,0)>80*1024*1024){setStatus('For this first release, keep imported media under 80 MB total.');return}
     setPlaying(false);setBusy(true);setProgress(0);setStatus('Initializing FFmpeg…')
@@ -147,8 +150,11 @@ export function MultitrackEditor(){
       const bytes=await ff.readFile('export.mp4')
       if(typeof bytes==='string'||bytes.length<1000)throw Error('MP4 output was empty')
       if(download)URL.revokeObjectURL(download)
-      setDownload(URL.createObjectURL(new Blob([new Uint8Array(bytes)],{type:'video/mp4'})))
-      setProgress(100);setStatus('MP4 export complete — ready to download.')
+      const output=new Blob([new Uint8Array(bytes)],{type:'video/mp4'})
+      const outputUrl=URL.createObjectURL(output)
+      setDownload(outputUrl)
+      setProgress(100)
+      try{const verification=await verifyExport(output,total);setStatus('MP4 export complete — '+verification+'; ready to download.')}catch(error){setStatus('MP4 created but validation warning: '+(error instanceof Error?error.message:String(error))+' — check playback before sharing.')}
     }catch(error){setStatus('Export failed: '+(error instanceof Error?error.message:String(error)))}
     finally{ff.terminate();worker.current=null;setBusy(false)}
   }
