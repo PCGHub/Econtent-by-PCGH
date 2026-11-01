@@ -1,4 +1,8 @@
-# Cinematic Titles export recovery — active investigation
+# Cinematic Titles export recovery — verified Preview
+
+**Status: READY FOR USER TESTING.** The approved immutable Preview below passed
+actual cold/warm 27-second exports and playable MP4 validation. See the final hosted
+verification section; earlier pending statements are historical investigation checkpoints.
 
 Scope: Titles and necessary shared FFmpeg infrastructure only. Branch
 `fix/titles-export-performance`, starting at `9350c0cc8567493cf129a7e37ff53c769fcd8a29`.
@@ -192,3 +196,44 @@ unrelated Transcription lint issue.
 This handoff may be followed by documentation-only commits. The exact code Preview
 and tested code SHA remain the immutable deployment listed above; compare runtime
 files before choosing another deployment. No hosted test has been run without approval.
+
+
+## Final hosted verification — PASS after explicit approval
+
+The owner explicitly approved temporary share access for this exact Preview.
+Verification ran successfully against `dpl_6Jw3YCCDwgN2vGJHuUZKRWWbTCdy`, code commit
+`d837200b09d118cd87cf54289ffc027dc15c7795`, using TLS-validating isolated Chromium.
+The untrusted self-signed TLS negative control was rejected. The container exited
+successfully and was automatically removed. Only its tmpfs NSS store received the
+supplied CA; no host NSS store was mounted into the verification container.
+No persistent CA installation, TLS bypass or deployment-protection change was used.
+
+- Titles route: HTTP 200.
+- Actual default 27-second, three-scene project: **21.023 s cold**, **16.999 s warm**.
+- Both downloadable outputs: **5,542,817 bytes**, H.264/AAC, **854×480**, **648 frames**,
+  **27.000000 seconds**. Full native decoding, visible title pixels and advancing
+  browser playback passed. Mobile viewport had no horizontal overflow.
+- Actual deployed WASM: HTTP 200, `application/wasm`, `Content-Encoding: br`,
+  Content-Length **8,367,469**. Worker/core/manifest assets returned HTTP 200 with
+  JavaScript/JSON MIME types. No stale mismatched encoding was served.
+- Cold WASM download: **2436.4 ms**, compile **50.1 ms**, runtime init **12.7 ms**.
+- Warm fresh worker: **zero network bytes**; verified cache read/hash **488 ms**,
+  compile **58.7 ms**, runtime init **10.4 ms**.
+- No browser page errors. The temporary access file was deleted after testing;
+  no private link/cookie was committed or logged.
+
+Raw sanitized evidence: `docs/benchmarks/titles-hosted-recovery.json`.
+The previously blocked hosted export step is now complete. No more sharing approval
+is needed for this completed verification. GitHub's account regression job for
+code commit d837200 completed successfully. Its `verify` job still fails at the
+unchanged out-of-scope Transcription lint error; local/scoped results remain as above.
+
+Remaining limits: Android hardware and prior device-specific out-of-bounds failures
+were not reproduced/tested on a phone. Desktop benchmarks are not mobile guarantees.
+Long/high-resolution projects retain the existing frame/pixel/output budgets. Native
+WebCodecs was capability-probed but not introduced as an unverified replacement.
+No production deployment, main merge, Supabase/schema/Auth or billing change occurred.
+
+Documentation-only follow-up commits preserve these results. The verified Preview
+continues to reference the exact code SHA above; no runtime files changed during
+this final verification turn.

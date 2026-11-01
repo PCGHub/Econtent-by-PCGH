@@ -1,0 +1,236 @@
+{
+  "deploymentId": "dpl_6Jw3YCCDwgN2vGJHuUZKRWWbTCdy",
+  "origin": "https://econtent-by-pcgh-dxt2gor4o-pcgrowthhub-2263s-projects.vercel.app",
+  "codeCommit": "d837200b09d118cd87cf54289ffc027dc15c7795",
+  "environment": "Isolated desktop Chromium, 2 CPUs, 2 GiB container limit; TLS validation enabled, self-signed negative control rejected; no Android hardware",
+  "checks": {
+    "titlesRouteHTTP200": true,
+    "actual27SecondColdExport": true,
+    "actual27SecondWarmExport": true,
+    "mp4Codecs": [
+      "h264",
+      "aac"
+    ],
+    "dimensions": [
+      854,
+      480
+    ],
+    "frames": 648,
+    "fullNativeDecode": true,
+    "visibleTitlePixels": true,
+    "browserPlaybackAdvances": true,
+    "mobileViewportNoOverflow": true,
+    "warmVerifiedCacheNoNetwork": true,
+    "pageErrors": []
+  },
+  "httpAssets": [
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/startup-worker.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "length": "758",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/ffmpeg/worker.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/ffmpeg/errors.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "length": "332",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/ffmpeg/const.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/core-loader.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/sha2.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/utils.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/_md.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/_u64.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/asset-manifest.json",
+      "status": 200,
+      "mime": "application/json; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/core/ffmpeg-core.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/core/ffmpeg-core.wasm",
+      "status": 200,
+      "mime": "application/wasm",
+      "encoding": "br",
+      "length": "8367469",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/startup-worker.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "length": "758",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/ffmpeg/worker.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/ffmpeg/const.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/ffmpeg/errors.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "length": "332",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/core-loader.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/sha2.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/_md.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/_u64.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/hash/utils.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/asset-manifest.json",
+      "status": 200,
+      "mime": "application/json; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    },
+    {
+      "path": "/ffmpeg/releases/bd32aff7f580a33fa685a8b287425d08baaf721a7dff5efd60f55f702f9c0318/core/ffmpeg-core.js",
+      "status": 200,
+      "mime": "application/javascript; charset=utf-8",
+      "encoding": "br",
+      "cache": "MISS"
+    }
+  ],
+  "metrics": [
+    {
+      "phase": "ready",
+      "downloadMs": 2436.4000000003725,
+      "compileFinalizeMs": 50.10000000009313,
+      "transferBytes": 8367769,
+      "networkBodyBytes": 8367469,
+      "cached": false,
+      "cacheStorage": false,
+      "cacheLookupMs": 3.8999999999068677,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 12.700000000186265
+    },
+    {
+      "phase": "ready",
+      "downloadMs": 0,
+      "cacheReadMs": 488,
+      "compileFinalizeMs": 58.6999999997206,
+      "transferBytes": 0,
+      "networkBodyBytes": 0,
+      "cached": true,
+      "cacheStorage": true,
+      "cacheLookupMs": 7.399999999906868,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 10.399999999906868
+    }
+  ],
+  "exports": [
+    {
+      "warm": false,
+      "renderMs": 21023,
+      "bytes": 5542817,
+      "duration": "27.000000",
+      "frames": "648"
+    },
+    {
+      "warm": true,
+      "renderMs": 16999,
+      "bytes": 5542817,
+      "duration": "27.000000",
+      "frames": "648"
+    }
+  ],
+  "androidHardware": false
+}
