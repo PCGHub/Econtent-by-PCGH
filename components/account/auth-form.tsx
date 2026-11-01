@@ -25,7 +25,13 @@ export function AuthForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const client = browserSupabase();
-    if (!client || busy) return;
+    if (busy) return;
+    if (!client) {
+      setError(
+        "Sign-in is temporarily unavailable in this environment. Your credentials have not been sent. Please try again later or continue as a guest.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -150,7 +156,11 @@ export function AuthForm({
       )}
       <form onSubmit={submit} className="mt-8 flex flex-col gap-4">
         <fieldset
-          disabled={busy || !configured || (reset && (loading || !user))}
+          disabled={
+            busy ||
+            (mode !== "login" && !configured) ||
+            (reset && (loading || !user))
+          }
           className="contents"
         >
           {signup && (
