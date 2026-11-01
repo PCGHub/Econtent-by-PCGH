@@ -8,6 +8,8 @@ if (!process.argv[2])
   throw Error(
     "Pass a private JSON file containing {origin,shareUrl}; never commit it.",
   );
+const mode=process.argv[3]||"titles";
+if(!["titles","titles-recovery"].includes(mode))throw Error("Unsupported Titles verification mode");
 const config = resolve(process.argv[2]),
   ca =
     process.env.CODEX_PROXY_CERT ||
@@ -55,7 +57,7 @@ const mounts = [
   [resolve(root, "node_modules"), "/econtent/node_modules"],
   [ca, "/run/econtent-proxy-ca.crt"],
   [
-    resolve(root, "tests/hosted/titles-preview.mjs"),
+    resolve(root, `tests/hosted/${mode}-preview.mjs`),
     "/econtent/titles-preview.mjs",
   ],
   [config, "/run/econtent-preview-access.json"],

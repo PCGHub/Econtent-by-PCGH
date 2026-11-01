@@ -1,3 +1,4 @@
+import {renderStep} from './render-step';
 import { FFmpegTransport } from "../video/ffmpeg-transport";
 import { WorkerGuard } from "../video/worker-guard";
 import type { FFmpegWorker } from "../video/ffmpeg-browser";
@@ -116,7 +117,7 @@ export class BrowserTitlesRenderer implements TitlesRenderer {
     };
     signal.addEventListener("abort", this.stop, { once: true });
     try {
-      await document.fonts.ready;
+      await renderStep(()=>document.fonts.ready,signal,"Load title fonts");
       signal.throwIfAborted();
       for (const item of schedule)
         for (const t of item.scene.text)
@@ -379,14 +380,14 @@ export class BrowserTitlesRenderer implements TitlesRenderer {
               budget.height,
               element,
             );
-            const blob = await new Promise<Blob>((resolve, reject) =>
+            const blob = await renderStep(()=>new Promise<Blob>((resolve, reject) =>
               canvas.toBlob(
                 (b) =>
                   b ? resolve(b) : reject(Error("Frame rasterization failed")),
                 "image/jpeg",
                 0.9,
               ),
-            );
+            ),signal,"Rasterize title frame");
             signal.throwIfAborted();
             const path = `frame-${String(f).padStart(3, "0")}.jpg`;
             paths.add(path);

@@ -1,17 +1,225 @@
-import {test,expect,type Page,type Worker} from '@playwright/test';import {execFileSync} from 'node:child_process';import {mkdirSync,writeFileSync} from 'node:fs';import {join} from 'node:path';
-async function exportMP4(page:Page,path:string,duration:number,w:number,h:number,fps:number){
- const began=performance.now();await page.getByRole('tab',{name:'Export',exact:true}).click();await page.getByRole('button',{name:'Render Preview',exact:true}).click();await expect.poll(async()=>{const errors=await page.locator('main p[role="alert"]').allTextContents();if(errors.length)throw Error(errors.join(' '));return page.getByLabel('Rendered titles MP4',{exact:true}).count()},{timeout:240000}).toBe(1);const elapsedMs=performance.now()-began;const download=page.waitForEvent('download');await page.getByRole('button',{name:'Download MP4',exact:true}).click();await(await download).saveAs(path);
- const info=JSON.parse(execFileSync('ffprobe',['-v','error','-count_frames','-show_streams','-show_format','-of','json',path],{encoding:'utf8'}));expect(info.streams.map((s:{codec_name:string})=>s.codec_name)).toEqual(['h264','aac']);const video=info.streams[0];expect(video.width).toBe(w);expect(video.height).toBe(h);expect(Number(video.nb_read_frames)).toBe(duration*fps);expect(Number(info.format.duration)).toBeCloseTo(duration,1);await expect.poll(()=>page.getByLabel('Rendered titles MP4',{exact:true}).evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);await page.getByLabel('Rendered titles MP4',{exact:true}).evaluate(async(v:HTMLVideoElement)=>{v.muted=true;await v.play()});await expect.poll(()=>page.getByLabel('Rendered titles MP4',{exact:true}).evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);return {elapsedMs,bytes:Number(info.format.size),duration:Number(info.format.duration),frames:Number(video.nb_read_frames),width:w,height:h,fps};
+import { test, expect, type Page, type Worker } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+async function exportMP4(
+  page: Page,
+  path: string,
+  duration: number,
+  w: number,
+  h: number,
+  fps: number,
+) {
+  const began = performance.now();
+  await page.getByRole("tab", { name: "Export", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Render Preview", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () => {
+        const errors = await page
+          .locator('main p[role="alert"]')
+          .allTextContents();
+        if (errors.length) throw Error(errors.join(" "));
+        return page.getByLabel("Rendered titles MP4", { exact: true }).count();
+      },
+      { timeout: 240000 },
+    )
+    .toBe(1);
+  const elapsedMs = performance.now() - began;
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download MP4", exact: true }).click();
+  await (await download).saveAs(path);
+  const info = JSON.parse(
+    execFileSync(
+      "ffprobe",
+      [
+        "-v",
+        "error",
+        "-count_frames",
+        "-show_streams",
+        "-show_format",
+        "-of",
+        "json",
+        path,
+      ],
+      { encoding: "utf8" },
+    ),
+  );
+  expect(info.streams.map((s: { codec_name: string }) => s.codec_name)).toEqual(
+    ["h264", "aac"],
+  );
+  const video = info.streams[0];
+  expect(video.width).toBe(w);
+  expect(video.height).toBe(h);
+  expect(Number(video.nb_read_frames)).toBe(duration * fps);
+  expect(Number(info.format.duration)).toBeCloseTo(duration, 1);
+  await expect
+    .poll(() =>
+      page
+        .getByLabel("Rendered titles MP4", { exact: true })
+        .evaluate((v: HTMLVideoElement) => v.readyState),
+    )
+    .toBeGreaterThanOrEqual(2);
+  await page
+    .getByLabel("Rendered titles MP4", { exact: true })
+    .evaluate(async (v: HTMLVideoElement) => {
+      v.muted = true;
+      await v.play();
+    });
+  await expect
+    .poll(() =>
+      page
+        .getByLabel("Rendered titles MP4", { exact: true })
+        .evaluate((v: HTMLVideoElement) => v.currentTime),
+    )
+    .toBeGreaterThan(0.1);
+  return {
+    elapsedMs,
+    bytes: Number(info.format.size),
+    duration: Number(info.format.duration),
+    frames: Number(video.nb_read_frames),
+    width: w,
+    height: h,
+    fps,
+  };
 }
-test('actual 7, 27 three-scene, 60 second Titles MP4 exports across cold/warm cache and output settings',async({page})=>{
- test.setTimeout(600000);await page.setViewportSize({width:1600,height:1100});const workers:Worker[]=[],errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('worker',w=>{workers.push(w);void w.evaluate(`(()=>{const send=self.postMessage.bind(self);self.__startup=[];self.postMessage=(message,...rest)=>{if(message.type==='ECONTENT_STARTUP')self.__startup.push(message.data);return send(message,...rest)}})()`).catch(()=>{})});const root=join(process.cwd(),'test-results/titles-performance');mkdirSync(root,{recursive:true});const records:object[]=[];const startupSnapshots:unknown[]=[];const snapshot=async()=>{for(const w of page.workers())try{startupSnapshots.push(...await w.evaluate<unknown[]>("self.__startup.filter(p=>p.phase===\"ready\")"))}catch{}};
- await page.goto('/titles-studio');for(let i=0;i<2;i++){await page.getByRole('button',{name:/^Select title scene /}).last().click();await page.getByRole('button',{name:'Delete title scene',exact:true}).click()}
- await page.getByRole('tab',{name:'Export',exact:true}).click();await page.getByLabel('Title output size',{exact:true}).selectOption('360');records.push({case:'7-second cold',...await exportMP4(page,join(root,'7s-cold.mp4'),7,640,360,24)});await snapshot();
- // Reload creates a fresh worker, retaining only the browser's verified asset cache.
- await page.reload();await expect(page.getByRole('button',{name:/^Select title scene /})).toHaveCount(3);records.push({case:'27-second default three scenes warm new worker',...await exportMP4(page,join(root,'27s-warm.mp4'),27,854,480,24)});await snapshot();
- await page.reload();for(let i=0;i<3;i++){await page.getByRole('button',{name:/^Select title scene /}).nth(i).click();await page.getByLabel('Scene duration (s)',{exact:true}).fill('20');await page.getByLabel('Scene duration (s)',{exact:true}).press('Tab')}
- await page.getByRole('tab',{name:'Export',exact:true}).click();await page.getByLabel('Title output size',{exact:true}).selectOption('360');await page.getByLabel('Title frame rate',{exact:true}).selectOption('30');records.push({case:'60-second three scenes warm new worker',...await exportMP4(page,join(root,'60s-warm.mp4'),60,640,360,30)});await snapshot();
- await page.reload();for(let i=0;i<2;i++){await page.getByRole('button',{name:/^Select title scene /}).last().click();await page.getByRole('button',{name:'Delete title scene',exact:true}).click()}
- await page.getByRole('tab',{name:'Export',exact:true}).click();await page.getByLabel('Title output size',{exact:true}).selectOption('720');await page.getByLabel('Title frame rate',{exact:true}).selectOption('30');records.push({case:'7-second 720p/30 warm',...await exportMP4(page,join(root,'7s-720.mp4'),7,1280,720,30)});await snapshot();
- const startup: {cacheStorage?:boolean;networkBodyBytes?:number}[]=[];for(const w of workers)try{startup.push(...await w.evaluate<{cacheStorage?:boolean;networkBodyBytes?:number}[]>('self.__startup.filter(p=>p.phase==="ready")'))}catch{}expect(errors).toEqual([]);expect(startup.some(p=>p.cacheStorage===true&&p.networkBodyBytes===0)).toBe(true);const capabilities=await page.evaluate(async()=>({webCodecs:typeof VideoEncoder!=='undefined'&&await VideoEncoder.isConfigSupported({codec:'avc1.42001f',width:640,height:360,bitrate:4000000,framerate:24}).then(r=>r.supported).catch(()=>false),mediaRecorderMP4:typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')}));const result={environment:'Desktop Chromium; actual UI and FFmpeg WASM; no Android hardware',records,startup,startupSnapshots,capabilities};writeFileSync(join(root,'results.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));
+test("actual 7, 27 three-scene, 60 second Titles MP4 exports across cold/warm cache and output settings", async ({
+  page,
+}) => {
+  test.setTimeout(600000);
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  const workers: Worker[] = [],
+    errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("worker", (w) => {
+    workers.push(w);
+    void w
+      .evaluate(
+        `(()=>{const send=self.postMessage.bind(self);self.__startup=[];self.postMessage=(message,...rest)=>{if(message.type==='ECONTENT_STARTUP')self.__startup.push(message.data);return send(message,...rest)}})()`,
+      )
+      .catch(() => {});
+  });
+  const root = join(process.cwd(), "test-results/titles-performance");
+  mkdirSync(root, { recursive: true });
+  const records: object[] = [];
+  const startupSnapshots: unknown[] = [];
+  const snapshot = async () => {
+    for (const w of page.workers())
+      try {
+        startupSnapshots.push(
+          ...(await w.evaluate<unknown[]>(
+            'self.__startup.filter(p=>p.phase==="ready")',
+          )),
+        );
+      } catch {}
+  };
+  await page.goto("/titles-studio");
+  for (let i = 0; i < 2; i++) {
+    await page
+      .getByRole("button", { name: /^Select title scene / })
+      .last()
+      .click();
+    await page
+      .getByRole("button", { name: "Delete title scene", exact: true })
+      .click();
+  }
+  await page.getByRole("tab", { name: "Export", exact: true }).click();
+  await page
+    .getByLabel("Title output size", { exact: true })
+    .selectOption("360");
+  records.push({
+    case: "7-second cold",
+    ...(await exportMP4(page, join(root, "7s-cold.mp4"), 7, 640, 360, 24)),
+  });
+  await snapshot();
+  // Reload creates a fresh worker, retaining only the browser's verified asset cache.
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: /^Select title scene / }),
+  ).toHaveCount(3);
+  records.push({
+    case: "27-second default three scenes warm new worker",
+    ...(await exportMP4(page, join(root, "27s-warm.mp4"), 27, 854, 480, 24)),
+  });
+  await snapshot();
+  await page.reload();
+  for (let i = 0; i < 3; i++) {
+    await page
+      .getByRole("button", { name: /^Select title scene / })
+      .nth(i)
+      .click();
+    await page.getByLabel("Scene duration (s)", { exact: true }).fill("20");
+    await page.getByLabel("Scene duration (s)", { exact: true }).press("Tab");
+  }
+  await page.getByRole("tab", { name: "Export", exact: true }).click();
+  await page
+    .getByLabel("Title output size", { exact: true })
+    .selectOption("360");
+  await page.getByLabel("Title frame rate", { exact: true }).selectOption("30");
+  records.push({
+    case: "60-second three scenes warm new worker",
+    ...(await exportMP4(page, join(root, "60s-warm.mp4"), 60, 640, 360, 30)),
+  });
+  await snapshot();
+  await page.reload();
+  for (let i = 0; i < 2; i++) {
+    await page
+      .getByRole("button", { name: /^Select title scene / })
+      .last()
+      .click();
+    await page
+      .getByRole("button", { name: "Delete title scene", exact: true })
+      .click();
+  }
+  await page.getByRole("tab", { name: "Export", exact: true }).click();
+  await page
+    .getByLabel("Title output size", { exact: true })
+    .selectOption("720");
+  await page.getByLabel("Title frame rate", { exact: true }).selectOption("30");
+  records.push({
+    case: "7-second 720p/30 warm",
+    ...(await exportMP4(page, join(root, "7s-720.mp4"), 7, 1280, 720, 30)),
+  });
+  await snapshot();
+  const startup: { cacheStorage?: boolean; networkBodyBytes?: number }[] = [];
+  for (const w of workers)
+    try {
+      startup.push(
+        ...(await w.evaluate<
+          { cacheStorage?: boolean; networkBodyBytes?: number }[]
+        >('self.__startup.filter(p=>p.phase==="ready")')),
+      );
+    } catch {}
+  expect(errors).toEqual([]);
+  expect(
+    startup.some((p) => p.cacheStorage === true && p.networkBodyBytes === 0),
+  ).toBe(true);
+  const capabilities = await page.evaluate(async () => ({
+    webCodecs:
+      typeof VideoEncoder !== "undefined" &&
+      (await VideoEncoder.isConfigSupported({
+        codec: "avc1.42001f",
+        width: 640,
+        height: 360,
+        bitrate: 4000000,
+        framerate: 24,
+      })
+        .then((r) => r.supported)
+        .catch(() => false)),
+    mediaRecorderMP4:
+      typeof MediaRecorder !== "undefined" &&
+      MediaRecorder.isTypeSupported("video/mp4;codecs=avc1,mp4a.40.2"),
+  }));
+  const result = {
+    environment:
+      "Desktop Chromium; actual UI and FFmpeg WASM; no Android hardware",
+    records,
+    startup,
+    startupSnapshots,
+    capabilities,
+  };
+  writeFileSync(join(root, "results.json"), JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result));
 });

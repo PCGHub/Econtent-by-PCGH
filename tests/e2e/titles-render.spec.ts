@@ -401,3 +401,8 @@ test("titles FFmpeg download failure is actionable and explicit retry creates a 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('cancelling a stalled native canvas frame releases rendering and retry exports a playable MP4',async({page})=>{
+ const dir=mkdtempSync(join(tmpdir(),'titles-native-cancel-'));
+ try{await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.toBlob;HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){if((window as unknown as {holdTitleFrame?:boolean}).holdTitleFrame)return;return original.call(this,callback,type,quality)}});await shortProject(page);await page.evaluate(()=>{(window as unknown as {holdTitleFrame:boolean}).holdTitleFrame=true});await page.getByRole('button',{name:'Render Preview',exact:true}).click();await expect(page.getByLabel('Active title render')).toContainText('Drawing scene',{timeout:30000});await page.getByRole('button',{name:'Cancel title render',exact:true}).click();await expect(page.getByText('Cancelled. No partial output accepted.',{exact:false})).toBeVisible();await page.evaluate(()=>{(window as unknown as {holdTitleFrame:boolean}).holdTitleFrame=false});await page.getByRole('button',{name:'Render Preview',exact:true}).click();await rendered(page);const path=join(dir,'retry.mp4');await downloaded(page,path);valid(path,640,360,1)}finally{rmSync(dir,{recursive:true,force:true})}
+});

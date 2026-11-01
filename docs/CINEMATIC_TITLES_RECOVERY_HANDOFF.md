@@ -114,3 +114,47 @@ mobile and parity benchmarking before replacing a tested deterministic renderer.
 TypeScript and all 76 units now pass. Scoped lint passes for changed infrastructure
 and tests. The unrelated baseline global-lint error remains documented above.
 Native media and full browser regressions are running next.
+
+## Additional reliability guard under verification
+
+Native canvas `toBlob` and font readiness previously awaited promises that worker
+termination cannot reject. Added `lib/titles/render-step.ts` to bound those waits,
+reject cancellation immediately, ignore late results and allow a fresh retry.
+Unit tests cover cancellation, late completion and bounded native stalls. A browser
+regression deliberately holds a canvas callback, cancels, then retries a real MP4.
+This latest browser case must pass before claiming the guard is verified.
+
+The CLI was checked using an isolated writable config directory; it is logged out,
+and no Vercel/OIDC token is injected. No account passwords/tokens were requested.
+No temporary anonymous deployment or alternate project was created. Protected hosted
+browser verification still needs an authorized access method; sharing remains blocked.
+
+All eight native media integrations passed. The full browser regression run is in
+progress (31 cases, including the performance benchmark). The current source changes
+remain exclusively FFmpeg delivery/loading, Titles cancellation, associated tests/docs.
+
+## Final local verification before push
+
+- 78/78 unit tests PASS; TypeScript PASS; final production build PASS.
+- 8/8 native media tests PASS.
+- Full shared browser suite: 31/31 PASS (4.7 minutes), including cold/warm cache,
+  worker failures, Video Cutter/Fast Cut, Overlay, timeline, Titles and workspace.
+- After the additional native-wait guard, four existing Titles render cases passed;
+  the new cancellation case initially failed only because its exact text assertion
+  omitted an existing retry suffix. Corrected the selector; that case then PASSed
+  in 4.2 seconds, including a genuinely stalled canvas, cancellation, fresh-worker
+  retry and native-validated playable MP4. The suite is 32 distinct browser cases.
+- Scoped lint PASS. Global lint remains FAIL solely on the unchanged out-of-scope
+  Transcription component line 79 (plus two existing unused imports); not suppressed.
+- Additional repeated benchmark records agree with the initial trial: 4.058 s,
+  17.295 s, 27.323 s and 12.169 s for 7/27/60/7-at-720p. Cold WASM body transferred
+  8,367,469 bytes in 482.5 ms; compile 51.1 ms, init 16.8 ms. New warm workers
+  transferred zero bytes; first warm read/hash 489.1 ms, compile 52.2 ms, init 13.4 ms.
+- No Android hardware/ADB is available. No Android speed or memory guarantee.
+
+Prepared (not yet executed) a dedicated protected hosted test:
+`node scripts/verify-titles-preview-isolated.mjs PRIVATE_CONFIG_JSON titles-recovery`.
+It rejects untrusted TLS, inspects real asset HTTP headers, exports the actual
+27-second project cold and warm, validates full decode/frame count/text/playback,
+and checks the verified warm cache. Its config and authentication must stay private.
+This cannot run until an authorized protected Preview access method is available.

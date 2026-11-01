@@ -1,2 +1,27 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {brotliDecompressSync} from 'node:zlib';import {createHash} from 'node:crypto';
-test('published WASM delivery body, manifest and configured HTTP encoding agree',()=>{const manifest=JSON.parse(readFileSync('public/ffmpeg/asset-manifest.json','utf8')),wire=readFileSync('public'+manifest.releasePath+'/core/ffmpeg-core.wasm'),decoded=brotliDecompressSync(wire),hash=(b:Buffer)=>createHash('sha256').update(b).digest('hex');assert.equal(manifest.wasmEncoding,'br');assert.ok(readFileSync('next.config.ts','utf8').includes("{key:'Content-Encoding',value:'br'}"));assert.equal(wire.length,manifest.wasmWireBytes);assert.equal(hash(wire),manifest.wasmWireSha256);assert.equal(decoded.readUInt32LE(0),0x6d736100);assert.equal(decoded.length,manifest.wasmBytes);assert.equal(hash(decoded),manifest.wasmSha256);assert.ok(wire.length<decoded.length/2);});
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { brotliDecompressSync } from "node:zlib";
+import { createHash } from "node:crypto";
+test("published WASM delivery body, manifest and configured HTTP encoding agree", () => {
+  const manifest = JSON.parse(
+      readFileSync("public/ffmpeg/asset-manifest.json", "utf8"),
+    ),
+    wire = readFileSync(
+      "public" + manifest.releasePath + "/core/ffmpeg-core.wasm",
+    ),
+    decoded = brotliDecompressSync(wire),
+    hash = (b: Buffer) => createHash("sha256").update(b).digest("hex");
+  assert.equal(manifest.wasmEncoding, "br");
+  assert.ok(
+    readFileSync("next.config.ts", "utf8").includes(
+      "{key:'Content-Encoding',value:'br'}",
+    ),
+  );
+  assert.equal(wire.length, manifest.wasmWireBytes);
+  assert.equal(hash(wire), manifest.wasmWireSha256);
+  assert.equal(decoded.readUInt32LE(0), 0x6d736100);
+  assert.equal(decoded.length, manifest.wasmBytes);
+  assert.equal(hash(decoded), manifest.wasmSha256);
+  assert.ok(wire.length < decoded.length / 2);
+});

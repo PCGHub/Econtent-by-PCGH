@@ -3,7 +3,7 @@
   "records": [
     {
       "case": "7-second cold",
-      "elapsedMs": 4095.198733,
+      "elapsedMs": 4058.0666450000135,
       "bytes": 714048,
       "duration": 7,
       "frames": 168,
@@ -13,7 +13,7 @@
     },
     {
       "case": "27-second default three scenes warm new worker",
-      "elapsedMs": 17258.74944,
+      "elapsedMs": 17295.112781999982,
       "bytes": 5542817,
       "duration": 27,
       "frames": 648,
@@ -23,7 +23,7 @@
     },
     {
       "case": "60-second three scenes warm new worker",
-      "elapsedMs": 27348.869621,
+      "elapsedMs": 27322.510872999992,
       "bytes": 7217274,
       "duration": 60,
       "frames": 1800,
@@ -33,7 +33,7 @@
     },
     {
       "case": "7-second 720p/30 warm",
-      "elapsedMs": 12163.061481999997,
+      "elapsedMs": 12168.553619000013,
       "bytes": 4262950,
       "duration": 7.010667,
       "frames": 210,
@@ -46,16 +46,73 @@
     {
       "phase": "ready",
       "downloadMs": 0,
-      "cacheReadMs": 504.9000000001397,
-      "compileFinalizeMs": 65.5,
+      "cacheReadMs": 474.79999999981374,
+      "compileFinalizeMs": 52.10000000009313,
       "transferBytes": 0,
       "networkBodyBytes": 0,
       "cached": true,
       "cacheStorage": true,
-      "cacheLookupMs": 17.700000000186265,
+      "cacheLookupMs": 0.8999999999068677,
       "cacheAvailable": true,
       "cacheStored": true,
-      "initializeMs": 14
+      "initializeMs": 12.600000000093132
+    }
+  ],
+  "startupSnapshots": [
+    {
+      "phase": "ready",
+      "downloadMs": 482.5,
+      "compileFinalizeMs": 51.10000000009313,
+      "transferBytes": 8367769,
+      "networkBodyBytes": 8367469,
+      "cached": false,
+      "cacheStorage": false,
+      "cacheLookupMs": 5.099999999860302,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 16.800000000046566
+    },
+    {
+      "phase": "ready",
+      "downloadMs": 0,
+      "cacheReadMs": 489.10000000009313,
+      "compileFinalizeMs": 52.199999999953434,
+      "transferBytes": 0,
+      "networkBodyBytes": 0,
+      "cached": true,
+      "cacheStorage": true,
+      "cacheLookupMs": 5.099999999860302,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 13.399999999906868
+    },
+    {
+      "phase": "ready",
+      "downloadMs": 0,
+      "cacheReadMs": 483.69999999995343,
+      "compileFinalizeMs": 63.5,
+      "transferBytes": 0,
+      "networkBodyBytes": 0,
+      "cached": true,
+      "cacheStorage": true,
+      "cacheLookupMs": 3.6000000000931323,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 13.899999999906868
+    },
+    {
+      "phase": "ready",
+      "downloadMs": 0,
+      "cacheReadMs": 474.79999999981374,
+      "compileFinalizeMs": 52.10000000009313,
+      "transferBytes": 0,
+      "networkBodyBytes": 0,
+      "cached": true,
+      "cacheStorage": true,
+      "cacheLookupMs": 0.8999999999068677,
+      "cacheAvailable": true,
+      "cacheStored": true,
+      "initializeMs": 12.600000000093132
     }
   ],
   "capabilities": {
