@@ -10,6 +10,7 @@ export function VoiceoverStudio(){
  const [voices,setVoices]=useState<SpeechSynthesisVoice[]>([]);
  const [browserVoice,setBrowserVoice]=useState("");
  const [aiVoice,setAiVoice]=useState("coral");
+ const [aiSpeed,setAiSpeed]=useState(1);
  const [rate,setRate]=useState(1);
  const [speaking,setSpeaking]=useState(false);
  const [supported,setSupported]=useState(false);
@@ -39,7 +40,7 @@ export function VoiceoverStudio(){
   if(busy)return;
   setBusy(true);setError("");setAudio(null);
   try{
-   const response=await fetch("/api/ai/voiceover",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({script:script.trim(),voice:aiVoice})});
+   const response=await fetch("/api/ai/voiceover",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({script:script.trim(),voice:aiVoice,speed:aiSpeed})});
    if(!response.ok){const payload=await response.json().catch(()=>({}));throw Error(payload.error||"AI generation failed. Please try again.");}
    const blob=await response.blob();
    if(!blob.size||!blob.type.includes("audio"))throw Error("The speech service returned invalid audio.");
@@ -69,6 +70,11 @@ export function VoiceoverStudio(){
     <h2 className="text-sm font-semibold">AI narration (MP3)</h2>
     <label htmlFor="ai-voice" className="mt-4 block text-xs font-medium text-slate-600">AI voice</label>
     <select id="ai-voice" value={aiVoice} onChange={e=>{setAiVoice(e.target.value);setAudio(null);}} className="mt-2 w-full rounded-lg border border-slate-200 bg-white p-3 text-sm">{aiVoices.map(v=><option key={v} value={v}>{v.charAt(0).toUpperCase()+v.slice(1)}</option>)}</select>
+    <label htmlFor="ai-speed" className="mt-4 block text-xs font-medium text-slate-600">Generated voice speed: {aiSpeed.toFixed(2)}×</label>
+    <input id="ai-speed" type="range" min="0.75" max="1.5" step="0.05" value={aiSpeed} onChange={e=>{setAiSpeed(Number(e.target.value));setAudio(null);}} className="mt-3 w-full accent-blue-600"/>
+    <div className="flex justify-between text-xs text-slate-500"><span>Slower · 0.75×</span><button type="button" className="font-semibold text-blue-700" onClick={()=>{setAiSpeed(1);setAudio(null);}}>Reset 1×</button><span>Faster · 1.50×</span></div>
+    <button type="button" disabled={!supported||!script.trim()} onClick={()=>{if(!supported)return;stop();const utterance=new SpeechSynthesisUtterance(script.trim().slice(0,600));utterance.rate=aiSpeed;utterance.onend=()=>setSpeaking(false);utterance.onerror=()=>setSpeaking(false);setSpeaking(true);window.speechSynthesis.speak(utterance);}} className="mt-4 w-full rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 disabled:opacity-40">Preview speed free</button>
+    <p className="mt-2 text-xs leading-5 text-slate-500">This free preview uses your device voice to demonstrate pacing, not the selected AI voice. Exact AI voice quality is available after generation.</p>
     <p className="mt-3 text-xs leading-5 text-slate-500">Maximum 600 characters per generation. Three generations per account per UTC day, subject to shared Preview capacity. Failed provider requests may still count toward the limit.</p>
     <button type="button" disabled={busy||!script.trim()||script.trim().length>600} onClick={generate} className="mt-5 w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy?"Generating narration…":"Generate AI voice-over"}</button>
     {script.trim().length>600&&<p className="mt-2 text-xs text-amber-700">Shorten your script to 600 characters to generate AI audio. Browser preview can read longer scripts.</p>}
