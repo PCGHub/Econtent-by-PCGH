@@ -80,36 +80,20 @@ export function BackgroundStudio(){
     if(mode==="person"){
      const result=latest.current;
      if(result&&maskCtx){
-      maskCtx.clearRect(0,0,width,height);
-      maskCtx.drawImage(result.segmentationMask,0,0,width,height);
-      const mask=maskCtx.getImageData(0,0,width,height);
-      const md=mask.data;
-      const low=Math.max(0,maskThreshold-edgeSoftness/2),high=Math.min(1,maskThreshold+edgeSoftness/2);
-      // MediaPipe can store foreground confidence in alpha or luminance.
-      let minA=255,maxA=0,minR=255,maxR=0;
-      const stride=Math.max(4,Math.floor(md.length/1600/4)*4);
-      for(let i=0;i<md.length;i+=stride){minA=Math.min(minA,md[i+3]);maxA=Math.max(maxA,md[i+3]);minR=Math.min(minR,md[i]);maxR=Math.max(maxR,md[i]);}
-      const useAlpha=maxA-minA>12, useRed=maxR-minR>12;
-      if(!useAlpha&&!useRed){
-       ctx.drawImage(el,0,0,width,height);
-       if(!lastMaskWarning.current){lastMaskWarning.current=true;setMessage("AI mask has no visible foreground. Showing original video instead. Try replaying or another browser.");}
-      }else{
-      lastMaskWarning.current=false;
-      for(let i=0;i<md.length;i+=4){
-       const confidence=(useAlpha?md[i+3]:md[i])/255;
-       const alpha=Math.max(0,Math.min(1,(confidence-low)/Math.max(.001,high-low)));
-       md[i]=255;md[i+1]=255;md[i+2]=255;md[i+3]=Math.round(alpha*255);
-      }
-      maskCtx.putImageData(mask,0,0);
+      // MediaPipe's documented composition: draw segmentation mask, then
+      // retain source pixels only where the mask is present.
       offCtx.clearRect(0,0,width,height);
       offCtx.globalCompositeOperation="source-over";
+      offCtx.drawImage(result.segmentationMask,0,0,width,height);
+      offCtx.globalCompositeOperation="source-in";
       offCtx.drawImage(el,0,0,width,height);
-      offCtx.globalCompositeOperation="destination-in";
-      offCtx.drawImage(maskCanvas,0,0,width,height);
       offCtx.globalCompositeOperation="source-over";
-      ctx.drawImage(off,0,0);
-      }
-     }else if(!ready){ctx.drawImage(el,0,0,width,height);}
+      // Preserve the presenter even when a browser returns a blank mask.
+      const sample=offCtx.getImageData(Math.floor(width/4),Math.floor(height/4),Math.max(1,Math.floor(width/2)),Math.max(1,Math.floor(height/2))).data;
+      let visible=0;for(let i=3;i<sample.length;i+=Math.max(4,Math.floor(sample.length/1000/4)*4))if(sample[i]>20)visible++;
+      if(visible===0){ctx.drawImage(el,0,0,width,height);if(!lastMaskWarning.current){lastMaskWarning.current=true;setMessage("AI person mask is empty. Showing original video; try another browser or video.");}}
+      else{lastMaskWarning.current=false;ctx.drawImage(off,0,0);}
+     }else{ctx.drawImage(el,0,0,width,height);}
      if(ready&&!busy.current&&!el.paused&&!el.ended&&segmenter.current){
       busy.current=true;
       void segmenter.current.send({image:el}).catch(()=>setMessage("AI frame processing failed. Try a shorter video.")).finally(()=>{busy.current=false});
