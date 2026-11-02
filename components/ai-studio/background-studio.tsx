@@ -24,6 +24,8 @@ export function BackgroundStudio(){
  const [key,setKey]=useState("#00ff00");
  const [tolerance,setTolerance]=useState(85);
  const [maskThreshold,setMaskThreshold]=useState(0.55);
+ const [invertMask,setInvertMask]=useState(false);
+ const [maskDiagnostic,setMaskDiagnostic]=useState("Waiting for AI mask");
  const [edgeSoftness,setEdgeSoftness]=useState(0.12);
  const [bgFit,setBgFit]=useState<"cover"|"contain">("cover");
  const [bgZoom,setBgZoom]=useState(1);
@@ -80,19 +82,43 @@ export function BackgroundStudio(){
     if(mode==="person"){
      const result=latest.current;
      if(result&&maskCtx){
-      // MediaPipe's documented composition: draw segmentation mask, then
-      // retain source pixels only where the mask is present.
-      offCtx.clearRect(0,0,width,height);
-      offCtx.globalCompositeOperation="source-over";
-      offCtx.drawImage(result.segmentationMask,0,0,width,height);
-      offCtx.globalCompositeOperation="source-in";
-      offCtx.drawImage(el,0,0,width,height);
-      offCtx.globalCompositeOperation="source-over";
-      // Preserve the presenter even when a browser returns a blank mask.
-      const sample=offCtx.getImageData(Math.floor(width/4),Math.floor(height/4),Math.max(1,Math.floor(width/2)),Math.max(1,Math.floor(height/2))).data;
-      let visible=0;for(let i=3;i<sample.length;i+=Math.max(4,Math.floor(sample.length/1000/4)*4))if(sample[i]>20)visible++;
-      if(visible===0){ctx.drawImage(el,0,0,width,height);if(!lastMaskWarning.current){lastMaskWarning.current=true;setMessage("AI person mask is empty. Showing original video; try another browser or video.");}}
-      else{lastMaskWarning.current=false;ctx.drawImage(off,0,0);}
+      maskCtx.globalCompositeOperation="source-over";
+      maskCtx.clearRect(0,0,width,height);
+      maskCtx.drawImage(result.segmentationMask,0,0,width,height);
+      const mask=maskCtx.getImageData(0,0,width,height),md=mask.data;
+      const center=((Math.floor(height/2)*width+Math.floor(width/2))*4);
+      const corner=0;
+      const centerVal=Math.round((md[center]+md[center+1]+md[center+2])/3);
+      const cornerVal=Math.round((md[corner]+md[corner+1]+md[corner+2])/3);
+      // MediaPipe outputs a grayscale confidence mask in RGB. Its alpha
+      // is often fully opaque, so source-in compositing alone keeps the
+      // entire video and hides the replacement image.
+      const low=Math.max(0,maskThreshold-edgeSoftness/2),high=Math.min(1,maskThreshold+edgeSoftness/2);
+      let foreground=0, samples=0;
+      const stride=Math.max(4,Math.floor(md.length/4000/4)*4);
+      for(let i=0;i<md.length;i+=4){
+       const confidence=(md[i]+md[i+1]+md[i+2])/(3*255);
+       const value=invertMask?1-confidence:confidence;
+       const alpha=Math.max(0,Math.min(1,(value-low)/Math.max(.001,high-low)));
+       if(i%stride===0){samples++;if(alpha>.5)foreground++;}
+       md[i]=255;md[i+1]=255;md[i+2]=255;md[i+3]=Math.round(alpha*255);
+      }
+      const coverage=samples?Math.round(foreground/samples*100):0;
+      if(coverage<1||coverage>98){
+       ctx.drawImage(el,0,0,width,height);
+       if(!lastMaskWarning.current){lastMaskWarning.current=true;setMaskDiagnostic(`Unusable mask: ${coverage}% foreground, centre ${centerVal}, corner ${cornerVal}`);setMessage("AI mask is almost empty or full. Showing original video instead. Try Invert mask or another video.");}
+      }else{
+       if(lastMaskWarning.current||!lastMaskWarning.current&&maskDiagnostic==="Waiting for AI mask"){setMaskDiagnostic(`Foreground ${coverage}% · centre ${centerVal} · corner ${cornerVal}`);}
+       lastMaskWarning.current=false;
+       maskCtx.putImageData(mask,0,0);
+       offCtx.clearRect(0,0,width,height);
+       offCtx.globalCompositeOperation="source-over";
+       offCtx.drawImage(el,0,0,width,height);
+       offCtx.globalCompositeOperation="destination-in";
+       offCtx.drawImage(maskCanvas,0,0,width,height);
+       offCtx.globalCompositeOperation="source-over";
+       ctx.drawImage(off,0,0);
+      }
      }else{ctx.drawImage(el,0,0,width,height);}
      if(ready&&!busy.current&&!el.paused&&!el.ended&&segmenter.current){
       busy.current=true;
@@ -109,7 +135,7 @@ export function BackgroundStudio(){
   };
   frame.current=requestAnimationFrame(render);
   return()=>{active=false;cancelAnimationFrame(frame.current)};
- },[source,image,color,key,tolerance,mode,ready,maskThreshold,edgeSoftness,bgFit,bgZoom,bgX,bgY]);
+ },[source,image,color,key,tolerance,mode,ready,maskThreshold,edgeSoftness,bgFit,bgZoom,bgX,bgY,invertMask]);
  async function exportVideo(){
   const c=canvas.current,el=video.current;
   if(!c||!el||recording)return;
@@ -153,6 +179,8 @@ export function BackgroundStudio(){
    {mode==="person"&&<div className="mt-5 grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
     <label className="text-sm">Person mask strength: {maskThreshold.toFixed(2)}<input type="range" min="0.2" max="0.85" step="0.05" value={maskThreshold} onChange={e=>setMaskThreshold(Number(e.target.value))} className="mt-2 block w-full"/></label>
     <label className="text-sm">Edge softness: {edgeSoftness.toFixed(2)}<input type="range" min="0.02" max="0.3" step="0.02" value={edgeSoftness} onChange={e=>setEdgeSoftness(Number(e.target.value))} className="mt-2 block w-full"/></label>
+    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={invertMask} onChange={e=>{setInvertMask(e.target.checked);lastMaskWarning.current=false;}}/> Invert person mask (diagnostic)</label>
+    <p className="text-xs text-slate-500" role="status">{maskDiagnostic}</p>
     <label className="text-sm">Background framing<select value={bgFit} onChange={e=>setBgFit(e.target.value as "cover"|"contain")} className="mt-2 block w-full rounded border p-2"><option value="cover">Fill frame (crop edges)</option><option value="contain">Fit whole image</option></select></label>
     <label className="text-sm">Background zoom: {bgZoom.toFixed(1)}×<input type="range" min="0.5" max="2.5" step="0.1" value={bgZoom} onChange={e=>setBgZoom(Number(e.target.value))} className="mt-2 block w-full"/></label>
     <label className="text-sm">Horizontal position: {bgX}%<input type="range" min="0" max="100" value={bgX} onChange={e=>setBgX(Number(e.target.value))} className="mt-2 block w-full"/></label>
