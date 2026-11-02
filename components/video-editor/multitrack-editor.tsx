@@ -2,6 +2,7 @@
 
 import {useEffect,useRef,useState,useCallback} from 'react'
 import {FFmpegTransport} from '@/lib/video/ffmpeg-transport'
+import {consumeVoiceover} from '@/lib/ai/voiceover-transfer'
 import {Film,Music,Image as ImageIcon,Plus,Scissors,Trash2,Download,ArrowLeft,ArrowRight,Play,Pause,SkipBack,SkipForward,ZoomIn,ZoomOut} from 'lucide-react'
 
 type Kind='video'|'image'|'audio'
@@ -89,6 +90,22 @@ export function MultitrackEditor(){
     }
     setClips(old=>[...old,...additions]);setSelected(old=>old||additions[0]?.id||null)
   }
+  useEffect(()=>{
+    let cancelled=false;
+    void consumeVoiceover().then(async file=>{
+      if(!file||cancelled)return;
+      const url=URL.createObjectURL(file);
+      const duration=await durationOf(file,'audio',url);
+      if(cancelled){URL.revokeObjectURL(url);return;}
+      const original:Clip={id:id(),file,kind:'audio',url,duration,start:0,end:duration,speed:1};
+      setOriginals(old=>[...old,original]);
+      const added={...original,id:id()};
+      setClips(old=>[...old,added]);
+      setSelected(added.id);
+      setStatus('AI voice-over imported into your audio track. Review its position and export when ready.');
+    }).catch(()=>{if(!cancelled)setStatus('Could not import AI voice-over automatically. Download the MP3 and import it manually.');});
+    return()=>{cancelled=true};
+  },[]);
   function previewOriginal(id:string){const c=originals.find(x=>x.id===id);if(!c)return;libraryReady.current=false;libraryMedia.current?.pause();setPlaying(false);setLibraryPreview(id);setStatus('Original source preview — full untrimmed file. Add a fresh copy to continue editing.')}
   function insertOriginal(id:string){const c=originals.find(x=>x.id===id);if(!c)return;const copy={...c,id:crypto.randomUUID(),start:0,end:c.duration,speed:1};setPlaying(false);setClips(old=>[...old,copy]);setSelected(copy.id);setLibraryPreview(null);setStatus('Added a fresh full-length copy of '+c.file.name+' to the timeline.')}
   function previewLibrary(id:string){const c=clips.find(x=>x.id===id);if(!c)return;libraryReady.current=false;libraryMedia.current?.pause();setPlaying(false);setSelected(id);setLibraryPreview(id);if(c.kind==='audio'){const before=audio.slice(0,audio.findIndex(x=>x.id===id)).reduce((n,x)=>n+clipLength(x),0);setPlayhead(Math.min(total,before))}else{const before=visuals.slice(0,visuals.findIndex(x=>x.id===id)).reduce((n,x)=>n+clipLength(x),0);setPlayhead(before)}setStatus('Selected segment linked to its project timeline. Return to project to edit at this position.')}
