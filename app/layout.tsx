@@ -4,7 +4,8 @@ import {AccountProvider} from '@/components/account/provider'
 
 export const metadata: Metadata = {
   title: 'Econtent by PCGH — Cut. Create. Transform.',
-  description: 'A focused, free video cutting and compression workspace for creators.',
+  description: 'A creative workspace for video editing, cutting, overlays, cinematic titles and transcription.',
+  icons: { icon: [{ url: '/pcgh-logo.webp', type: 'image/webp' }], shortcut: '/pcgh-logo.webp', apple: '/pcgh-logo.webp' },
 }
 
 export const viewport: Viewport = { themeColor: '#f8fafc', width: 'device-width', initialScale: 1, userScalable: false }
