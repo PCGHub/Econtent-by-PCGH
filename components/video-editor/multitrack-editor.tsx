@@ -3,6 +3,7 @@
 import {useEffect,useRef,useState,useCallback} from 'react'
 import {FFmpegTransport} from '@/lib/video/ffmpeg-transport'
 import {consumeVoiceover} from '@/lib/ai/voiceover-transfer'
+import {consumeHighlights} from '@/lib/ai/highlights-transfer'
 import {Film,Music,Image as ImageIcon,Plus,Scissors,Trash2,Download,ArrowLeft,ArrowRight,Play,Pause,SkipBack,SkipForward,ZoomIn,ZoomOut} from 'lucide-react'
 
 type Kind='video'|'image'|'audio'
@@ -104,6 +105,23 @@ export function MultitrackEditor(){
       setSelected(added.id);
       setStatus('AI voice-over imported into your audio track. Review its position and export when ready.');
     }).catch(()=>{if(!cancelled)setStatus('Could not import AI voice-over automatically. Download the MP3 and import it manually.');});
+    return()=>{cancelled=true};
+  },[]);
+  useEffect(()=>{
+    let cancelled=false;
+    void consumeHighlights().then(async transfer=>{
+      if(!transfer||cancelled)return;
+      const {file,ranges}=transfer;
+      const url=URL.createObjectURL(file);
+      const duration=await durationOf(file,'video',url);
+      if(cancelled){URL.revokeObjectURL(url);return;}
+      const original:Clip={id:id(),file,kind:'video',url,duration,start:0,end:duration,speed:1};
+      setOriginals(old=>[...old,original]);
+      const additions:Clip[]=ranges.filter(r=>r.end>r.start&&r.start>=0&&r.end<=duration+.25).map(r=>({...original,id:id(),start:r.start,end:Math.min(duration,r.end)}));
+      setClips(old=>[...old,...additions]);
+      setSelected(old=>old||additions[0]?.id||null);
+      setStatus(additions.length+' suggested highlight clips imported. Review and trim them before export.');
+    }).catch(()=>{if(!cancelled)setStatus('Automatic highlight transfer failed. Import the source video manually.');});
     return()=>{cancelled=true};
   },[]);
   function previewOriginal(id:string){const c=originals.find(x=>x.id===id);if(!c)return;libraryReady.current=false;libraryMedia.current?.pause();setPlaying(false);setLibraryPreview(id);setStatus('Original source preview — full untrimmed file. Add a fresh copy to continue editing.')}
