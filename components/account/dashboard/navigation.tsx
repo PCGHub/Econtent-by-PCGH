@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Bell,
@@ -88,6 +89,7 @@ export function DashboardSidebar({
   close: () => void;
   opener: RefObject<HTMLButtonElement | null>;
 }) {
+  const pathname = usePathname();
   const panel = useRef<HTMLElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     collapse = useRef<HTMLButtonElement>(null);
@@ -212,11 +214,11 @@ export function DashboardSidebar({
                     href={href}
                     onClick={close}
                     aria-label={name}
-                    aria-current={href === "/dashboard" ? "page" : undefined}
+                    aria-current={pathname === href || (href === "/projects" && pathname.startsWith("/projects/")) ? "page" : undefined}
                     title={name}
                     className={cn(
                       "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors",
-                      href === "/dashboard"
+                      (pathname === href || (href === "/projects" && pathname.startsWith("/projects/")))
                         ? "bg-blue-50 text-[#155DFC] ring-1 ring-inset ring-blue-100"
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-950",
                       collapsed && "lg:justify-center lg:px-0",
