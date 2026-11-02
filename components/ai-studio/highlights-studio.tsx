@@ -33,7 +33,7 @@ export function HighlightsStudio(){
    let previous:Uint8ClampedArray|null=null;
    for(let t=0;t<duration;t+=step){
     if(cancel.current)throw Error("Analysis cancelled.");
-    const time=Math.min(duration-.05,Math.max(0,t));
+    const time=Math.min(duration-.05,Math.max(.05,t));
     await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(Error("Video seek timed out.")),9000);el.onseeked=()=>{clearTimeout(timer);resolve()};el.onerror=()=>{clearTimeout(timer);reject(Error("Video frame could not be decoded."))};el.currentTime=time});
     ctx.drawImage(el,0,0,64,36);
     const frame=ctx.getImageData(0,0,64,36).data;
