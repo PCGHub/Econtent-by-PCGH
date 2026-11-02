@@ -13,6 +13,7 @@ export function HighlightsStudio(){
  const [target,setTarget]=useState(15);
  const [count,setCount]=useState(3);
  const [mode,setMode]=useState<"balanced"|"action"|"dialogue">("balanced");
+ const [audioAvailable,setAudioAvailable]=useState<boolean|null>(null);
  const [suggestions,setSuggestions]=useState<Suggestion[]>([]);
  const [busy,setBusy]=useState(false);
  const [progress,setProgress]=useState(0);
@@ -24,7 +25,7 @@ export function HighlightsStudio(){
  useEffect(()=>()=>{cancel.current=true},[]);
  async function analyze(){
   if(!file||!url||!duration||busy)return;
-  cancel.current=false;setBusy(true);setMessage("");setProgress(0);setSuggestions([]);
+  cancel.current=false;setBusy(true);setMessage("");setProgress(0);setSuggestions([]);setAudioAvailable(null);
   const el=document.createElement("video");
   el.preload="auto";el.muted=true;el.playsInline=true;el.src=url;
   const canvas=document.createElement("canvas");canvas.width=64;canvas.height=36;
@@ -49,6 +50,8 @@ export function HighlightsStudio(){
    setMessage("Checking audio activity when supported…");
    const audioEnergy=mode==="action"?null:await sampleAudioEnergy(file,duration);
    if(cancel.current)throw Error("Analysis cancelled.");
+   setAudioAvailable(audioEnergy!==null);
+   if(mode==="dialogue"&&!audioEnergy){setMessage("Audio Activity mode cannot analyze audio in this video on this device. Try an MP4 with AAC audio or choose Action mode.");return;}
    const windowSize=Math.min(target,duration),candidates:Suggestion[]=[];
    const stride=Math.max(step,windowSize/3);
    for(let start=0;start<duration;start+=stride){
@@ -95,7 +98,7 @@ export function HighlightsStudio(){
   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Find visually active moments in your video, review suggestions, and add selected segments to the Video Editor. This first version runs on your device using visual scene changes and, where supported, audio activity. It does not yet understand spoken words, emotion, or story importance.</p>
   <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
    <label htmlFor="highlight-file" className="block text-sm font-semibold">Upload a video</label>
-   <input id="highlight-file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="mt-3 block w-full text-sm" onChange={e=>{const next=e.target.files?.[0]||null;cancel.current=true;setFile(next);previewEnd.current=null;setDuration(0);setSuggestions([]);setMessage("");}}/>
+   <input id="highlight-file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="mt-3 block w-full text-sm" onChange={e=>{const next=e.target.files?.[0]||null;cancel.current=true;setFile(next);previewEnd.current=null;setDuration(0);setSuggestions([]);setAudioAvailable(null);setMessage("");}}/>
    {url&&<video ref={video} controls src={url} onTimeUpdate={e=>{if(previewEnd.current!==null&&e.currentTarget.currentTime>=previewEnd.current){e.currentTarget.pause();previewEnd.current=null;}}} onSeeked={e=>{if(previewEnd.current!==null&&e.currentTarget.currentTime>previewEnd.current)previewEnd.current=null;}} className="mt-5 max-h-80 w-full rounded-xl bg-black" onLoadedMetadata={e=>setDuration(Number.isFinite(e.currentTarget.duration)?e.currentTarget.duration:0)}/>}
    {duration>0&&<p className="mt-2 text-xs text-slate-500">Duration: {fmt(duration)} · Processing stays in your browser</p>}
    <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -103,6 +106,7 @@ export function HighlightsStudio(){
     <label className="text-sm font-medium">Number of highlights<select value={count} onChange={e=>setCount(Number(e.target.value))} className="mt-2 block w-full rounded-lg border border-slate-200 p-3">{[1,2,3,4,5].map(n=><option key={n} value={n}>{n} clips</option>)}</select></label>
    </div>
    <label className="mt-4 block text-sm font-medium">Detection style<select value={mode} onChange={e=>setMode(e.target.value as "balanced"|"action"|"dialogue")} className="mt-2 block w-full rounded-lg border border-slate-200 p-3"><option value="balanced">Balanced · motion + available audio</option><option value="action">Action · visual changes</option><option value="dialogue">Audio activity · speech or music energy (experimental)</option></select></label>
+   {audioAvailable===false&&<p role="status" className="mt-2 text-xs font-semibold text-amber-700">Audio analysis unavailable for this file. Balanced uses visuals only; Audio Activity cannot generate results.</p>}
    <p className="mt-2 text-xs text-slate-500">Audio analysis is optional and may be unavailable for large files or unsupported video codecs. It does not transcribe speech or identify important dialogue.</p>
    <div className="mt-5 flex gap-3"><button type="button" disabled={!duration||busy} onClick={analyze} className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy?"Analyzing video…":"Find highlights"}</button>{busy&&<button type="button" onClick={()=>{cancel.current=true}} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold">Cancel</button>}</div>
    {busy&&<div role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="mt-4 h-2 overflow-hidden rounded bg-slate-200"><div className="h-full bg-blue-500" style={{width:progress+"%"}}/></div>}
