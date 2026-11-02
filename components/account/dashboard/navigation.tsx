@@ -12,6 +12,9 @@ import {
   Layers3,
   LayoutDashboard,
   LogOut,
+  Mic2,
+  WandSparkles,
+  ScanFace,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -71,6 +74,14 @@ const groups = [
     ],
   },
   { name: "Creative Tools", items: DASHBOARD_TOOLS },
+  {
+    name: "AI Studio",
+    items: [
+      { name: "AI Voice-over", href: "/ai-voiceover", icon: Mic2 },
+      { name: "Automatic Highlights", href: "/ai-highlights", icon: WandSparkles },
+      { name: "Background Remover", href: "/ai-background", icon: ScanFace },
+    ],
+  },
   {
     name: "Account",
     items: [{ name: "Settings", href: "/settings", icon: Settings }],
