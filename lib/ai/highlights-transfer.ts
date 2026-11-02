@@ -1,0 +1,5 @@
+export type HighlightRange={start:number;end:number};
+const DB="econtent-highlights-transfer",STORE="pending",KEY="highlights";
+function openDb():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+export async function saveHighlights(file:File,ranges:HighlightRange[]){const db=await openDb();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put({file,ranges},KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}finally{db.close()}}
+export async function consumeHighlights():Promise<{file:File;ranges:HighlightRange[]}|null>{const db=await openDb();try{return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");const req=tx.objectStore(STORE).get(KEY);let value=null;req.onsuccess=()=>{value=req.result||null;tx.objectStore(STORE).delete(KEY)};tx.oncomplete=()=>resolve(value);tx.onerror=()=>reject(tx.error)})}finally{db.close()}}
