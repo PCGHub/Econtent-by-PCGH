@@ -21,7 +21,7 @@
   "dependencies": {
     "@ffmpeg/core": "0.12.10",
     "@ffmpeg/ffmpeg": "0.12.15",
-    "@mediapipe/selfie_segmentation": "0.1.1675465747",
+    "@mediapipe/pose": "0.5.1675469404",
     "@noble/hashes": "2.2.0",
     "@radix-ui/react-slot": "^1.2.3",
     "@supabase/ssr": "0.12.7",

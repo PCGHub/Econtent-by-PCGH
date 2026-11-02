@@ -85,7 +85,7 @@ async function download(page: Page, dir: string, name: string) {
     .locator('p[role="status"]')
     .filter({
       hasText:
-        /No valid segmented|timed out|stopped responding|could not|cannot|exceeded|Export cancelled/i,
+        /Export aborted|No reliable person|No valid segmented|timed out|stopped responding|could not|cannot|exceeded|Export cancelled/i,
     })
     .first();
   await Promise.race([
@@ -144,7 +144,7 @@ test("real model preserves opaque person and replacement together; mask diagnost
     expect(p.face[3]).toBe(255);
     await page.getByText("Mask diagnostics", { exact: true }).click();
     await expect(page.getByTestId("mask-diagnostics")).toContainText(
-      "Valid mask",
+      "Body checks passed",
     );
     await expect(page.getByTestId("mask-diagnostics")).toContainText("G 0–0");
     await page.getByLabel("Segmentation preview view").selectOption("mask");
@@ -293,6 +293,64 @@ test("canvas-result fallback is snapshotted; touch layout, seek, image fit, canc
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test("losing the person midway aborts export with a timestamp and no partial download", async ({
+  page,
+}) => {
+  const dir = generated(2, 12);
+  try {
+    // Same decoded geometry throughout: a real person followed by a blank frame.
+    execFileSync("ffmpeg", [
+      "-v",
+      "error",
+      "-i",
+      join(dir, "presenter.mp4"),
+      "-vf",
+      "drawbox=x=0:y=0:w=iw:h=ih:color=blue:t=fill:enable='gte(t,0.5)'",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "copy",
+      join(dir, "loss.mp4"),
+    ]);
+    await open(page, dir, "loss.mp4");
+    await page.getByLabel("Export frame rate").selectOption("12");
+    const downloads: string[] = [];
+    page.on("download", (d) => downloads.push(d.suggestedFilename()));
+    await page
+      .getByRole("button", { name: "Export short video (WebM)", exact: true })
+      .click();
+    await expect(
+      page
+        .locator('p[role="status"]')
+        .filter({ hasText: /Export aborted at [0-9.]+ s:.*person/i }),
+    ).toBeVisible({ timeout: 90000 });
+    await expect(
+      page
+        .locator('p[role="status"]')
+        .filter({ hasText: "No partial output was saved" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Download result", exact: true }),
+    ).toHaveCount(0);
+    expect(downloads).toEqual([]);
+    // Returning to a clear frame recovers preview detection without bypassing checks.
+    await page
+      .getByLabel("Original background source", { exact: true })
+      .evaluate((v: HTMLVideoElement) => {
+        v.currentTime = 0;
+      });
+    await expect(
+      page.getByRole("button", {
+        name: "Export short video (WebM)",
+        exact: true,
+      }),
+    ).toBeEnabled({ timeout: 60000 });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 test("blank video produces explicit no-person diagnostics and no export", async ({
   page,
 }) => {
@@ -315,7 +373,9 @@ test("blank video produces explicit no-person diagnostics and no export", async 
       .setInputFiles(join(dir, "blank.mp4"));
     await expect(
       page
-        .getByText(/No person detected|No measurable person detected/)
+        .getByText(
+          /No (reliable )?person detected|No measurable person detected/,
+        )
         .first(),
     ).toBeVisible({ timeout: 60000 });
     await expect(
@@ -329,7 +389,9 @@ test("blank video produces explicit no-person diagnostics and no export", async 
       .click();
     await expect(
       page
-        .getByText(/No person detected|No measurable person detected/)
+        .getByText(
+          /No (reliable )?person detected|No measurable person detected/,
+        )
         .first(),
     ).toBeVisible({ timeout: 60000 });
   } finally {
@@ -337,6 +399,81 @@ test("blank video produces explicit no-person diagnostics and no export", async 
   }
 });
 
+test("full-body extended arms and legs survive real model composition and export", async ({
+  page,
+}) => {
+  test.skip(
+    !fixtures || !process.env.ECONTENT_BACKGROUND_FULL_BODY,
+    "Provide an authorized local full-body.mp4 fixture",
+  );
+  const dir = resolve(fixtures!);
+  await open(page, dir, "full-body.mp4");
+  await page.getByText("Mask diagnostics", { exact: true }).click();
+  await expect(page.getByTestId("person-quality")).toContainText(
+    "8/8 limb segments",
+  );
+  await page.getByLabel("Include original audio mix track").uncheck();
+  await page.getByLabel("Export frame rate").selectOption("12");
+  await page
+    .getByRole("button", { name: "Export short video (WebM)", exact: true })
+    .click();
+  const result = await download(page, dir, "full-body-result.webm");
+  // The muxer's silent WebM duration ends at the last frame timestamp; require
+  // every source-timed frame, and metadata within one selected frame interval.
+  expect(Math.abs(Number(mediaInfo(result).format.duration) - 2)).toBeLessThan(
+    1 / 12 + 0.002,
+  );
+  expect(
+    Number(
+      execFileSync(
+        "ffprobe",
+        [
+          "-v",
+          "error",
+          "-select_streams",
+          "v:0",
+          "-count_frames",
+          "-show_entries",
+          "stream=nb_read_frames",
+          "-of",
+          "csv=p=0",
+          result,
+        ],
+        { encoding: "utf8" },
+      ).trim(),
+    ),
+  ).toBe(24);
+  const pixel = (x: number, y: number) => [
+    ...execFileSync("ffmpeg", [
+      "-v",
+      "error",
+      "-ss",
+      "1",
+      "-i",
+      result,
+      "-vf",
+      `format=rgb24,crop=1:1:${x}:${y}`,
+      "-frames:v",
+      "1",
+      "-f",
+      "rawvideo",
+      "-",
+    ]),
+  ];
+  // Fixture: extended arms at 30–32% height; bare lower legs at 86% height.
+  for (const [x, y] of [
+    [210, 223],
+    [503, 225],
+    [250, 415],
+    [480, 422],
+  ]) {
+    const p = pixel(x, y);
+    expect(p[0]).toBeGreaterThan(40); // skin remains, rather than pure-blue replacement
+  }
+  const bg = pixel(10, 10);
+  expect(bg[0]).toBeLessThan(10);
+  expect(bg[2]).toBeGreaterThan(240);
+});
 test("ordinary moving presenter: portrait source with landscape replacement exports video and speech", async ({
   page,
 }) => {

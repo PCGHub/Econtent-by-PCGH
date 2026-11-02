@@ -1,3 +1,8 @@
+import {
+  assessPersonMask,
+  type BodyPoint,
+  type QualityHistory,
+} from "./quality";
 import { backgroundRect, outputSize, refineMask, type MaskStats } from "./mask";
 import {
   deadline,
@@ -30,6 +35,9 @@ const canvas = () => document.createElement("canvas");
 /** Owns all frame resources. Borrowed MediaPipe results NEVER escape onResults. */
 export class BackgroundRenderer {
   private model: PersonModel | null = null;
+  private points: BodyPoint[] | undefined;
+  private previousQuality: QualityHistory | undefined;
+  private lastModelTime: number | undefined;
   private stopped = false;
   private raf = 0;
   private epoch = 0;
@@ -137,7 +145,17 @@ export class BackgroundRenderer {
           }
         }
       });
-      model.setOptions({ modelSelection: 1, selfieMode: false });
+      model.setOptions({
+        modelComplexity: 1,
+        selfieMode: false,
+        enableSegmentation: true,
+        smoothLandmarks: false,
+        smoothSegmentation: false,
+        // Detector proposal threshold; final body/mask checks remain strict.
+        // 0.7 rejected real tightly cropped portraits before landmark inference.
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.7,
+      });
       await deadline(
         model.initialize(),
         45000,
@@ -174,7 +192,10 @@ export class BackgroundRenderer {
     this.pixels = null;
     this.stats = undefined;
     this.draw();
-    if (!this.initializing)
+    // Keep the last completed diagnostic visible while export seeks through
+    // frames. Clearing/recreating the panel on every seek moved Cancel on touch.
+    // Internal stats are still invalidated above; no stale frame is accepted.
+    if (!this.initializing && !this.exporting)
       this.publish("preparing", "Detecting the selected frame…");
   };
   private size() {
@@ -239,7 +260,48 @@ export class BackgroundRenderer {
       return;
     }
     void deadline(
-      this.model.send({ image: this.input }),
+      (async () => {
+        if (
+          this.lastModelTime !== undefined &&
+          (time < this.lastModelTime || time - this.lastModelTime > 0.25)
+        ) {
+          await this.model!.reset();
+          this.previousQuality = undefined;
+        }
+        this.lastModelTime = time;
+        await this.model!.send({ image: this.input });
+        if (
+          this.stopped ||
+          this.pending?.epoch !== this.epoch ||
+          this.failMessage
+        )
+          return;
+        if (this.stats && !this.stats.valid) {
+          // Reacquire once from this SAME frozen frame. A tracker can hallucinate
+          // an in-frame wrist on a cropped portrait. Never accept that first mask,
+          // average silhouettes or relax the final checks to rescue an export.
+          if (!this.exporting)
+            this.publish(
+              "preparing",
+              "Rechecking uncertain body detection on this frame…",
+            );
+          await this.model!.reset();
+          // Keep the prior accepted frame for the SAME temporal quality checks.
+          if (this.stopped || this.pending?.epoch !== this.epoch) return;
+          await this.model!.send({ image: this.input });
+        }
+        if (
+          this.stopped ||
+          this.pending?.epoch !== this.epoch ||
+          this.failMessage
+        )
+          return;
+        this.draw();
+        this.publishCurrent(
+          !this.stats?.valid || this.video.paused || this.frames === 1,
+        );
+        for (const cb of this.callbacks) cb();
+      })(),
       20000,
       "Person detection stopped responding. No original-video fallback was exported. Retry with a fresh model.",
     )
@@ -262,6 +324,32 @@ export class BackgroundRenderer {
       return;
     try {
       const { width: w, height: h } = this.output;
+      // Own the landmarks alongside the paired image/mask snapshots.
+      this.points = result.poseLandmarks?.map(({ x, y, visibility }) => ({
+        x,
+        y,
+        visibility,
+      }));
+      if (!result.segmentationMask) {
+        this.pixels = null;
+        this.stats = {
+          width: w,
+          height: h,
+          time: pending.time,
+          channels: [],
+          coverage: 0,
+          valid: false,
+          maskValid: false,
+          maskAvailable: false,
+          reason: "No reliable person detected. Export is blocked.",
+          representation: "No mask returned",
+        };
+        this.debug.getContext("2d")!.clearRect(0, 0, w, h);
+        this.source.getContext("2d")!.clearRect(0, 0, w, h);
+        this.source.getContext("2d")!.drawImage(result.image, 0, 0, w, h);
+        this.frames++;
+        return;
+      }
       this.representation = result.segmentationMask.constructor.name;
       const geometry = result.segmentationMask as {
         width: number;
@@ -282,9 +370,6 @@ export class BackgroundRenderer {
       this.refine();
       this.inferenceMs = performance.now() - pending.started;
       this.frames++;
-      this.draw();
-      this.publishCurrent(this.video.paused || this.frames === 1);
-      for (const cb of this.callbacks) cb();
     } catch (e) {
       this.fail(e);
     }
@@ -302,8 +387,25 @@ export class BackgroundRenderer {
       this.options.softness,
     );
     ctx.putImageData(this.refined, 0, 0);
+    const time = this.pending?.time ?? this.stats?.time ?? this.submitted;
+    const quality = assessPersonMask(
+      this.refined.data,
+      w,
+      h,
+      this.points,
+      time,
+      stats.coverage,
+      this.previousQuality,
+      this.pixels.data,
+    );
+    if (quality.safe && quality.history) this.previousQuality = quality.history;
     this.stats = {
       ...stats,
+      maskValid: stats.valid && !!this.points?.length,
+      maskAvailable: true,
+      quality,
+      valid: stats.valid && quality.safe,
+      reason: stats.valid ? (quality.safe ? "" : quality.reason) : stats.reason,
       representation: this.representation,
       width: w,
       height: h,
@@ -382,7 +484,7 @@ export class BackgroundRenderer {
       ctx.drawImage(this.raw, 0, 0);
       return;
     }
-    if (!this.pixels || !this.stats?.valid) return; // Explicit replacement-only pending/error state, never an opaque original fallback.
+    if (!this.pixels || !this.stats?.maskValid) return; // Explicit replacement-only pending/error state, never an opaque original fallback.
     const fg = this.foreground.getContext("2d")!;
     fg.globalCompositeOperation = "source-over";
     fg.clearRect(0, 0, w, h);
@@ -403,7 +505,7 @@ export class BackgroundRenderer {
   }
   private publishCurrent(force = false) {
     if (this.initializing) return;
-    if (this.exporting) force = false;
+    if (this.exporting && this.stats?.valid) force = false;
     const now = performance.now();
     if (!force && now - this.published < 500) return;
     this.published = now;
@@ -422,7 +524,7 @@ export class BackgroundRenderer {
           ? "Chroma preview ready"
           : "Preparing chroma frame"
         : this.stats?.valid
-          ? "Person and replacement background composited."
+          ? "Body-aware checks passed. Review the cutout before export."
           : this.stats?.reason || "Waiting for a fresh mask",
     );
   }
@@ -455,7 +557,11 @@ export class BackgroundRenderer {
         const check = () => {
           if (this.failMessage || (this.stats && !this.stats.valid)) {
             this.callbacks.delete(check);
-            reject(Error(this.failure));
+            reject(
+              Error(
+                `Export aborted at ${time.toFixed(3)} s: ${this.failure} No partial output was saved.`,
+              ),
+            );
             return;
           }
           if (this.valid && Math.abs(this.time - time) < 0.002) {

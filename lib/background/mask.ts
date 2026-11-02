@@ -1,4 +1,4 @@
-/** Contract verified against pinned MediaPipe SelfieSegmentation 0.1.1675465747.
+/** Contract verified against pinned MediaPipe Pose 0.5.1675469404 (and the previous Selfie model).
  * Its texture is red with confidence in ALPHA. Canvas getImageData unpremultiplies
  * red (often 255 at any nonzero confidence); averaging RGB is not confidence.
  */
@@ -8,6 +8,9 @@ export interface ChannelStats {
   mean: number;
 }
 export interface MaskStats {
+  maskValid?: boolean;
+  maskAvailable?: boolean;
+  quality?: import("./quality").PersonQuality;
   representation?: string;
   channels: ChannelStats[];
   coverage: number;

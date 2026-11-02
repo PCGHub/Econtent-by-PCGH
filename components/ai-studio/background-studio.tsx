@@ -29,7 +29,7 @@ export function BackgroundStudio() {
     [mode, setMode] = useState<"person" | "chroma">("person"),
     [key, setKey] = useState("#00ff00"),
     [tolerance, setTolerance] = useState(85),
-    [threshold, setThreshold] = useState(0.55),
+    [threshold, setThreshold] = useState(0.5),
     [softness, setSoftness] = useState(0.12);
   const [fit, setFit] = useState<"cover" | "contain">("cover"),
     [zoom, setZoom] = useState(1),
@@ -105,7 +105,7 @@ export function BackgroundStudio() {
         zoom: 1,
         x: 50,
         y: 50,
-        threshold: 0.55,
+        threshold: 0.5,
         softness: 0.12,
         key: "#00ff00",
         tolerance: 85,
@@ -240,10 +240,11 @@ export function BackgroundStudio() {
         Background Remover & Changer
       </h1>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        Isolate a presenter without a green screen and replace the background.
-        Detection runs locally on your device using a cached model from this
-        app. Hair, hands and fast movements may have imperfect edges. Source
-        videos and images are never uploaded.
+        Isolate one clear person without a green screen and replace the
+        background. Detection runs locally on your device using a cached model
+        from this app. Blur, heavy occlusion and multi-person action may be
+        rejected rather than exported as a broken cutout. Source videos and
+        images are never uploaded.
       </p>
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
         <fieldset disabled={recording} className="min-w-0 disabled:opacity-70">
@@ -280,7 +281,7 @@ export function BackgroundStudio() {
               }
             >
               <option value="person">
-                AI Person Detection (no green screen)
+                AI Person Detection · full-body checks
               </option>
               <option value="chroma">Green/Blue Screen (chroma key)</option>
             </select>
@@ -570,10 +571,29 @@ export function BackgroundStudio() {
               </select>
             </label>
             <p className="mt-3 text-xs leading-5 text-slate-600">
-              Pinned MediaPipe mask confidence is in alpha, not averaged RGB.
-              Foreground is white in the diagnostic view. Statistics update at
-              most twice per second.
+              Full-body pose and mask checks must pass on every exported frame.
+              Confidence is in alpha; white shows foreground. Missing visible
+              body parts, uncertain detections or abrupt tracking losses abort
+              export. Checks cannot guarantee perfect edges—review the preview.
+              During export, diagnostics show the last completed frame check.
             </p>
+            {stats?.quality && (
+              <p
+                data-testid="person-quality"
+                className={
+                  stats.quality.safe
+                    ? "mt-3 text-sm text-slate-700"
+                    : "mt-3 text-sm font-medium text-rose-800"
+                }
+              >
+                {stats.quality.safe
+                  ? "Visible-body checks passed."
+                  : "Export blocked: " + stats.quality.reason}{" "}
+                {stats.quality.matchedPoints}/{stats.quality.visiblePoints}{" "}
+                visible points, {stats.quality.matchedSegments}/
+                {stats.quality.checkedSegments} limb segments retained.
+              </p>
+            )}
             {stats ? (
               <div
                 data-testid="mask-diagnostics"
@@ -582,8 +602,10 @@ export function BackgroundStudio() {
                 <p>
                   {stats.representation} · {stats.width} × {stats.height} ·
                   frame {stats.time.toFixed(3)} s · foreground{" "}
-                  {(stats.coverage * 100).toFixed(1)}% ·{" "}
-                  {stats.valid ? "Valid mask" : stats.reason}
+                  {stats.maskAvailable === false
+                    ? "unavailable"
+                    : (stats.coverage * 100).toFixed(1) + "%"}{" "}
+                  · {stats.valid ? "Body checks passed" : stats.reason}
                 </p>
                 <p>
                   {stats.channels

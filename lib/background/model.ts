@@ -1,15 +1,17 @@
-import type { SelfieSegmentation } from "@mediapipe/selfie_segmentation";
-export type PersonModel = SelfieSegmentation;
+import type { Pose } from "@mediapipe/pose";
+import type { BodyPoint } from "./quality";
+export type PersonModel = Pose;
 export type SegmentationResult = {
-  segmentationMask: CanvasImageSource;
+  segmentationMask?: CanvasImageSource;
+  poseLandmarks?: BodyPoint[];
   image: CanvasImageSource;
 };
 declare global {
   interface Window {
-    SelfieSegmentation?: typeof SelfieSegmentation;
+    Pose?: typeof Pose;
   }
 }
-export const MODEL_PATH = "/segmentation/0.1.1675465747/";
+export const MODEL_PATH = "/segmentation/pose-0.5.1675469404/";
 let library: Promise<void> | undefined;
 export function deadline<T>(
   promise: Promise<T>,
@@ -25,10 +27,10 @@ export function deadline<T>(
   ]).finally(() => clearTimeout(timer));
 }
 export async function personModel() {
-  if (!window.SelfieSegmentation) {
+  if (!window.Pose) {
     library ??= new Promise<void>((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = MODEL_PATH + "selfie_segmentation.js";
+      script.src = MODEL_PATH + "pose.js";
       script.onload = () => resolve();
       script.onerror = () => {
         script.remove();
@@ -49,8 +51,7 @@ export async function personModel() {
       "Person detection script download timed out. Retry to create a fresh model.",
     );
   }
-  if (!window.SelfieSegmentation)
-    throw Error("Person detection library is unavailable.");
+  if (!window.Pose) throw Error("Person detection library is unavailable.");
   const probe = document.createElement("canvas");
   if (!probe.getContext("webgl2") && !probe.getContext("webgl"))
     throw Error(
@@ -59,7 +60,7 @@ export async function personModel() {
   // Release the capability probe's GPU context immediately.
   const gl = probe.getContext("webgl2") || probe.getContext("webgl");
   gl?.getExtension("WEBGL_lose_context")?.loseContext();
-  return new window.SelfieSegmentation({
+  return new window.Pose({
     locateFile: (name) => MODEL_PATH + name,
   });
 }

@@ -1,23 +1,25 @@
 import { mkdir, copyFile, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-const version = "0.1.1675465747",
-  src = "node_modules/@mediapipe/selfie_segmentation/",
-  dest = "public/segmentation/" + version + "/";
+const version = "0.5.1675469404",
+  src = "node_modules/@mediapipe/pose/",
+  dest = "public/segmentation/pose-" + version + "/";
 if (
   JSON.parse(await readFile(src + "package.json", "utf8")).version !== version
 )
   throw Error("Unexpected segmentation version");
 const names = [
-  "selfie_segmentation.js",
-  "selfie_segmentation.binarypb",
-  "selfie_segmentation.tflite",
-  "selfie_segmentation_landscape.tflite",
-  "selfie_segmentation_solution_simd_wasm_bin.js",
-  "selfie_segmentation_solution_simd_wasm_bin.wasm",
-  "selfie_segmentation_solution_simd_wasm_bin.data",
-  "selfie_segmentation_solution_wasm_bin.js",
-  "selfie_segmentation_solution_wasm_bin.wasm",
+  "pose.js",
+  "pose_web.binarypb",
+  "pose_landmark_full.tflite",
+  "pose_solution_packed_assets.data",
+  "pose_solution_packed_assets_loader.js",
+  "pose_solution_simd_wasm_bin.js",
+  "pose_solution_simd_wasm_bin.wasm",
+  "pose_solution_simd_wasm_bin.data",
+  "pose_solution_wasm_bin.js",
+  "pose_solution_wasm_bin.wasm",
 ];
+
 await mkdir(dest, { recursive: true });
 await copyFile(
   "public/licenses/mediapipe-APACHE-2.0.txt",
@@ -36,7 +38,7 @@ await writeFile(
   dest + "manifest.json",
   JSON.stringify(
     {
-      package: "@mediapipe/selfie_segmentation",
+      package: "@mediapipe/pose",
       version,
       license: "Apache-2.0",
       files,
@@ -47,7 +49,7 @@ await writeFile(
 );
 await writeFile(
   dest + "NOTICE.txt",
-  "MediaPipe Selfie Segmentation " +
+  "MediaPipe Pose " +
     version +
     "\nCopyright Google LLC. Licensed under Apache License 2.0.\nhttps://github.com/google-ai-edge/mediapipe\nhttps://www.apache.org/licenses/LICENSE-2.0\n",
 );
