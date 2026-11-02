@@ -1,195 +1,697 @@
 "use client";
-import {useEffect,useRef,useState} from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-type SegResult={segmentationMask:CanvasImageSource;image:CanvasImageSource};
-type Segmenter={onResults:(cb:(result:SegResult)=>void)=>void;send:(input:{image:HTMLVideoElement})=>Promise<void>;setOptions:(options:{modelSelection:number;selfieMode:boolean})=>void;close:()=>Promise<void>};
-declare global{interface Window{SelfieSegmentation?:new(options:{locateFile:(name:string)=>string})=>Segmenter}}
-const base="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/";
-async function loadSegmenter(){
- if(!window.SelfieSegmentation){
-  await new Promise<void>((resolve,reject)=>{const existing=document.querySelector<HTMLScriptElement>('script[data-segmenter="true"]');if(existing){if(window.SelfieSegmentation)return resolve();existing.remove()}const script=document.createElement("script");script.dataset.segmenter="true";script.src=base+"selfie_segmentation.js";script.onload=()=>resolve();script.onerror=()=>reject(Error("AI model could not load. Check your internet connection or content blockers."));document.head.appendChild(script)});
- }
- if(!window.SelfieSegmentation)throw Error("AI segmentation library unavailable.");
- const segmenter=new window.SelfieSegmentation({locateFile:name=>base+name});
- segmenter.setOptions({modelSelection:1,selfieMode:false});
- return segmenter;
-}
-export function BackgroundStudio(){
- const [file,setFile]=useState<File|null>(null);
- const [background,setBackground]=useState<File|null>(null);
- const [source,setSource]=useState("");
- const [image,setImage]=useState("");
- const [color,setColor]=useState("#2563eb");
- const [mode,setMode]=useState<"person"|"chroma">("person");
- const [key,setKey]=useState("#00ff00");
- const [tolerance,setTolerance]=useState(85);
- const [maskThreshold,setMaskThreshold]=useState(0.55);
- const [invertMask,setInvertMask]=useState(false);
- const [maskDiagnostic,setMaskDiagnostic]=useState("Waiting for AI mask");
- const [edgeSoftness,setEdgeSoftness]=useState(0.12);
- const [bgFit,setBgFit]=useState<"cover"|"contain">("cover");
- const [bgZoom,setBgZoom]=useState(1);
- const [bgX,setBgX]=useState(50);
- const [bgY,setBgY]=useState(50);
- const [ready,setReady]=useState(false);
- const [recording,setRecording]=useState(false);
- const [message,setMessage]=useState("");
- const [download,setDownload]=useState("");
- const video=useRef<HTMLVideoElement>(null);
- const canvas=useRef<HTMLCanvasElement>(null);
- const frame=useRef<number>(0);
- const recorder=useRef<MediaRecorder|null>(null);
- const segmenter=useRef<Segmenter|null>(null);
- const busy=useRef(false);
- const latest=useRef<SegResult|null>(null);
- const generation=useRef(0);
- const lastMaskWarning=useRef(false);
- useEffect(()=>{if(!file){setSource("");return;}const url=URL.createObjectURL(file);setSource(url);return()=>URL.revokeObjectURL(url)},[file]);
- useEffect(()=>{if(!background){setImage("");return;}const url=URL.createObjectURL(background);setImage(url);return()=>URL.revokeObjectURL(url)},[background]);
- useEffect(()=>{if(!download)return;return()=>URL.revokeObjectURL(download)},[download]);
- useEffect(()=>()=>{cancelAnimationFrame(frame.current);if(recorder.current?.state!=="inactive")recorder.current?.stop();void segmenter.current?.close()},[]);
- useEffect(()=>{
-  const ticket=++generation.current;setReady(false);latest.current=null;busy.current=false;
-  if(mode!=="person"||!source)return;
-  setMessage("Loading person detection model…");
-  let model:Segmenter|null=null;
-  void loadSegmenter().then(s=>{if(generation.current!==ticket){void s.close();return;}model=s;segmenter.current=s;s.onResults(result=>{if(generation.current===ticket)latest.current=result});setReady(true);setMessage("Person detection ready. Play your video to preview the replacement.");}).catch(e=>{if(generation.current===ticket)setMessage(e instanceof Error?e.message:"Unable to load AI model.")});
-  return()=>{generation.current++;if(model){void model.close();if(segmenter.current===model)segmenter.current=null;}};
- },[mode,source]);
- useEffect(()=>{
-  const el=video.current,c=canvas.current;
-  if(!el||!c||!source)return;
-  const ctx=c.getContext("2d",{willReadFrequently:true});if(!ctx)return;
-  const back=new Image();if(image)back.src=image;
-  const off=document.createElement("canvas"),offCtx=off.getContext("2d",{willReadFrequently:true});
-  const maskCanvas=document.createElement("canvas"),maskCtx=maskCanvas.getContext("2d",{willReadFrequently:true});
-  const rgb=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
-  const [r,g,b]=rgb(key);
-  let active=true;
-  const render=()=>{
-   if(!active)return;
-   const w=el.videoWidth||640,h=el.videoHeight||360;
-   const scale=Math.min(1,960/w);
-   const width=Math.round(w*scale),height=Math.round(h*scale);
-   if(c.width!==width||c.height!==height){c.width=width;c.height=height;off.width=width;off.height=height;maskCanvas.width=width;maskCanvas.height=height;}
-   if(el.readyState>=2&&offCtx){
-    ctx.fillStyle=color;ctx.fillRect(0,0,width,height);
-    if(image&&back.complete&&back.naturalWidth){
-     const factor=(bgFit==="cover"?Math.max(width/back.naturalWidth,height/back.naturalHeight):Math.min(width/back.naturalWidth,height/back.naturalHeight))*bgZoom;
-     const dw=back.naturalWidth*factor,dh=back.naturalHeight*factor;
-     ctx.drawImage(back,(width-dw)*bgX/100,(height-dh)*bgY/100,dw,dh);
-    }
-    if(mode==="person"){
-     const result=latest.current;
-     if(result&&maskCtx){
-      maskCtx.globalCompositeOperation="source-over";
-      maskCtx.clearRect(0,0,width,height);
-      maskCtx.drawImage(result.segmentationMask,0,0,width,height);
-      const mask=maskCtx.getImageData(0,0,width,height),md=mask.data;
-      const center=((Math.floor(height/2)*width+Math.floor(width/2))*4);
-      const corner=0;
-      const centerVal=Math.round((md[center]+md[center+1]+md[center+2])/3);
-      const cornerVal=Math.round((md[corner]+md[corner+1]+md[corner+2])/3);
-      // MediaPipe outputs a grayscale confidence mask in RGB. Its alpha
-      // is often fully opaque, so source-in compositing alone keeps the
-      // entire video and hides the replacement image.
-      const low=Math.max(0,maskThreshold-edgeSoftness/2),high=Math.min(1,maskThreshold+edgeSoftness/2);
-      let foreground=0, samples=0;
-      const stride=Math.max(4,Math.floor(md.length/4000/4)*4);
-      for(let i=0;i<md.length;i+=4){
-       const confidence=(md[i]+md[i+1]+md[i+2])/(3*255);
-       const value=invertMask?1-confidence:confidence;
-       const alpha=Math.max(0,Math.min(1,(value-low)/Math.max(.001,high-low)));
-       if(i%stride===0){samples++;if(alpha>.5)foreground++;}
-       md[i]=255;md[i+1]=255;md[i+2]=255;md[i+3]=Math.round(alpha*255);
+import {
+  BackgroundRenderer,
+  type BackgroundOptions,
+  type BackgroundStatus,
+} from "@/lib/background/renderer";
+import {
+  SourceAudio,
+  recordBackground,
+  type RecordingJob,
+} from "@/lib/background/record";
+const initial: BackgroundStatus = {
+  stage: "preparing",
+  message: "Choose a local video to start.",
+  frames: 0,
+};
+export function BackgroundStudio() {
+  const [sourceFile, setSourceFile] = useState<File | null>(null),
+    [fps, setFps] = useState<12 | 24>(24);
+  const [source, setSource] = useState(""),
+    [sourceName, setSourceName] = useState(""),
+    [imageUrl, setImageUrl] = useState("");
+  const [background, setBackground] = useState<HTMLImageElement | null>(null),
+    [imageError, setImageError] = useState(""),
+    [imageReady, setImageReady] = useState(true);
+  const [color, setColor] = useState("#155dfc"),
+    [mode, setMode] = useState<"person" | "chroma">("person"),
+    [key, setKey] = useState("#00ff00"),
+    [tolerance, setTolerance] = useState(85),
+    [threshold, setThreshold] = useState(0.55),
+    [softness, setSoftness] = useState(0.12);
+  const [fit, setFit] = useState<"cover" | "contain">("cover"),
+    [zoom, setZoom] = useState(1),
+    [x, setX] = useState(50),
+    [y, setY] = useState(50),
+    [view, setView] = useState<BackgroundOptions["view"]>("composite");
+  const [status, setStatus] = useState(initial),
+    [retry, setRetry] = useState(0),
+    [loaded, setLoaded] = useState(false),
+    [duration, setDuration] = useState(0),
+    [includeAudio, setIncludeAudio] = useState(true),
+    [recording, setRecording] = useState(false),
+    [seconds, setSeconds] = useState(0),
+    [message, setMessage] = useState("");
+  const [download, setDownload] = useState(""),
+    [playable, setPlayable] = useState(false);
+  const video = useRef<HTMLVideoElement>(null),
+    canvas = useRef<HTMLCanvasElement>(null),
+    engine = useRef<BackgroundRenderer | null>(null),
+    audio = useRef<SourceAudio | null>(null),
+    job = useRef<RecordingJob | null>(null),
+    alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      job.current?.cancel();
+    };
+  }, []);
+  useEffect(() => {
+    if (!source) return;
+    return () => URL.revokeObjectURL(source);
+  }, [source]);
+  useEffect(() => {
+    if (!imageUrl) return;
+    let active = true;
+    const image = new Image();
+    image.onload = () => {
+      if (active) {
+        setBackground(image);
+        setImageReady(true);
       }
-      const coverage=samples?Math.round(foreground/samples*100):0;
-      if(coverage<1||coverage>98){
-       ctx.drawImage(el,0,0,width,height);
-       if(!lastMaskWarning.current){lastMaskWarning.current=true;setMaskDiagnostic(`Unusable mask: ${coverage}% foreground, centre ${centerVal}, corner ${cornerVal}`);setMessage("AI mask is almost empty or full. Showing original video instead. Try Invert mask or another video.");}
-      }else{
-       if(lastMaskWarning.current||!lastMaskWarning.current&&maskDiagnostic==="Waiting for AI mask"){setMaskDiagnostic(`Foreground ${coverage}% · centre ${centerVal} · corner ${cornerVal}`);}
-       lastMaskWarning.current=false;
-       maskCtx.putImageData(mask,0,0);
-       offCtx.clearRect(0,0,width,height);
-       offCtx.globalCompositeOperation="source-over";
-       offCtx.drawImage(el,0,0,width,height);
-       offCtx.globalCompositeOperation="destination-in";
-       offCtx.drawImage(maskCanvas,0,0,width,height);
-       offCtx.globalCompositeOperation="source-over";
-       ctx.drawImage(off,0,0);
+    };
+    image.onerror = () => {
+      if (active) {
+        setImageError(
+          "The replacement image could not decode. Choose another image or remove it.",
+        );
+        setImageReady(false);
       }
-     }else{ctx.drawImage(el,0,0,width,height);}
-     if(ready&&!busy.current&&!el.paused&&!el.ended&&segmenter.current){
-      busy.current=true;
-      void segmenter.current.send({image:el}).catch(()=>setMessage("AI frame processing failed. Try a shorter video.")).finally(()=>{busy.current=false});
-     }
-    }else{
-     offCtx.drawImage(el,0,0,width,height);
-     const pixels=offCtx.getImageData(0,0,width,height),data=pixels.data;
-     for(let i=0;i<data.length;i+=4){const dr=data[i]-r,dg=data[i+1]-g,db=data[i+2]-b;const distance=Math.sqrt(dr*dr+dg*dg+db*db);data[i+3]=Math.round(data[i+3]*Math.min(1,Math.max(0,(distance-tolerance)/35)));}
-     offCtx.putImageData(pixels,0,0);ctx.drawImage(off,0,0);
+    };
+    image.src = imageUrl;
+    return () => {
+      active = false;
+      image.onload = image.onerror = null;
+      URL.revokeObjectURL(imageUrl);
+    };
+  }, [imageUrl]);
+  useEffect(() => {
+    if (!download) return;
+    return () => URL.revokeObjectURL(download);
+  }, [download]);
+  useEffect(() => {
+    if (!source || !video.current || !canvas.current) return;
+    const renderer = new BackgroundRenderer(
+      video.current,
+      canvas.current,
+      {
+        mode,
+        color: "#155dfc",
+        image: null,
+        fit: "cover",
+        zoom: 1,
+        x: 50,
+        y: 50,
+        threshold: 0.55,
+        softness: 0.12,
+        key: "#00ff00",
+        tolerance: 85,
+        view: "composite",
+      },
+      (state) => {
+        if (alive.current) setStatus(state);
+      },
+    );
+    engine.current = renderer;
+    void renderer.start();
+    return () => {
+      renderer.dispose();
+      if (engine.current === renderer) engine.current = null;
+    };
+  }, [source, mode, retry]);
+  useEffect(() => {
+    engine.current?.update({
+      mode,
+      color,
+      image: background,
+      fit,
+      zoom,
+      x,
+      y,
+      threshold,
+      softness,
+      key,
+      tolerance,
+      view,
+    });
+  }, [
+    source,
+    mode,
+    retry,
+    color,
+    background,
+    fit,
+    zoom,
+    x,
+    y,
+    threshold,
+    softness,
+    key,
+    tolerance,
+    view,
+  ]);
+  function change(action: () => void) {
+    setDownload("");
+    setPlayable(false);
+    setMessage("");
+    action();
+  }
+  async function exportVideo() {
+    const el = video.current,
+      renderer = engine.current;
+    if (!el || !renderer || !sourceFile || recording) return;
+    if (view !== "composite") {
+      setMessage(
+        "Choose Composite preview before exporting. Diagnostic mask/original views are not exported.",
+      );
+      return;
     }
-   }
-   frame.current=requestAnimationFrame(render);
-  };
-  frame.current=requestAnimationFrame(render);
-  return()=>{active=false;cancelAnimationFrame(frame.current)};
- },[source,image,color,key,tolerance,mode,ready,maskThreshold,edgeSoftness,bgFit,bgZoom,bgX,bgY,invertMask]);
- async function exportVideo(){
-  const c=canvas.current,el=video.current;
-  if(!c||!el||recording)return;
-  if(mode==="person"&&!ready){setMessage("Wait for the person detection model to load.");return;}
-  if(!c.captureStream||typeof MediaRecorder==="undefined"){setMessage("Video export is not supported in this browser.");return;}
-  const type=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
-  if(!type){setMessage("This browser cannot export WebM. Try Chrome or Edge.");return;}
-  if(!Number.isFinite(el.duration)||el.duration>180){setMessage("This Preview limits export to videos of 3 minutes or less.");return;}
-  setMessage("");setDownload("");setRecording(true);
-  let stream:MediaStream|null=null;
-  try{
-   el.pause();el.currentTime=0;
-   await new Promise<void>((resolve,reject)=>{if(Math.abs(el.currentTime)<.05)return resolve();const timer=setTimeout(()=>reject(Error("Video seek timed out.")),8000);el.onseeked=()=>{clearTimeout(timer);resolve()};el.currentTime=0;});
-   stream=c.captureStream(24);
-   const capture=el as HTMLVideoElement & {captureStream?:()=>MediaStream;mozCaptureStream?:()=>MediaStream};
-   const audioSource=capture.captureStream?.()||capture.mozCaptureStream?.();
-   audioSource?.getAudioTracks().forEach(track=>stream?.addTrack(track));
-   const chunks:Blob[]=[];
-   const media=new MediaRecorder(stream,{mimeType:type});
-   recorder.current=media;
-   media.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
-   media.onerror=()=>setMessage("Recording failed.");
-   media.onstop=()=>{stream?.getTracks().forEach(t=>t.stop());setRecording(false);recorder.current=null;if(chunks.length){setDownload(URL.createObjectURL(new Blob(chunks,{type})));setMessage(audioSource?.getAudioTracks().length?"Export complete with captured audio.":"Export complete, but this browser did not expose the original audio track. Check playback before use.")}else setMessage("No video was recorded.")};
-   el.onended=()=>{if(media.state!=="inactive")media.stop()};
-   media.start(1000);await el.play();
-  }catch(e){stream?.getTracks().forEach(t=>t.stop());setRecording(false);setMessage(e instanceof Error?e.message:"Unable to export video.");}
- }
- return <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
-  <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">AI Studio / Background</p>
-  <h1 className="mt-2 text-3xl font-semibold">Background Remover & Changer</h1>
-  <p className="mt-2 text-sm leading-6 text-slate-600">Person detection (beta) isolates a presenter without a green screen. Upload your own background image or choose a colour. The model loads from an external CDN on first use and runs in your browser. Hair, hands and fast movements may have imperfect edges.</p>
-  <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-   <label className="block text-sm font-semibold">Upload video<input type="file" accept="video/*" onChange={e=>{setFile(e.target.files?.[0]||null);setDownload("");}} className="mt-2 block w-full text-sm"/></label>
-   <label className="mt-4 block text-sm font-medium">Removal method<select className="mt-2 block w-full rounded-lg border p-3" value={mode} onChange={e=>setMode(e.target.value as "person"|"chroma")}><option value="person">AI Person Detection (no green screen)</option><option value="chroma">Green/Blue Screen (chroma key)</option></select></label>
-   {source&&<div className="mt-5 grid gap-4 md:grid-cols-2"><div><p className="mb-2 text-sm font-semibold">Original</p><video ref={video} src={source} controls playsInline className="w-full rounded-lg bg-black" onSeeked={()=>{latest.current=null}}/></div><div><p className="mb-2 text-sm font-semibold">Background preview</p><canvas ref={canvas} className="w-full rounded-lg bg-black"/></div></div>}
-   <div className="mt-5 grid gap-4 sm:grid-cols-2">
-    {mode==="chroma"&&<><label className="text-sm">Screen colour to remove<input type="color" value={key} onChange={e=>setKey(e.target.value)} className="mt-2 block h-10 w-24"/></label><label className="text-sm">Tolerance: {tolerance}<input type="range" min="10" max="200" value={tolerance} onChange={e=>setTolerance(Number(e.target.value))} className="mt-3 block w-full accent-blue-600"/></label></>}
-    <label className="text-sm">Replacement colour<input type="color" value={color} onChange={e=>setColor(e.target.value)} className="mt-2 block h-10 w-24"/></label>
-    <label className="text-sm">Replacement image<input type="file" accept="image/*" onChange={e=>setBackground(e.target.files?.[0]||null)} className="mt-2 block w-full text-sm"/></label>
-   </div>
-   {mode==="person"&&<div className="mt-5 grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
-    <label className="text-sm">Person mask strength: {maskThreshold.toFixed(2)}<input type="range" min="0.2" max="0.85" step="0.05" value={maskThreshold} onChange={e=>setMaskThreshold(Number(e.target.value))} className="mt-2 block w-full"/></label>
-    <label className="text-sm">Edge softness: {edgeSoftness.toFixed(2)}<input type="range" min="0.02" max="0.3" step="0.02" value={edgeSoftness} onChange={e=>setEdgeSoftness(Number(e.target.value))} className="mt-2 block w-full"/></label>
-    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={invertMask} onChange={e=>{setInvertMask(e.target.checked);lastMaskWarning.current=false;}}/> Invert person mask (diagnostic)</label>
-    <p className="text-xs text-slate-500" role="status">{maskDiagnostic}</p>
-    <label className="text-sm">Background framing<select value={bgFit} onChange={e=>setBgFit(e.target.value as "cover"|"contain")} className="mt-2 block w-full rounded border p-2"><option value="cover">Fill frame (crop edges)</option><option value="contain">Fit whole image</option></select></label>
-    <label className="text-sm">Background zoom: {bgZoom.toFixed(1)}×<input type="range" min="0.5" max="2.5" step="0.1" value={bgZoom} onChange={e=>setBgZoom(Number(e.target.value))} className="mt-2 block w-full"/></label>
-    <label className="text-sm">Horizontal position: {bgX}%<input type="range" min="0" max="100" value={bgX} onChange={e=>setBgX(Number(e.target.value))} className="mt-2 block w-full"/></label>
-    <label className="text-sm">Vertical position: {bgY}%<input type="range" min="0" max="100" value={bgY} onChange={e=>setBgY(Number(e.target.value))} className="mt-2 block w-full"/></label>
-   </div>}
-      <button disabled={!source||recording||(mode==="person"&&!ready)} onClick={exportVideo} className="mt-5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{recording?"Recording in real time…":"Export short video (WebM)"}</button>
-   {download&&<a href={download} download="econtent-background.webm" className="ml-3 inline-block rounded-lg border border-blue-200 px-4 py-3 text-sm font-semibold text-blue-700">Download result</a>}
-   {message&&<p role="status" className="mt-3 text-sm text-amber-700">{message}</p>}
-   <p className="mt-4 text-xs text-slate-500">Beta export: real-time WebM, up to 3 minutes. Audio is included only where the browser supports capturing the source audio track. Check the downloaded file before importing it into <Link href="/video-editor" className="underline">Video Editor</Link>.</p>
-  </section>
- </div>;
+    if (!imageReady || imageError) {
+      setMessage("Wait for a valid replacement image or remove the image.");
+      return;
+    }
+    if (!renderer.valid) {
+      setMessage(
+        renderer.failure ||
+          "Wait for a valid current-frame preview before exporting.",
+      );
+      return;
+    }
+    setRecording(true);
+    setDownload("");
+    setPlayable(false);
+    setSeconds(0);
+    setMessage("Preparing a fresh first frame and audio…");
+    audio.current ??= new SourceAudio();
+    try {
+      const active = recordBackground(
+        el,
+        renderer,
+        audio.current,
+        includeAudio,
+        (value) => {
+          if (alive.current) {
+            setSeconds(value);
+            setMessage(
+              value >= duration - 0.001
+                ? "Finalizing encoded video and audio…"
+                : "Encoding source-timed video and audio…",
+            );
+          }
+        },
+        sourceFile,
+        fps,
+      );
+      job.current = active;
+      const blob = await active.done;
+      if (!alive.current) return;
+      setDownload(URL.createObjectURL(blob));
+      setMessage(
+        includeAudio
+          ? "Encoding complete with original audio. Checking video playback; listen to the result before use."
+          : "Encoding complete. Silent export was selected. Checking video playback.",
+      );
+    } catch (e) {
+      if (alive.current)
+        setMessage(
+          e instanceof Error
+            ? e.message
+            : "Export failed. No partial output was accepted.",
+        );
+    } finally {
+      job.current = null;
+      if (alive.current) setRecording(false);
+    }
+  }
+  const stats = status.stats,
+    percent =
+      Number.isFinite(duration) && duration > 0
+        ? Math.min(99, Math.floor((seconds / duration) * 100))
+        : null;
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
+      <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">
+        AI Studio / Background
+      </p>
+      <h1 className="mt-2 text-3xl font-semibold">
+        Background Remover & Changer
+      </h1>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        Isolate a presenter without a green screen and replace the background.
+        Detection runs locally on your device using a cached model from this
+        app. Hair, hands and fast movements may have imperfect edges. Source
+        videos and images are never uploaded.
+      </p>
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <fieldset disabled={recording} className="min-w-0 disabled:opacity-70">
+          <legend className="sr-only">Source and replacement settings</legend>
+          <label className="block text-sm font-semibold">
+            Upload video
+            <input
+              type="file"
+              accept="video/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f)
+                  change(() => {
+                    setLoaded(false);
+                    setSourceFile(f);
+                    setSourceName(f.name);
+                    setSource(URL.createObjectURL(f));
+                    setStatus(initial);
+                  });
+              }}
+              className="mt-2 block w-full max-w-full text-sm"
+            />
+          </label>
+          <label className="mt-4 block text-sm font-medium">
+            Removal method
+            <select
+              className="mt-2 block w-full rounded-lg border p-3"
+              value={mode}
+              onChange={(e) =>
+                change(() => {
+                  setMode(e.target.value as typeof mode);
+                  setStatus(initial);
+                })
+              }
+            >
+              <option value="person">
+                AI Person Detection (no green screen)
+              </option>
+              <option value="chroma">Green/Blue Screen (chroma key)</option>
+            </select>
+          </label>
+        </fieldset>
+        {source && (
+          <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
+            <div>
+              <p className="mb-2 text-sm font-semibold">
+                Original · {sourceName}
+              </p>
+              <video
+                ref={video}
+                src={source}
+                controls={!recording}
+                playsInline
+                aria-label="Original background source"
+                onLoadedMetadata={(e) => {
+                  setLoaded(true);
+                  setDuration(e.currentTarget.duration);
+                }}
+                onError={() => {
+                  setLoaded(false);
+                  setMessage(
+                    "This browser cannot decode the source video. Convert it to H.264 MP4 in Video Cutter and reconnect it here.",
+                  );
+                }}
+                className="max-h-[520px] w-full rounded-lg bg-black"
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold">
+                {view === "composite"
+                  ? "Background preview"
+                  : view === "mask"
+                    ? "Diagnostic: alpha confidence mask"
+                    : "Diagnostic: original frame"}
+              </p>
+              <canvas
+                ref={canvas}
+                aria-label="Background composition preview"
+                className="max-h-[520px] w-full rounded-lg bg-black object-contain"
+              />
+              <p
+                role="status"
+                aria-live="polite"
+                className={
+                  status.stage === "failed"
+                    ? "mt-2 text-sm text-rose-800"
+                    : "mt-2 text-sm text-slate-600"
+                }
+              >
+                {status.message}
+              </p>
+              {status.stage === "failed" && !recording && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    change(() => {
+                      setStatus(initial);
+                      setRetry((n) => n + 1);
+                    })
+                  }
+                  className="mt-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                >
+                  Retry person detection
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        <fieldset
+          disabled={recording}
+          className="mt-5 min-w-0 disabled:opacity-70"
+        >
+          <legend className="sr-only">
+            Background, mask and audio controls
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {mode === "chroma" && (
+              <>
+                <label className="text-sm">
+                  Screen colour to remove
+                  <input
+                    type="color"
+                    value={key}
+                    onChange={(e) => change(() => setKey(e.target.value))}
+                    className="mt-2 block h-10 w-24"
+                  />
+                </label>
+                <label className="text-sm">
+                  Tolerance: {tolerance}
+                  <input
+                    type="range"
+                    min="10"
+                    max="200"
+                    value={tolerance}
+                    onChange={(e) =>
+                      change(() => setTolerance(Number(e.target.value)))
+                    }
+                    className="mt-3 block w-full"
+                  />
+                </label>
+              </>
+            )}
+            <label className="text-sm">
+              Replacement colour
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => change(() => setColor(e.target.value))}
+                className="mt-2 block h-10 w-24"
+              />
+            </label>
+            <div>
+              <label className="text-sm">
+                Replacement image
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f)
+                      change(() => {
+                        setBackground(null);
+                        setImageReady(false);
+                        setImageError("");
+                        setImageUrl(URL.createObjectURL(f));
+                      });
+                  }}
+                  className="mt-2 block w-full max-w-full text-sm"
+                />
+              </label>
+              {imageUrl && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    change(() => {
+                      setImageUrl("");
+                      setBackground(null);
+                      setImageReady(true);
+                      setImageError("");
+                    })
+                  }
+                  className="mt-2 rounded border px-3 py-2 text-xs"
+                >
+                  Remove replacement image
+                </button>
+              )}
+            </div>
+            <label className="text-sm">
+              Background framing
+              <select
+                value={fit}
+                onChange={(e) =>
+                  change(() => setFit(e.target.value as typeof fit))
+                }
+                className="mt-2 block w-full rounded border p-2"
+              >
+                <option value="cover">Fill frame (crop edges)</option>
+                <option value="contain">Fit whole image</option>
+              </select>
+            </label>
+            <label className="text-sm">
+              Background zoom: {zoom.toFixed(1)}×
+              <input
+                type="range"
+                min="0.5"
+                max="2.5"
+                step="0.1"
+                value={zoom}
+                onChange={(e) => change(() => setZoom(Number(e.target.value)))}
+                className="mt-2 block w-full"
+              />
+            </label>
+            <label className="text-sm">
+              Horizontal position: {x}%
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={x}
+                onChange={(e) => change(() => setX(Number(e.target.value)))}
+                className="mt-2 block w-full"
+              />
+            </label>
+            <label className="text-sm">
+              Vertical position: {y}%
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={y}
+                onChange={(e) => change(() => setY(Number(e.target.value)))}
+                className="mt-2 block w-full"
+              />
+            </label>
+            {mode === "person" && (
+              <>
+                <label className="text-sm">
+                  Person mask threshold: {threshold.toFixed(2)}
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="0.85"
+                    step="0.05"
+                    value={threshold}
+                    onChange={(e) =>
+                      change(() => setThreshold(Number(e.target.value)))
+                    }
+                    className="mt-2 block w-full"
+                  />
+                </label>
+                <label className="text-sm">
+                  Edge softness: {softness.toFixed(2)}
+                  <input
+                    type="range"
+                    min="0.02"
+                    max="0.3"
+                    step="0.02"
+                    value={softness}
+                    onChange={(e) =>
+                      change(() => setSoftness(Number(e.target.value)))
+                    }
+                    className="mt-2 block w-full"
+                  />
+                </label>
+              </>
+            )}
+            <label className="text-sm">
+              Export frame rate
+              <select
+                aria-label="Export frame rate"
+                value={fps}
+                onChange={(e) =>
+                  change(() => setFps(Number(e.target.value) as 12 | 24))
+                }
+                className="mt-2 block w-full rounded border p-2"
+              >
+                <option value="24">24 fps · smoother motion</option>
+                <option value="12">12 fps · fewer frames to process</option>
+              </select>
+            </label>
+            <label className="flex min-h-10 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeAudio}
+                onChange={(e) =>
+                  change(() => setIncludeAudio(e.target.checked))
+                }
+              />
+              Include original audio mix track
+            </label>
+          </div>
+        </fieldset>
+        {!imageReady && !imageError && (
+          <p role="status" className="mt-3 text-sm text-slate-600">
+            Loading replacement image… Export is unavailable until it decodes.
+          </p>
+        )}
+        {imageError && (
+          <p role="alert" className="mt-3 text-sm text-rose-800">
+            {imageError}
+          </p>
+        )}
+        {mode === "person" && (
+          <details className="mt-5 rounded-xl border border-slate-200 p-4">
+            <summary className="cursor-pointer text-sm font-semibold">
+              Mask diagnostics
+            </summary>
+            <label className="mt-3 block text-sm">
+              Preview view
+              <select
+                aria-label="Segmentation preview view"
+                disabled={recording}
+                value={view}
+                onChange={(e) => setView(e.target.value as typeof view)}
+                className="mt-2 block w-full rounded border p-2"
+              >
+                <option value="composite">Composite (exported)</option>
+                <option value="mask">
+                  Raw alpha confidence (diagnostic only)
+                </option>
+                <option value="original">
+                  Original frame (diagnostic only)
+                </option>
+              </select>
+            </label>
+            <p className="mt-3 text-xs leading-5 text-slate-600">
+              Pinned MediaPipe mask confidence is in alpha, not averaged RGB.
+              Foreground is white in the diagnostic view. Statistics update at
+              most twice per second.
+            </p>
+            {stats ? (
+              <div
+                data-testid="mask-diagnostics"
+                className="mt-2 space-y-1 break-words text-xs text-slate-600"
+              >
+                <p>
+                  {stats.representation} · {stats.width} × {stats.height} ·
+                  frame {stats.time.toFixed(3)} s · foreground{" "}
+                  {(stats.coverage * 100).toFixed(1)}% ·{" "}
+                  {stats.valid ? "Valid mask" : stats.reason}
+                </p>
+                <p>
+                  {stats.channels
+                    .map(
+                      (s, i) =>
+                        `${"RGBA"[i]} ${s.min}–${s.max} mean ${s.mean.toFixed(1)}`,
+                    )
+                    .join(" · ")}
+                </p>
+                <p>
+                  {status.frames} processed frames · last inference{" "}
+                  {status.inferenceMs?.toFixed(0) ?? "—"} ms · source and mask
+                  captured together
+                </p>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-600">
+                No current mask. Waiting for a freshly detected frame.
+              </p>
+            )}
+          </details>
+        )}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={
+              !loaded ||
+              recording ||
+              status.stage !== "ready" ||
+              !imageReady ||
+              view !== "composite"
+            }
+            onClick={exportVideo}
+            className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {recording ? "Encoding composition…" : "Export short video (WebM)"}
+          </button>
+          {recording && (
+            <button
+              type="button"
+              onClick={() => job.current?.cancel()}
+              className="rounded-lg border border-rose-200 px-5 py-3 text-sm font-semibold text-rose-800"
+            >
+              Cancel export
+            </button>
+          )}
+          {download && playable && (
+            <a
+              href={download}
+              download="econtent-background.webm"
+              className="inline-block rounded-lg border border-blue-200 px-4 py-3 text-sm font-semibold text-blue-700"
+            >
+              Download result
+            </a>
+          )}
+        </div>
+        {recording && (
+          <div className="mt-3" role="status">
+            <p className="text-sm">
+              Encoded source timeline: {seconds.toFixed(1)} s
+              {Number.isFinite(duration) ? ` / ${duration.toFixed(1)} s` : ""}
+              {percent !== null ? ` · ${percent}%` : ""}. Keep this tab visible.
+            </p>
+            {percent !== null && (
+              <progress
+                aria-label="Background export progress"
+                value={percent}
+                max="100"
+                className="mt-2 w-full"
+              />
+            )}
+          </div>
+        )}
+        {message && (
+          <p role="status" className="mt-3 text-sm text-slate-700">
+            {message}
+          </p>
+        )}
+        {download && (
+          <video
+            src={download}
+            controls
+            playsInline
+            aria-label="Exported background video"
+            className="mt-4 max-h-[420px] w-full rounded-lg bg-black"
+            onLoadedData={() => setPlayable(true)}
+            onError={() => {
+              setPlayable(false);
+              setMessage(
+                "The exported WebM could not decode in this browser. No verified download is available; retry or use another browser.",
+              );
+            }}
+          />
+        )}
+        <p className="mt-4 text-xs leading-5 text-slate-500">
+          Browser-local WebM export: up to 3 minutes, 64 MB source limit,
+          maximum 720 px on the longest edge, at your selected frame rate.
+          Composition requires WebCodecs encoding and can run slowly on mobile.
+          Original audio is decoded locally and encoded as Opus when selected;
+          unavailable audio causes a clear failure rather than a silent
+          omission. Silence in the source remains silent. Check playback before
+          importing into{" "}
+          <Link href="/video-editor" className="underline">
+            Video Editor
+          </Link>
+          .
+        </p>
+      </section>
+    </div>
+  );
 }

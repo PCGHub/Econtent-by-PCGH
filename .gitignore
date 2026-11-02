@@ -13,3 +13,5 @@ supabase/.temp/
 supabase/.branches/
 
 /lib/video/ffmpeg-assets-generated.ts
+
+/public/segmentation/
