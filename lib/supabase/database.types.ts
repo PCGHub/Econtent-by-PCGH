@@ -82,7 +82,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reserve_ai_voiceover: {
+        Args: { p_characters: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
