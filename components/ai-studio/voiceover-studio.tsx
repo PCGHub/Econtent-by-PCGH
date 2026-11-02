@@ -3,11 +3,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 export function VoiceoverStudio() {
  const [script,setScript]=useState("");
+ const [draftLoaded,setDraftLoaded]=useState(false);
  const [voices,setVoices]=useState<SpeechSynthesisVoice[]>([]);
  const [selected,setSelected]=useState("");
  const [rate,setRate]=useState(1);
  const [speaking,setSpeaking]=useState(false);
  const [supported,setSupported]=useState(false);
+ useEffect(()=>{try{const saved=window.localStorage.getItem("econtent-voiceover-draft");if(saved)setScript(saved.slice(0,5000));}catch{}setDraftLoaded(true);},[]);
+ useEffect(()=>{if(!draftLoaded)return;try{window.localStorage.setItem("econtent-voiceover-draft",script);}catch{}},[script,draftLoaded]);
  useEffect(()=>{
   if (!("speechSynthesis" in window)) return;
   const synth=window.speechSynthesis;
@@ -16,6 +19,7 @@ export function VoiceoverStudio() {
   return ()=>{synth.cancel();synth.removeEventListener("voiceschanged",update)};
  },[]);
  function stop(){window.speechSynthesis.cancel();setSpeaking(false)}
+ function exportScript(){if(!script.trim())return;const url=URL.createObjectURL(new Blob([script],{type:"text/plain;charset=utf-8"}));const link=document.createElement("a");link.href=url;link.download="econtent-voiceover-script.txt";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  function preview(){
   if(!script.trim()||!supported)return;
   stop();
@@ -36,7 +40,7 @@ export function VoiceoverStudio() {
    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <label htmlFor="voice-script" className="text-sm font-semibold">Narration script</label>
     <textarea id="voice-script" value={script} maxLength={5000} onChange={e=>setScript(e.target.value)} placeholder="Write or paste the words you want narrated..." rows={11} className="mt-3 w-full resize-y rounded-xl border border-slate-200 p-4 text-sm leading-6 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"/>
-    <p className="mt-2 text-right text-xs text-slate-500">{script.length} / 5,000 characters</p>
+    <div className="mt-2 flex items-center justify-between gap-3"><p className="text-xs text-slate-500">Draft saved on this device</p><p className="text-xs text-slate-500">{script.length} / 5,000 characters</p></div>
    </section>
    <section className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <h2 className="text-sm font-semibold">Voice settings</h2>
@@ -47,11 +51,12 @@ export function VoiceoverStudio() {
     <div className="mt-6 flex flex-wrap gap-2">
      <button type="button" disabled={!supported||!script.trim()} onClick={preview} className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">Preview voice</button>
      <button type="button" disabled={!speaking} onClick={stop} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold disabled:opacity-40">Stop</button>
+     <button type="button" disabled={!script.trim()} onClick={exportScript} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold disabled:opacity-40">Download script</button>
     </div>
     {!supported&&<p role="status" className="mt-4 text-xs text-amber-700">Speech preview is unavailable in this browser.</p>}
     <p className="mt-5 text-xs leading-5 text-slate-500">Preview uses your device's speech engine. It does not create an audio file, consume credits, or upload your script.</p>
    </section>
   </div>
-  <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900"><strong>Coming next:</strong> Generate downloadable narration, add it to the Video Editor timeline, and manage generation limits. <Link href="/video-editor" className="font-semibold underline">Open Video Editor</Link></div>
+  <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900"><strong>Coming next:</strong> Generate downloadable AI narration with enforced usage limits. You can already import an existing MP3 or WAV file into the Video Editor audio track. <Link href="/video-editor" className="font-semibold underline">Open Video Editor</Link></div>
  </div>;
 }
