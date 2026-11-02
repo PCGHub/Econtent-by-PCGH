@@ -3,8 +3,8 @@ import {useEffect,useRef,useState} from "react";
 import {useRouter} from "next/navigation";
 import {saveHighlights,type HighlightRange} from "@/lib/ai/highlights-transfer";
 import {sampleAudioEnergy} from "@/lib/ai/highlight-audio";
-type Suggestion=HighlightRange & {score:number;selected:boolean};
-const fmt=(s:number)=>`${Math.floor(s/60).toString().padStart(2,"0")}:${Math.floor(s%60).toString().padStart(2,"0")}`;
+type Suggestion=HighlightRange & {score:number;selected:boolean;visualScore:number;audioScore:number};
+const fmt=(s:number)=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=Math.floor(s%60);return (h?String(h).padStart(2,"0")+":":"")+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0")};
 export function HighlightsStudio(){
  const router=useRouter();
  const [file,setFile]=useState<File|null>(null);
@@ -14,6 +14,7 @@ export function HighlightsStudio(){
  const [count,setCount]=useState(3);
  const [mode,setMode]=useState<"balanced"|"action"|"dialogue">("balanced");
  const [audioAvailable,setAudioAvailable]=useState<boolean|null>(null);
+ const [audioFile,setAudioFile]=useState<File|null>(null);
  const [suggestions,setSuggestions]=useState<Suggestion[]>([]);
  const [busy,setBusy]=useState(false);
  const [progress,setProgress]=useState(0);
@@ -48,7 +49,7 @@ export function HighlightsStudio(){
    }
    if(cancel.current)throw Error("Analysis cancelled.");
    setMessage("Checking audio activity when supported…");
-   const audioEnergy=mode==="action"?null:await sampleAudioEnergy(file,duration);
+   const audioEnergy=mode==="action"?null:await sampleAudioEnergy(audioFile||file,duration);
    if(cancel.current)throw Error("Analysis cancelled.");
    setAudioAvailable(audioEnergy!==null);
    if(mode==="dialogue"&&!audioEnergy){setMessage("Audio Activity mode cannot analyze audio in this video on this device. Try an MP4 with AAC audio or choose Action mode.");return;}
@@ -61,7 +62,7 @@ export function HighlightsStudio(){
     const visualScore=score/Math.max(1,(end-start)/step);
     const audioScore=audioEnergy?audioEnergy(start,end)*70:0;
     const combined=mode==="action"?visualScore:mode==="dialogue"&&audioEnergy?visualScore*.2+audioScore*.8:audioEnergy?visualScore*.65+audioScore*.35:visualScore;
-    candidates.push({start,end,score:combined,selected:true});
+    candidates.push({start,end,score:combined,visualScore,audioScore,selected:true});
    }
    const picks:Suggestion[]=[];
    for(const candidate of candidates.sort((a,b)=>b.score-a.score)){
@@ -98,13 +99,15 @@ export function HighlightsStudio(){
   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Find visually active moments in your video, review suggestions, and add selected segments to the Video Editor. This first version runs on your device using visual scene changes and, where supported, audio activity. It does not yet understand spoken words, emotion, or story importance.</p>
   <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
    <label htmlFor="highlight-file" className="block text-sm font-semibold">Upload a video</label>
-   <input id="highlight-file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="mt-3 block w-full text-sm" onChange={e=>{const next=e.target.files?.[0]||null;cancel.current=true;setFile(next);previewEnd.current=null;setDuration(0);setSuggestions([]);setAudioAvailable(null);setMessage("");}}/>
+   <input id="highlight-file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="mt-3 block w-full text-sm" onChange={e=>{const next=e.target.files?.[0]||null;cancel.current=true;setFile(next);setAudioFile(null);previewEnd.current=null;setDuration(0);setSuggestions([]);setAudioAvailable(null);setMessage("");}}/>
    {url&&<video ref={video} controls src={url} onTimeUpdate={e=>{if(previewEnd.current!==null&&e.currentTarget.currentTime>=previewEnd.current){e.currentTarget.pause();previewEnd.current=null;}}} onSeeked={e=>{if(previewEnd.current!==null&&e.currentTarget.currentTime>previewEnd.current)previewEnd.current=null;}} className="mt-5 max-h-80 w-full rounded-xl bg-black" onLoadedMetadata={e=>setDuration(Number.isFinite(e.currentTarget.duration)?e.currentTarget.duration:0)}/>}
    {duration>0&&<p className="mt-2 text-xs text-slate-500">Duration: {fmt(duration)} · Processing stays in your browser</p>}
    <div className="mt-5 grid gap-4 sm:grid-cols-2">
     <label className="text-sm font-medium">Highlight length<select value={target} onChange={e=>setTarget(Number(e.target.value))} className="mt-2 block w-full rounded-lg border border-slate-200 p-3">{[10,15,30,45,60].map(n=><option key={n} value={n}>{n} seconds</option>)}</select></label>
     <label className="text-sm font-medium">Number of highlights<select value={count} onChange={e=>setCount(Number(e.target.value))} className="mt-2 block w-full rounded-lg border border-slate-200 p-3">{[1,2,3,4,5].map(n=><option key={n} value={n}>{n} clips</option>)}</select></label>
    </div>
+   <label className="mt-4 block text-sm font-medium">Optional separate audio track (MP3/WAV/M4A, under 35 MB)<input type="file" accept="audio/*" onChange={e=>{setAudioFile(e.target.files?.[0]||null);setAudioAvailable(null);setSuggestions([]);}} className="mt-2 block w-full text-sm"/></label>
+   <p className="mt-1 text-xs text-slate-500">For long videos, you can provide a separately extracted, time-aligned audio track. The audio must start at the same timestamp as the video. Large audio files may still be unsupported.</p>
    <label className="mt-4 block text-sm font-medium">Detection style<select value={mode} onChange={e=>setMode(e.target.value as "balanced"|"action"|"dialogue")} className="mt-2 block w-full rounded-lg border border-slate-200 p-3"><option value="balanced">Balanced · motion + available audio</option><option value="action">Action · visual changes</option><option value="dialogue">Audio activity · speech or music energy (experimental)</option></select></label>
    {audioAvailable===false&&<p role="status" className="mt-2 text-xs font-semibold text-amber-700">Audio analysis unavailable for this file. Balanced uses visuals only; Audio Activity cannot generate results.</p>}
    <p className="mt-2 text-xs text-slate-500">Audio analysis is optional and may be unavailable for large files or unsupported video codecs. It does not transcribe speech or identify important dialogue.</p>
@@ -115,7 +118,7 @@ export function HighlightsStudio(){
   {suggestions.length>0&&<section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
    <h2 className="text-lg font-semibold">Suggested highlights</h2>
    <p className="mt-1 text-xs text-slate-500">Preview plays only the selected range. Adjust start and end times before approving each clip.</p>
-   <div className="mt-4 space-y-3">{suggestions.map((s,i)=><div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3"><input type="checkbox" aria-label={`Include highlight ${i+1}`} checked={s.selected} onChange={e=>setSuggestions(old=>old.map((v,j)=>j===i?{...v,selected:e.target.checked}:v))}/><div className="min-w-[160px] flex-1 text-sm"><strong>Highlight {i+1}</strong><p className="text-slate-500">{fmt(s.start)} – {fmt(s.end)} · {(s.end-s.start).toFixed(1)} sec</p><div className="mt-2 flex flex-wrap gap-2"><label className="text-xs text-slate-600">Start (sec)<input aria-label={`Highlight ${i+1} start seconds`} type="number" min="0" max={duration} step="0.1" value={Number(s.start.toFixed(1))} onChange={e=>updateRange(i,"start",Number(e.target.value))} className="mt-1 block w-24 rounded border border-slate-200 p-2"/></label><label className="text-xs text-slate-600">End (sec)<input aria-label={`Highlight ${i+1} end seconds`} type="number" min="0" max={duration} step="0.1" value={Number(s.end.toFixed(1))} onChange={e=>updateRange(i,"end",Number(e.target.value))} className="mt-1 block w-24 rounded border border-slate-200 p-2"/></label></div>{s.end<=s.start&&<p className="mt-1 text-xs text-red-600">End must be after start.</p>}</div><button type="button" onClick={()=>playRange(s)} className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700">Preview</button></div>)}</div>
+   <div className="mt-4 space-y-3">{suggestions.map((s,i)=><div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3"><input type="checkbox" aria-label={`Include highlight ${i+1}`} checked={s.selected} onChange={e=>setSuggestions(old=>old.map((v,j)=>j===i?{...v,selected:e.target.checked}:v))}/><div className="min-w-[160px] flex-1 text-sm"><strong>Highlight {i+1}</strong><p className="text-xs text-slate-500">Visual activity: {s.visualScore.toFixed(1)} · Audio activity: {audioAvailable?s.audioScore.toFixed(1):"unavailable"}</p><p className="text-slate-500">{fmt(s.start)} – {fmt(s.end)} · {(s.end-s.start).toFixed(1)} sec</p><div className="mt-2 flex flex-wrap gap-2"><label className="text-xs text-slate-600">Start (sec)<input aria-label={`Highlight ${i+1} start seconds`} type="number" min="0" max={duration} step="0.1" value={Number(s.start.toFixed(1))} onChange={e=>updateRange(i,"start",Number(e.target.value))} className="mt-1 block w-24 rounded border border-slate-200 p-2"/></label><label className="text-xs text-slate-600">End (sec)<input aria-label={`Highlight ${i+1} end seconds`} type="number" min="0" max={duration} step="0.1" value={Number(s.end.toFixed(1))} onChange={e=>updateRange(i,"end",Number(e.target.value))} className="mt-1 block w-24 rounded border border-slate-200 p-2"/></label></div>{s.end<=s.start&&<p className="mt-1 text-xs text-red-600">End must be after start.</p>}</div><button type="button" onClick={()=>playRange(s)} className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700">Preview</button></div>)}</div>
    <button type="button" disabled={!suggestions.some(s=>s.selected&&s.end>s.start)} onClick={addToEditor} className="mt-5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">Add selected clips to Video Editor</button>
   </section>}
  </main>;
