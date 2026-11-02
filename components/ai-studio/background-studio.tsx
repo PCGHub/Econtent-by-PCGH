@@ -23,6 +23,12 @@ export function BackgroundStudio(){
  const [mode,setMode]=useState<"person"|"chroma">("person");
  const [key,setKey]=useState("#00ff00");
  const [tolerance,setTolerance]=useState(85);
+ const [maskThreshold,setMaskThreshold]=useState(0.55);
+ const [edgeSoftness,setEdgeSoftness]=useState(0.12);
+ const [bgFit,setBgFit]=useState<"cover"|"contain">("cover");
+ const [bgZoom,setBgZoom]=useState(1);
+ const [bgX,setBgX]=useState(50);
+ const [bgY,setBgY]=useState(50);
  const [ready,setReady]=useState(false);
  const [recording,setRecording]=useState(false);
  const [message,setMessage]=useState("");
@@ -53,6 +59,7 @@ export function BackgroundStudio(){
   const ctx=c.getContext("2d",{willReadFrequently:true});if(!ctx)return;
   const back=new Image();if(image)back.src=image;
   const off=document.createElement("canvas"),offCtx=off.getContext("2d",{willReadFrequently:true});
+  const maskCanvas=document.createElement("canvas"),maskCtx=maskCanvas.getContext("2d",{willReadFrequently:true});
   const rgb=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
   const [r,g,b]=rgb(key);
   let active=true;
@@ -61,18 +68,35 @@ export function BackgroundStudio(){
    const w=el.videoWidth||640,h=el.videoHeight||360;
    const scale=Math.min(1,960/w);
    const width=Math.round(w*scale),height=Math.round(h*scale);
-   if(c.width!==width||c.height!==height){c.width=width;c.height=height;off.width=width;off.height=height;}
+   if(c.width!==width||c.height!==height){c.width=width;c.height=height;off.width=width;off.height=height;maskCanvas.width=width;maskCanvas.height=height;}
    if(el.readyState>=2&&offCtx){
     ctx.fillStyle=color;ctx.fillRect(0,0,width,height);
-    if(image&&back.complete&&back.naturalWidth)ctx.drawImage(back,0,0,width,height);
+    if(image&&back.complete&&back.naturalWidth){
+     const factor=(bgFit==="cover"?Math.max(width/back.naturalWidth,height/back.naturalHeight):Math.min(width/back.naturalWidth,height/back.naturalHeight))*bgZoom;
+     const dw=back.naturalWidth*factor,dh=back.naturalHeight*factor;
+     ctx.drawImage(back,(width-dw)*bgX/100,(height-dh)*bgY/100,dw,dh);
+    }
     if(mode==="person"){
      const result=latest.current;
-     if(result){
+     if(result&&maskCtx){
+      maskCtx.clearRect(0,0,width,height);
+      maskCtx.drawImage(result.segmentationMask,0,0,width,height);
+      const mask=maskCtx.getImageData(0,0,width,height);
+      const md=mask.data;
+      const low=Math.max(0,maskThreshold-edgeSoftness/2),high=Math.min(1,maskThreshold+edgeSoftness/2);
+      for(let i=0;i<md.length;i+=4){
+       // MediaPipe segmentation stores confidence in the mask's colour channel,
+       // not its canvas alpha (which is normally fully opaque).
+       const confidence=md[i]/255;
+       const alpha=Math.max(0,Math.min(1,(confidence-low)/Math.max(.001,high-low)));
+       md[i]=255;md[i+1]=255;md[i+2]=255;md[i+3]=Math.round(alpha*255);
+      }
+      maskCtx.putImageData(mask,0,0);
       offCtx.clearRect(0,0,width,height);
       offCtx.globalCompositeOperation="source-over";
-      offCtx.drawImage(result.segmentationMask,0,0,width,height);
-      offCtx.globalCompositeOperation="source-in";
-      offCtx.drawImage(result.image,0,0,width,height);
+      offCtx.drawImage(el,0,0,width,height);
+      offCtx.globalCompositeOperation="destination-in";
+      offCtx.drawImage(maskCanvas,0,0,width,height);
       offCtx.globalCompositeOperation="source-over";
       ctx.drawImage(off,0,0);
      }else if(!ready){ctx.drawImage(el,0,0,width,height);}
@@ -91,7 +115,7 @@ export function BackgroundStudio(){
   };
   frame.current=requestAnimationFrame(render);
   return()=>{active=false;cancelAnimationFrame(frame.current)};
- },[source,image,color,key,tolerance,mode,ready]);
+ },[source,image,color,key,tolerance,mode,ready,maskThreshold,edgeSoftness,bgFit,bgZoom,bgX,bgY]);
  async function exportVideo(){
   const c=canvas.current,el=video.current;
   if(!c||!el||recording)return;
@@ -132,7 +156,15 @@ export function BackgroundStudio(){
     <label className="text-sm">Replacement colour<input type="color" value={color} onChange={e=>setColor(e.target.value)} className="mt-2 block h-10 w-24"/></label>
     <label className="text-sm">Replacement image<input type="file" accept="image/*" onChange={e=>setBackground(e.target.files?.[0]||null)} className="mt-2 block w-full text-sm"/></label>
    </div>
-   <button disabled={!source||recording||(mode==="person"&&!ready)} onClick={exportVideo} className="mt-5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{recording?"Recording in real time…":"Export short video (WebM)"}</button>
+   {mode==="person"&&<div className="mt-5 grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
+    <label className="text-sm">Person mask strength: {maskThreshold.toFixed(2)}<input type="range" min="0.2" max="0.85" step="0.05" value={maskThreshold} onChange={e=>setMaskThreshold(Number(e.target.value))} className="mt-2 block w-full"/></label>
+    <label className="text-sm">Edge softness: {edgeSoftness.toFixed(2)}<input type="range" min="0.02" max="0.3" step="0.02" value={edgeSoftness} onChange={e=>setEdgeSoftness(Number(e.target.value))} className="mt-2 block w-full"/></label>
+    <label className="text-sm">Background framing<select value={bgFit} onChange={e=>setBgFit(e.target.value as "cover"|"contain")} className="mt-2 block w-full rounded border p-2"><option value="cover">Fill frame (crop edges)</option><option value="contain">Fit whole image</option></select></label>
+    <label className="text-sm">Background zoom: {bgZoom.toFixed(1)}×<input type="range" min="0.5" max="2.5" step="0.1" value={bgZoom} onChange={e=>setBgZoom(Number(e.target.value))} className="mt-2 block w-full"/></label>
+    <label className="text-sm">Horizontal position: {bgX}%<input type="range" min="0" max="100" value={bgX} onChange={e=>setBgX(Number(e.target.value))} className="mt-2 block w-full"/></label>
+    <label className="text-sm">Vertical position: {bgY}%<input type="range" min="0" max="100" value={bgY} onChange={e=>setBgY(Number(e.target.value))} className="mt-2 block w-full"/></label>
+   </div>}
+      <button disabled={!source||recording||(mode==="person"&&!ready)} onClick={exportVideo} className="mt-5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{recording?"Recording in real time…":"Export short video (WebM)"}</button>
    {download&&<a href={download} download="econtent-background.webm" className="ml-3 inline-block rounded-lg border border-blue-200 px-4 py-3 text-sm font-semibold text-blue-700">Download result</a>}
    {message&&<p role="status" className="mt-3 text-sm text-amber-700">{message}</p>}
    <p className="mt-4 text-xs text-slate-500">Beta export: real-time WebM, up to 3 minutes. Audio is included only where the browser supports capturing the source audio track. Check the downloaded file before importing it into <Link href="/video-editor" className="underline">Video Editor</Link>.</p>
