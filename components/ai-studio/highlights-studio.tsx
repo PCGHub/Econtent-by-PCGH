@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import {useRouter} from "next/navigation";
 import {saveHighlights,type HighlightRange} from "@/lib/ai/highlights-transfer";
+import {sampleAudioEnergy} from "@/lib/ai/highlight-audio";
 type Suggestion=HighlightRange & {score:number;selected:boolean};
 const fmt=(s:number)=>`${Math.floor(s/60).toString().padStart(2,"0")}:${Math.floor(s%60).toString().padStart(2,"0")}`;
 export function HighlightsStudio(){
@@ -11,6 +12,7 @@ export function HighlightsStudio(){
  const [duration,setDuration]=useState(0);
  const [target,setTarget]=useState(15);
  const [count,setCount]=useState(3);
+ const [mode,setMode]=useState<"balanced"|"action"|"dialogue">("balanced");
  const [suggestions,setSuggestions]=useState<Suggestion[]>([]);
  const [busy,setBusy]=useState(false);
  const [progress,setProgress]=useState(0);
@@ -43,13 +45,20 @@ export function HighlightsStudio(){
     samples.push(difference);previous=new Uint8ClampedArray(frame);
     setProgress(Math.min(100,Math.round((time/duration)*100)));
    }
+   if(cancel.current)throw Error("Analysis cancelled.");
+   setMessage("Checking audio activity when supported…");
+   const audioEnergy=mode==="action"?null:await sampleAudioEnergy(file,duration);
+   if(cancel.current)throw Error("Analysis cancelled.");
    const windowSize=Math.min(target,duration),candidates:Suggestion[]=[];
    const stride=Math.max(step,windowSize/3);
    for(let start=0;start<duration;start+=stride){
     const end=Math.min(duration,start+windowSize);
     if(end-start<Math.min(3,windowSize*.7))continue;
     let score=0;for(let i=0;i<samples.length;i++){const t=i*step;if(t>=start&&t<end)score+=samples[i];}
-    candidates.push({start,end,score,selected:true});
+    const visualScore=score/Math.max(1,(end-start)/step);
+    const audioScore=audioEnergy?audioEnergy(start,end)*70:0;
+    const combined=mode==="action"?visualScore:mode==="dialogue"&&audioEnergy?visualScore*.2+audioScore*.8:audioEnergy?visualScore*.65+audioScore*.35:visualScore;
+    candidates.push({start,end,score:combined,selected:true});
    }
    const picks:Suggestion[]=[];
    for(const candidate of candidates.sort((a,b)=>b.score-a.score)){
@@ -59,7 +68,7 @@ export function HighlightsStudio(){
    }
    setSuggestions(picks.sort((a,b)=>a.start-b.start));
    setProgress(100);
-   setMessage(picks.length?"Suggested moments are based on visual changes between sampled frames. Review each clip before using it.":"No suitable highlights were detected.");
+   setMessage(picks.length?(audioEnergy?"Suggestions combine visual changes and audio loudness. Loudness is not speech recognition. Review every clip.":"Suggestions use visual changes only; audio decoding was unavailable for this file/browser. Review every clip."):"No suitable highlights were detected.");
   }catch(e){setMessage(e instanceof Error?e.message:"Unable to analyze this file. Try MP4 or WebM.");}
   finally{el.removeAttribute("src");el.load();setBusy(false);}
  }
@@ -83,7 +92,7 @@ export function HighlightsStudio(){
  return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
   <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">AI Studio / Automatic Highlights</p>
   <h1 className="mt-2 text-3xl font-semibold text-slate-900">Automatic Highlights</h1>
-  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Find visually active moments in your video, review suggestions, and add selected segments to the Video Editor. This first version runs on your device using scene-change detection; it does not yet understand speech, emotion, or story importance.</p>
+  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Find visually active moments in your video, review suggestions, and add selected segments to the Video Editor. This first version runs on your device using visual scene changes and, where supported, audio activity. It does not yet understand spoken words, emotion, or story importance.</p>
   <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
    <label htmlFor="highlight-file" className="block text-sm font-semibold">Upload a video</label>
    <input id="highlight-file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="mt-3 block w-full text-sm" onChange={e=>{const next=e.target.files?.[0]||null;cancel.current=true;setFile(next);previewEnd.current=null;setDuration(0);setSuggestions([]);setMessage("");}}/>
@@ -93,6 +102,8 @@ export function HighlightsStudio(){
     <label className="text-sm font-medium">Highlight length<select value={target} onChange={e=>setTarget(Number(e.target.value))} className="mt-2 block w-full rounded-lg border border-slate-200 p-3">{[10,15,30,45,60].map(n=><option key={n} value={n}>{n} seconds</option>)}</select></label>
     <label className="text-sm font-medium">Number of highlights<select value={count} onChange={e=>setCount(Number(e.target.value))} className="mt-2 block w-full rounded-lg border border-slate-200 p-3">{[1,2,3,4,5].map(n=><option key={n} value={n}>{n} clips</option>)}</select></label>
    </div>
+   <label className="mt-4 block text-sm font-medium">Detection style<select value={mode} onChange={e=>setMode(e.target.value as "balanced"|"action"|"dialogue")} className="mt-2 block w-full rounded-lg border border-slate-200 p-3"><option value="balanced">Balanced · motion + available audio</option><option value="action">Action · visual changes</option><option value="dialogue">Audio activity · speech or music energy (experimental)</option></select></label>
+   <p className="mt-2 text-xs text-slate-500">Audio analysis is optional and may be unavailable for large files or unsupported video codecs. It does not transcribe speech or identify important dialogue.</p>
    <div className="mt-5 flex gap-3"><button type="button" disabled={!duration||busy} onClick={analyze} className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy?"Analyzing video…":"Find highlights"}</button>{busy&&<button type="button" onClick={()=>{cancel.current=true}} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold">Cancel</button>}</div>
    {busy&&<div role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="mt-4 h-2 overflow-hidden rounded bg-slate-200"><div className="h-full bg-blue-500" style={{width:progress+"%"}}/></div>}
    {message&&<p role="status" className="mt-4 text-sm text-slate-600">{message}</p>}
