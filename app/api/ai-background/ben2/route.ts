@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
   const requestId = request.nextUrl.searchParams.get("requestId");
   if (!requestId) return NextResponse.json({ configured: true, model, chargingEnabled: true });
   if (!/^[a-zA-Z0-9-]{8,100}$/.test(requestId)) return jsonError("Invalid request ID.", 400);
-  const result = await fetch(`${base}/${model}/requests/${requestId}/status`, {
+  const endpoint = request.nextUrl.searchParams.get("result") === "true" ? `${base}/${model}/requests/${requestId}` : `${base}/${model}/requests/${requestId}/status`;
+  const result = await fetch(endpoint, {
     headers: { Authorization: `Key ${key()}` }, cache: "no-store",
   });
   if (!result.ok) return jsonError("fal.ai status request failed.", 502);
