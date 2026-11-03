@@ -40,6 +40,7 @@ export function BackgroundStudio() {
     [retry, setRetry] = useState(0),
     [loaded, setLoaded] = useState(false),
     [duration, setDuration] = useState(0),
+    [videoAspect, setVideoAspect] = useState("16 / 9"),
     [includeAudio, setIncludeAudio] = useState(true),
     [recording, setRecording] = useState(false),
     [seconds, setSeconds] = useState(0),
@@ -259,6 +260,7 @@ export function BackgroundStudio() {
                 if (f)
                   change(() => {
                     setLoaded(false);
+                    setVideoAspect("16 / 9");
                     setSourceFile(f);
                     setSourceName(f.name);
                     setSource(URL.createObjectURL(f));
@@ -302,6 +304,8 @@ export function BackgroundStudio() {
                 onLoadedMetadata={(e) => {
                   setLoaded(true);
                   setDuration(e.currentTarget.duration);
+                  if (e.currentTarget.videoWidth && e.currentTarget.videoHeight)
+                    setVideoAspect(`${e.currentTarget.videoWidth} / ${e.currentTarget.videoHeight}`);
                 }}
                 onError={() => {
                   setLoaded(false);
@@ -309,7 +313,8 @@ export function BackgroundStudio() {
                     "This browser cannot decode the source video. Convert it to H.264 MP4 in Video Cutter and reconnect it here.",
                   );
                 }}
-                className="max-h-[520px] w-full rounded-lg bg-black"
+                style={{ aspectRatio: videoAspect }}
+                className="block max-h-[520px] max-w-full w-auto mx-auto rounded-lg bg-black"
               />
             </div>
             <div>
@@ -323,7 +328,8 @@ export function BackgroundStudio() {
               <canvas
                 ref={canvas}
                 aria-label="Background composition preview"
-                className="max-h-[520px] w-full rounded-lg bg-black object-contain"
+                style={{ aspectRatio: videoAspect }}
+                className="block max-h-[520px] max-w-full w-auto mx-auto rounded-lg bg-black object-contain"
               />
               <p
                 role="status"
