@@ -35,7 +35,7 @@
     "react-dom": "^19.2.0",
     "tailwind-merge": "^2.6.0",
     "webm-muxer": "5.1.4",
-    "@mediapipe/tasks-vision": "0.10.22"
+    "@mediapipe/tasks-vision": "0.10.21"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
