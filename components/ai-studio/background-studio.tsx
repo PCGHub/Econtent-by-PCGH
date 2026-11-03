@@ -18,7 +18,8 @@ const initial: BackgroundStatus = {
 };
 export function BackgroundStudio() {
   const [sourceFile, setSourceFile] = useState<File | null>(null),
-    [fps, setFps] = useState<12 | 24>(24);
+    [fps, setFps] = useState<12 | 24>(24),
+    [engineChoice, setEngineChoice] = useState<"fast" | "modnet">("fast");
   const [source, setSource] = useState(""),
     [sourceName, setSourceName] = useState(""),
     [imageUrl, setImageUrl] = useState("");
@@ -101,6 +102,7 @@ export function BackgroundStudio() {
       canvas.current,
       {
         mode,
+        engine: engineChoice,
         color: "#155dfc",
         image: null,
         fit: "cover",
@@ -124,10 +126,11 @@ export function BackgroundStudio() {
       renderer.dispose();
       if (engine.current === renderer) engine.current = null;
     };
-  }, [source, mode, retry]);
+  }, [source, mode, engineChoice, retry]);
   useEffect(() => {
     engine.current?.update({
       mode,
+      engine: engineChoice,
       color,
       image: background,
       fit,
@@ -144,6 +147,7 @@ export function BackgroundStudio() {
   }, [
     source,
     mode,
+    engineChoice,
     retry,
     color,
     background,
@@ -291,6 +295,20 @@ export function BackgroundStudio() {
               <option value="chroma">Green/Blue Screen (chroma key)</option>
             </select>
           </label>
+          {mode === "person" && (
+            <label className="mt-4 block text-sm font-medium">
+              Person cutout quality
+              <select
+                className="mt-2 block w-full rounded-lg border p-3"
+                value={engineChoice}
+                onChange={(e) => change(() => { setEngineChoice(e.target.value as "fast" | "modnet"); setStatus(initial); }))}
+              >
+                <option value="fast">Fast · SelfieSegmenter</option>
+                <option value="modnet">Experimental detailed edges · MODNet (large download, slower)</option>
+              </select>
+              {engineChoice === "modnet" && <span className="mt-1 block text-xs text-amber-700">Experimental: may fail on some devices. Model/runtime are downloaded to your browser. Switch back to Fast if loading fails. The podium is not guaranteed to be preserved.</span>}
+            </label>
+          )}
         </fieldset>
         {source && (
           <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
