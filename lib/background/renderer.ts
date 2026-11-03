@@ -401,7 +401,7 @@ export class BackgroundRenderer {
     if (quality.safe && quality.history) this.previousQuality = quality.history;
     this.stats = {
       ...stats,
-      maskValid: stats.valid && !!this.points?.length,
+      maskValid: stats.valid,
       maskAvailable: true,
       quality,
       valid: stats.valid && quality.safe,
@@ -484,7 +484,7 @@ export class BackgroundRenderer {
       ctx.drawImage(this.raw, 0, 0);
       return;
     }
-    if (!this.pixels || !this.stats?.maskValid) return; // Explicit replacement-only pending/error state, never an opaque original fallback.
+    if (!this.pixels || !this.stats?.maskValid) return; // Preview valid segmentation even when conservative pose checks reject export.
     const fg = this.foreground.getContext("2d")!;
     fg.globalCompositeOperation = "source-over";
     fg.clearRect(0, 0, w, h);
@@ -525,7 +525,7 @@ export class BackgroundRenderer {
           : "Preparing chroma frame"
         : this.stats?.valid
           ? "Body-aware checks passed. Review the cutout before export."
-          : this.stats?.reason || "Waiting for a fresh mask",
+          : this.stats?.maskValid && !this.stats?.valid\n           ? `Segmentation preview available, but export blocked: ${this.stats.reason}`\n           : this.stats?.reason || "Waiting for a fresh mask",
     );
   }
   private fail(e: unknown) {
