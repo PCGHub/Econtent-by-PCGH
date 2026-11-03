@@ -9,6 +9,7 @@ import {
   Clapperboard,
   Film,
   FolderKanban,
+  LibraryBig,
   Layers3,
   LayoutDashboard,
   LogOut,
@@ -71,6 +72,7 @@ const groups = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "My Projects", href: "/projects", icon: FolderKanban },
+      { name: "My Library", href: "/library", icon: LibraryBig },
     ],
   },
   { name: "Creative Tools", items: DASHBOARD_TOOLS },
