@@ -30,7 +30,8 @@ export function BackgroundStudio() {
     [key, setKey] = useState("#00ff00"),
     [tolerance, setTolerance] = useState(85),
     [threshold, setThreshold] = useState(0.5),
-    [softness, setSoftness] = useState(0.12);
+    [softness, setSoftness] = useState(0.18),
+    [edgeBlur, setEdgeBlur] = useState(0.8);
   const [fit, setFit] = useState<"cover" | "contain">("cover"),
     [zoom, setZoom] = useState(1),
     [x, setX] = useState(50),
@@ -107,7 +108,8 @@ export function BackgroundStudio() {
         x: 50,
         y: 50,
         threshold: 0.5,
-        softness: 0.12,
+        softness: 0.18,
+        edgeBlur: 0.8,
         key: "#00ff00",
         tolerance: 85,
         view: "composite",
@@ -134,6 +136,7 @@ export function BackgroundStudio() {
       y,
       threshold,
       softness,
+      edgeBlur,
       key,
       tolerance,
       view,
@@ -150,6 +153,7 @@ export function BackgroundStudio() {
     y,
     threshold,
     softness,
+    edgeBlur,
     key,
     tolerance,
     view,
@@ -511,6 +515,18 @@ export function BackgroundStudio() {
                     onChange={(e) =>
                       change(() => setSoftness(Number(e.target.value)))
                     }
+                    className="mt-2 block w-full"
+                  />
+                </label>
+                <label className="text-sm">
+                  Edge feathering: {edgeBlur.toFixed(1)} px
+                  <input
+                    type="range"
+                    min="0"
+                    max="2.5"
+                    step="0.1"
+                    value={edgeBlur}
+                    onChange={(e) => change(() => setEdgeBlur(Number(e.target.value)))}
                     className="mt-2 block w-full"
                   />
                 </label>
