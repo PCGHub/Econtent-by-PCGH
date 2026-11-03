@@ -301,7 +301,7 @@ export function BackgroundStudio() {
               <select
                 className="mt-2 block w-full rounded-lg border p-3"
                 value={engineChoice}
-                onChange={(e) => change(() => { setEngineChoice(e.target.value as "fast" | "modnet"); setStatus(initial); }))}
+                onChange={(e) => change(() => { setEngineChoice(e.target.value as "fast" | "modnet"); setStatus(initial); })}
               >
                 <option value="fast">Fast · SelfieSegmenter</option>
                 <option value="modnet">Experimental detailed edges · MODNet (large download, slower)</option>
