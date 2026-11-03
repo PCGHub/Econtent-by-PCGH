@@ -12,7 +12,7 @@ export function deadline<T>(promise: Promise<T>, ms: number, message: string): P
   return Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error(message)), ms); })]).finally(() => clearTimeout(timer));
 }
 export class PersonSegmenter {
-  private segmenter: Segmenter | null = null;
+  private segmenter: ImageSegmenter | null = null;
   private callback: ((result: SegmentationResult) => void) | null = null;
   private timestamp = 0;
   private maskCanvas = document.createElement("canvas");
@@ -33,7 +33,7 @@ export class PersonSegmenter {
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     let found = false;
     const stamp = ++this.timestamp * 1000 / 24;
-    this.segmenter.segmentForVideo(image, stamp, (result) => {
+    this.segmenter.segmentForVideo(source, stamp, (result) => {
       const masks = result.confidenceMasks;
       try {
         // Selfie model categories: 0=background, 1=person.
