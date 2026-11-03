@@ -1,6 +1,6 @@
 import { mkdir, copyFile, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-const version = "0.10.22";
+const version = "0.10.21";
 const src = "node_modules/@mediapipe/tasks-vision/wasm/";
 const dest = "public/segmentation/tasks-vision-" + version + "/wasm/";
 await mkdir(dest, { recursive: true });
