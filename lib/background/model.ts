@@ -75,7 +75,9 @@ export async function checkPersonModelAssets() {
     throw Error("Person detection model assets are incomplete or from another release.");
 }
 export async function personModel() {
-  await checkPersonModelAssets();
+  // The manifest is diagnostic metadata, not a runtime dependency. Browsers can
+  // retrieve it in a tab while fetch(cache:no-store) stalls on protected previews.
+  // Load the actual model script directly; let the SDK report any missing assets.
   await loadPoseScript();
   if (!window.Pose) throw Error("Person detection library is unavailable.");
   const probe = document.createElement("canvas");
