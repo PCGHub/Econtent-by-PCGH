@@ -36,8 +36,9 @@ export class PersonSegmenter {
     this.segmenter.segmentForVideo(source, stamp, (result) => {
       const masks = result.confidenceMasks;
       try {
-        // Selfie model categories: 0=background, 1=person.
-        const mask = masks?.[1];
+        // SelfieSegmenter commonly emits ONE foreground confidence mask, not two.
+        // Two-class segmenters instead return background then person.
+        const mask = masks?.length === 1 ? masks[0] : masks?.[1];
         if (!mask) { this.callback?.({ image }); return; }
         const confidence = mask.getAsFloat32Array();
         const native = document.createElement("canvas");
