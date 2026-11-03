@@ -205,6 +205,12 @@ export function DashboardSidebar({
             <X className="size-5" />
           </button>
         </div>
+        <div className="shrink-0 border-b border-slate-100 px-3 py-2 lg:py-1">
+          <button ref={collapse} type="button" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} aria-controls="dashboard-sidebar" onClick={toggle} className="hidden min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-50 lg:flex">
+            {collapsed ? <PanelLeftOpen className="size-[17px]" aria-hidden="true"/> : <PanelLeftClose className="size-[17px]" aria-hidden="true"/>}
+            <span className={cn(collapsed && "lg:sr-only")}>Collapse sidebar</span>
+          </button>
+        </div>
         <div className="flex-1 px-3 py-5">
           {groups.map((group, i) => (
             <nav
@@ -248,24 +254,6 @@ export function DashboardSidebar({
           ))}
         </div>
         <div className="shrink-0 border-t border-slate-100 p-3">
-          <button
-            ref={collapse}
-            type="button"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-            aria-controls="dashboard-sidebar"
-            onClick={toggle}
-            className="hidden min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-50 lg:flex"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-[17px]" aria-hidden="true" />
-            ) : (
-              <PanelLeftClose className="size-[17px]" aria-hidden="true" />
-            )}
-            <span className={cn(collapsed && "lg:sr-only")}>
-              Collapse sidebar
-            </span>
-          </button>
           <p
             className={cn(
               "flex items-center justify-center gap-1.5 py-2 text-[10px] text-slate-500",
