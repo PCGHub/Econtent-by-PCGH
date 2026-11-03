@@ -1,24 +1,15 @@
+import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 /** Dedicated person/background segmenter. MediaPipe Pose is no longer used. */
 import type { BodyPoint } from "./quality";
 export type SegmentationResult = { segmentationMask?: CanvasImageSource; poseLandmarks?: BodyPoint[]; image: CanvasImageSource };
 type ConfidenceMask = { width: number; height: number; getAsFloat32Array(): Float32Array; close(): void };
 type Segmenter = { segmentForVideo(image: CanvasImageSource, timestampMs: number, callback: (result: { confidenceMasks?: ConfidenceMask[] }) => void): void; close(): void };
-type VisionModule = { FilesetResolver: { forVisionTasks(path: string): Promise<unknown> }; ImageSegmenter: { createFromOptions(vision: unknown, options: unknown): Promise<Segmenter> } };
 const version = "0.10.22";
-const cdn = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@" + version;
+const wasmPath = "/segmentation/tasks-vision-" + version + "/wasm";
 const modelUrl = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite";
-let modulePromise: Promise<VisionModule> | undefined;
 export function deadline<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   return Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error(message)), ms); })]).finally(() => clearTimeout(timer));
-}
-async function loadVision(): Promise<VisionModule> {
-  modulePromise ??= (async () => {
-    // Runtime ESM URL is intentionally external to the Next.js module graph.
-    const url = cdn + "/vision_bundle.mjs";
-    return await import(/* webpackIgnore: true */ url) as VisionModule;
-  })().catch(error => { modulePromise = undefined; throw error; });
-  return modulePromise;
 }
 export class PersonSegmenter {
   private segmenter: Segmenter | null = null;
@@ -28,9 +19,8 @@ export class PersonSegmenter {
   onResults(cb: (result: SegmentationResult) => void) { this.callback = cb; }
   setOptions(_options: unknown) { /* Legacy pose options intentionally ignored. */ }
   async initialize() {
-    const vision = await deadline(loadVision(), 60000, "Person segmenter library download timed out.");
-    const fileset = await deadline(vision.FilesetResolver.forVisionTasks(cdn + "/wasm"), 60000, "Person segmenter WASM initialization timed out.");
-    this.segmenter = await deadline(vision.ImageSegmenter.createFromOptions(fileset, {
+    const fileset = await deadline(FilesetResolver.forVisionTasks(wasmPath), 60000, "Local person segmenter WASM initialization timed out.");
+    this.segmenter = await deadline(ImageSegmenter.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: modelUrl, delegate: "CPU" },
       runningMode: "VIDEO", outputCategoryMask: false, outputConfidenceMasks: true,
     }), 90000, "Selfie segmentation model download or initialization timed out.");
