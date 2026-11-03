@@ -15,6 +15,7 @@ export interface BackgroundOptions {
   y: number;
   threshold: number;
   softness: number;
+  edgeBlur: number;
   key: string;
   tolerance: number;
   view: "composite" | "mask" | "original";
@@ -43,6 +44,7 @@ export class BackgroundRenderer {
   private raw = canvas();
   private alpha = canvas();
   private foreground = canvas();
+  private softenedMask = canvas();
   private debug = canvas();
   private pixels: ImageData | null = null;
   private debugPixels: ImageData | null = null;
@@ -208,6 +210,7 @@ export class BackgroundRenderer {
       this.raw,
       this.alpha,
       this.foreground,
+      this.softenedMask,
       this.debug,
     ])
       if (c.width !== width || c.height !== height) {
@@ -442,7 +445,17 @@ export class BackgroundRenderer {
     fg.clearRect(0, 0, w, h);
     fg.drawImage(this.source, 0, 0);
     fg.globalCompositeOperation = "destination-in";
-    fg.drawImage(this.alpha, 0, 0);
+    if (o.edgeBlur > 0) {
+      const softened = this.softenedMask.getContext("2d")!;
+      softened.clearRect(0, 0, w, h);
+      softened.save();
+      softened.filter = `blur(${Math.min(3, Math.max(0, o.edgeBlur))}px)`;
+      softened.drawImage(this.alpha, 0, 0);
+      softened.restore();
+      fg.drawImage(this.softenedMask, 0, 0);
+    } else {
+      fg.drawImage(this.alpha, 0, 0);
+    }
     fg.globalCompositeOperation = "source-over";
     ctx.drawImage(this.foreground, 0, 0);
   }
@@ -554,6 +567,7 @@ export class BackgroundRenderer {
       this.raw,
       this.alpha,
       this.foreground,
+      this.softenedMask,
       this.debug,
     ]) {
       c.width = c.height = 1;
