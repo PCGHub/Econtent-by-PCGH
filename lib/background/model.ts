@@ -26,31 +26,40 @@ export function deadline<T>(
     }),
   ]).finally(() => clearTimeout(timer));
 }
-export async function personModel() {
-  if (!window.Pose) {
-    library ??= new Promise<void>((resolve, reject) => {
+async function loadPoseScript() {
+  if (window.Pose) return;
+  if (!library) {
+    library = new Promise<void>((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = MODEL_PATH + "pose.js";
-      script.onload = () => resolve();
-      script.onerror = () => {
-        script.remove();
-        reject(
-          Error(
-            "Person detection script could not download. Retry on a stable connection.",
-          ),
-        );
+      let finished = false;
+      const finish = (error?: Error) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
+        script.onload = script.onerror = null;
+        if (error) {
+          script.remove();
+          reject(error);
+        } else resolve();
       };
+      const timeout = setTimeout(
+        () => finish(Error("Person detection script download timed out. Retry on a stable connection.")),
+        30000,
+      );
+      script.src = MODEL_PATH + "pose.js";
+      script.onload = () => finish();
+      script.onerror = () =>
+        finish(Error("Person detection script could not download. Retry on a stable connection."));
       document.head.appendChild(script);
-    }).catch((e) => {
+    }).catch((error) => {
       library = undefined;
-      throw e;
+      throw error;
     });
-    await deadline(
-      library,
-      30000,
-      "Person detection script download timed out. Retry to create a fresh model.",
-    );
   }
+  await library;
+}
+export async function personModel() {
+  await loadPoseScript();
   if (!window.Pose) throw Error("Person detection library is unavailable.");
   const probe = document.createElement("canvas");
   if (!probe.getContext("webgl2") && !probe.getContext("webgl"))
