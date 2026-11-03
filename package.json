@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
-    "postinstall": "node scripts/prepare-ffmpeg.mjs && node scripts/prepare-segmentation.mjs",
+    "postinstall": "node scripts/prepare-ffmpeg.mjs && node scripts/prepare-image-segmenter.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test-isolation=none --import ./tests/register.mjs --test tests/*.test.ts",
     "test:media": "node --test-isolation=none --import ./tests/register.mjs --test tests/media.integration.ts tests/composition.integration.ts tests/tracks.integration.ts tests/titles.integration.ts",
@@ -16,7 +16,7 @@
     "test:account": "playwright test -c tests/account/playwright.config.ts",
     "test:account:stop": "node scripts/account-test-stack.mjs stop",
     "test:imports": "node scripts/benchmark-compile.mjs lib/video test-results/universal/site/engine && node scripts/verify-import-matrix.mjs",
-    "prebuild": "node scripts/prepare-ffmpeg.mjs && node scripts/prepare-segmentation.mjs"
+    "prebuild": "node scripts/prepare-ffmpeg.mjs && node scripts/prepare-image-segmenter.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "0.12.10",
@@ -34,7 +34,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^2.6.0",
-    "webm-muxer": "5.1.4"
+    "webm-muxer": "5.1.4",
+    "@mediapipe/tasks-vision": "0.10.22"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
