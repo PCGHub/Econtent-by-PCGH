@@ -2,7 +2,6 @@ import { backgroundRect, outputSize, refineMask, type MaskStats } from "./mask";
 import {
   deadline,
   personModel,
-  type PersonModel,
   type SegmentationResult,
 } from "./model";
 export interface BackgroundOptions {
@@ -31,7 +30,13 @@ export interface BackgroundStatus {
 const canvas = () => document.createElement("canvas");
 /** Owns all frame resources. Borrowed MediaPipe results NEVER escape onResults. */
 export class BackgroundRenderer {
-  private model: PersonModel | null = null;
+  private model: {
+    onResults(cb: (result: SegmentationResult) => void): void;
+    setOptions(options: unknown): void;
+    initialize(): Promise<void>;
+    send(input: { image: CanvasImageSource }): Promise<void>;
+    close(): Promise<void>;
+  } | null = null;
   private stopped = false;
   private raf = 0;
   private epoch = 0;
