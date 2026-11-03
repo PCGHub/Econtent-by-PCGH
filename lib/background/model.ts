@@ -1,94 +1,75 @@
-import type { Pose } from "@mediapipe/pose";
+/** Dedicated person/background segmenter. MediaPipe Pose is no longer used. */
 import type { BodyPoint } from "./quality";
-export type PersonModel = Pose;
-export type SegmentationResult = {
-  segmentationMask?: CanvasImageSource;
-  poseLandmarks?: BodyPoint[];
-  image: CanvasImageSource;
-};
-declare global {
-  interface Window {
-    Pose?: typeof Pose;
-  }
-}
-export const MODEL_PATH = "/segmentation/pose-0.5.1675469404/";
-let library: Promise<void> | undefined;
-export function deadline<T>(
-  promise: Promise<T>,
-  ms: number,
-  message: string,
-): Promise<T> {
+export type SegmentationResult = { segmentationMask?: CanvasImageSource; poseLandmarks?: BodyPoint[]; image: CanvasImageSource };
+type ConfidenceMask = { width: number; height: number; getAsFloat32Array(): Float32Array; close(): void };
+type Segmenter = { segmentForVideo(image: CanvasImageSource, timestampMs: number, callback: (result: { confidenceMasks?: ConfidenceMask[] }) => void): void; close(): void };
+type VisionModule = { FilesetResolver: { forVisionTasks(path: string): Promise<unknown> }; ImageSegmenter: { createFromOptions(vision: unknown, options: unknown): Promise<Segmenter> } };
+const version = "0.10.22";
+const cdn = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@" + version;
+const modelUrl = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite";
+let modulePromise: Promise<VisionModule> | undefined;
+export function deadline<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(Error(message)), ms);
-    }),
-  ]).finally(() => clearTimeout(timer));
+  return Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error(message)), ms); })]).finally(() => clearTimeout(timer));
 }
-async function loadPoseScript() {
-  if (window.Pose) return;
-  if (!library) {
-    library = new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      let finished = false;
-      const finish = (error?: Error) => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(timeout);
-        script.onload = script.onerror = null;
-        if (error) {
-          script.remove();
-          reject(error);
-        } else resolve();
-      };
-      const timeout = setTimeout(
-        () => finish(Error("Person detection script download timed out. Retry on a stable connection.")),
-        30000,
-      );
-      script.src = MODEL_PATH + "pose.js";
-      script.onload = () => finish();
-      script.onerror = () =>
-        finish(Error("Person detection script could not download. Retry on a stable connection."));
-      document.head.appendChild(script);
-    }).catch((error) => {
-      library = undefined;
-      throw error;
+async function loadVision(): Promise<VisionModule> {
+  modulePromise ??= (async () => {
+    // Runtime ESM URL is intentionally external to the Next.js module graph.
+    const url = cdn + "/vision_bundle.mjs";
+    return await import(/* webpackIgnore: true */ url) as VisionModule;
+  })().catch(error => { modulePromise = undefined; throw error; });
+  return modulePromise;
+}
+export class PersonSegmenter {
+  private segmenter: Segmenter | null = null;
+  private callback: ((result: SegmentationResult) => void) | null = null;
+  private timestamp = 0;
+  private maskCanvas = document.createElement("canvas");
+  onResults(cb: (result: SegmentationResult) => void) { this.callback = cb; }
+  setOptions(_options: unknown) { /* Legacy pose options intentionally ignored. */ }
+  async initialize() {
+    const vision = await deadline(loadVision(), 60000, "Person segmenter library download timed out.");
+    const fileset = await deadline(vision.FilesetResolver.forVisionTasks(cdn + "/wasm"), 60000, "Person segmenter WASM initialization timed out.");
+    this.segmenter = await deadline(vision.ImageSegmenter.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: modelUrl, delegate: "CPU" },
+      runningMode: "VIDEO", outputCategoryMask: false, outputConfidenceMasks: true,
+    }), 90000, "Selfie segmentation model download or initialization timed out.");
+  }
+  async send({ image }: { image: CanvasImageSource }) {
+    if (!this.segmenter) throw Error("Person segmenter is not initialized.");
+    const source = image as HTMLCanvasElement;
+    const w = source.width, h = source.height;
+    const canvas = this.maskCanvas;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    let found = false;
+    const stamp = ++this.timestamp * 1000 / 24;
+    this.segmenter.segmentForVideo(image, stamp, (result) => {
+      const masks = result.confidenceMasks;
+      try {
+        // Selfie model categories: 0=background, 1=person.
+        const mask = masks?.[1];
+        if (!mask) { this.callback?.({ image }); return; }
+        const confidence = mask.getAsFloat32Array();
+        const native = document.createElement("canvas");
+        native.width = mask.width; native.height = mask.height;
+        const ctx = native.getContext("2d")!;
+        const data = ctx.createImageData(mask.width, mask.height);
+        for (let i = 0; i < confidence.length; i++) {
+          const v = Math.round(Math.min(1, Math.max(0, confidence[i])) * 255);
+          data.data[i * 4] = 255; data.data[i * 4 + 1] = 255; data.data[i * 4 + 2] = 255; data.data[i * 4 + 3] = v;
+        }
+        ctx.putImageData(data, 0, 0);
+        const target = canvas.getContext("2d")!;
+        target.clearRect(0, 0, w, h);
+        target.drawImage(native, 0, 0, w, h);
+        found = true;
+        this.callback?.({ image, segmentationMask: canvas });
+      } finally { masks?.forEach(mask => mask.close()); }
     });
+    if (!found) return;
   }
-  await library;
+  async reset() { /* Image segmenter runs independently on each video frame. */ }
+  async close() { this.segmenter?.close(); this.segmenter = null; }
 }
-export async function checkPersonModelAssets() {
-  const url = MODEL_PATH + "manifest.json";
-  let response: Response;
-  try {
-    response = await deadline(fetch(url, { credentials: "same-origin", cache: "no-store" }), 12000,
-      "Model asset manifest timed out.");
-  } catch (error) {
-    throw Error("Person detection assets unreachable at " + url + ": " + String(error) + ". Check connection and Preview authorization.");
-  }
-  if (!response.ok) throw Error("Person detection assets returned HTTP " + response.status + " at " + url + ". Check Preview authorization and model files.");
-  if (!(response.headers.get("content-type") ?? "").includes("json"))
-    throw Error("Person detection assets returned a non-JSON response. Check Preview authorization.");
-  const manifest = await response.json() as {version?: string; files?: Record<string, {bytes?: number}>};
-  if (manifest.version !== "0.5.1675469404" || !manifest.files?.["pose_solution_simd_wasm_bin.wasm"])
-    throw Error("Person detection model assets are incomplete or from another release.");
-}
-export async function personModel() {
-  // The manifest is diagnostic metadata, not a runtime dependency. Browsers can
-  // retrieve it in a tab while fetch(cache:no-store) stalls on protected previews.
-  // Load the actual model script directly; let the SDK report any missing assets.
-  await loadPoseScript();
-  if (!window.Pose) throw Error("Person detection library is unavailable.");
-  const probe = document.createElement("canvas");
-  if (!probe.getContext("webgl2") && !probe.getContext("webgl"))
-    throw Error(
-      "This browser cannot initialize WebGL person detection. Enable hardware acceleration or use chroma key.",
-    );
-  // Release the capability probe's GPU context immediately.
-  const gl = probe.getContext("webgl2") || probe.getContext("webgl");
-  gl?.getExtension("WEBGL_lose_context")?.loseContext();
-  return new window.Pose({
-    locateFile: (name) => MODEL_PATH + name,
-  });
-}
+export type PersonModel = PersonSegmenter;
+export async function personModel() { return new PersonSegmenter(); }
