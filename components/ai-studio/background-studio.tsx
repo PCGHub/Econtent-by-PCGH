@@ -242,9 +242,8 @@ export function BackgroundStudio() {
       </h1>
       <p className="mt-2 text-sm leading-6 text-slate-600">
         Isolate one clear person without a green screen and replace the
-        background. Detection runs locally on your device using a cached model
-        from this app. Blur, heavy occlusion and multi-person action may be
-        rejected rather than exported as a broken cutout. Source videos and
+        background. Detection runs locally on your device after downloading the AI model. Blur, heavy occlusion and multiple people may reduce cutout quality.
+        Export is blocked when the person mask is invalid. Source videos and
         images are never uploaded.
       </p>
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
@@ -283,7 +282,7 @@ export function BackgroundStudio() {
               }
             >
               <option value="person">
-                AI Person Detection · full-body checks
+                AI Person Segmentation · SelfieSegmenter
               </option>
               <option value="chroma">Green/Blue Screen (chroma key)</option>
             </select>
