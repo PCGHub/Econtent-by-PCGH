@@ -92,6 +92,8 @@ export class BackgroundRenderer {
     // Paused/offscreen video and repeated decoded frames can omit RVFC delivery.
     // After seeked/loadeddata, allow two paint turns before reading the decoded
     // frame. An epoch check prevents this fallback from releasing a later seek.
+    this.size();
+    this.draw();
     this.afterPaint();
   };
   setExporting(value: boolean) {
@@ -112,6 +114,9 @@ export class BackgroundRenderer {
     if (video.readyState >= 2) this.afterPaint();
   }
   async start() {
+    // Canvas defaults to 300x150 until sized; paint the entire source-shaped frame immediately.
+    this.size();
+    this.draw();
     this.loop();
     if (this.options.mode === "chroma") {
       this.initializing = false;
@@ -179,6 +184,7 @@ export class BackgroundRenderer {
   }
   update(options: BackgroundOptions) {
     this.options = options;
+    this.size();
     if (this.pixels) this.refine();
     this.draw();
     this.publishCurrent(true);
