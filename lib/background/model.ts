@@ -58,7 +58,24 @@ async function loadPoseScript() {
   }
   await library;
 }
+export async function checkPersonModelAssets() {
+  const url = MODEL_PATH + "manifest.json";
+  let response: Response;
+  try {
+    response = await deadline(fetch(url, { credentials: "same-origin", cache: "no-store" }), 12000,
+      "Model asset manifest timed out.");
+  } catch (error) {
+    throw Error("Person detection assets unreachable at " + url + ": " + String(error) + ". Check connection and Preview authorization.");
+  }
+  if (!response.ok) throw Error("Person detection assets returned HTTP " + response.status + " at " + url + ". Check Preview authorization and model files.");
+  if (!(response.headers.get("content-type") ?? "").includes("json"))
+    throw Error("Person detection assets returned a non-JSON response. Check Preview authorization.");
+  const manifest = await response.json() as {version?: string; files?: Record<string, {bytes?: number}>};
+  if (manifest.version !== "0.5.1675469404" || !manifest.files?.["pose_solution_simd_wasm_bin.wasm"])
+    throw Error("Person detection model assets are incomplete or from another release.");
+}
 export async function personModel() {
+  await checkPersonModelAssets();
   await loadPoseScript();
   if (!window.Pose) throw Error("Person detection library is unavailable.");
   const probe = document.createElement("canvas");
