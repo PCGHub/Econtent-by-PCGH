@@ -6,6 +6,7 @@ import {
   type SegmentationResult,
 } from "./model";
 export interface BackgroundOptions {
+  engine: "fast" | "modnet";
   mode: "person" | "chroma";
   color: string;
   image: HTMLImageElement | null;
@@ -119,10 +120,12 @@ export class BackgroundRenderer {
     }
     this.publish(
       "loading",
-      "Loading dedicated SelfieSegmenter person detection model…",
+      this.options.engine === "modnet" ? "Loading experimental MODNet detailed edges model (may be slow)…" : "Loading dedicated SelfieSegmenter person detection model…",
     );
     try {
-      const model = await personModel();
+      const model = this.options.engine === "modnet"
+        ? new (await import("./modnet")).ModnetSegmenter()
+        : await personModel();
       if (this.stopped) {
         void model.close();
         return;
@@ -317,7 +320,7 @@ export class BackgroundRenderer {
         this.frames++;
         return;
       }
-      this.representation = "SelfieSegmenter person confidence";
+      this.representation = this.options.engine === "modnet" ? "MODNet portrait alpha" : "SelfieSegmenter person confidence";
       const geometry = result.segmentationMask as {
         width: number;
         height: number;
