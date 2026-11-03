@@ -241,7 +241,7 @@ test("real email verification, sessions, recovery, project CRUD, autosave, recon
     await expect(
       otherPage.getByText("This page could not be found."),
     ).toBeVisible();
-    await page.getByRole("link", { name: "My projects", exact: true }).click();
+    await page.getByRole("link", { name: /^My projects$/i, exact: true }).click();
     await page.getByRole("button", { name: "Rename", exact: true }).click();
     await page.getByLabel("New project title").fill("Renamed footage");
     await page

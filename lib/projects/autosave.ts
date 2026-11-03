@@ -5,11 +5,21 @@ export class SaveQueue {
   private running: Promise<void> | null = null;
   private revision: number;
   private signature: string;
-  private write: (revision: number, draft: ProjectDraft) => Promise<Project>;
+  private controller: AbortController | null = null;
+  private disposed = false;
+  private write: (
+    revision: number,
+    draft: ProjectDraft,
+    signal: AbortSignal,
+  ) => Promise<Project>;
   private onSaved: (project: Project) => void;
   constructor(
     project: Project,
-    write: (revision: number, draft: ProjectDraft) => Promise<Project>,
+    write: (
+      revision: number,
+      draft: ProjectDraft,
+      signal: AbortSignal,
+    ) => Promise<Project>,
     onSaved: (project: Project) => void,
   ) {
     this.write = write;
@@ -18,27 +28,45 @@ export class SaveQueue {
     this.signature = projectSignature(project);
   }
   enqueue(draft: ProjectDraft) {
-    this.pending = draft;
+    if (!this.disposed) this.pending = draft;
+  }
+  cancel() {
+    this.controller?.abort();
+  }
+  dispose() {
+    this.disposed = true;
+    this.pending = null;
+    this.cancel();
   }
   async flush(): Promise<void> {
+    if (this.disposed) return;
     if (this.running) {
       await this.running;
       if (this.pending) return this.flush();
       return;
     }
     this.running = (async () => {
-      while (this.pending) {
+      while (this.pending && !this.disposed) {
         const draft = this.pending;
         this.pending = null;
         if (projectSignature(draft) === this.signature) continue;
+        const controller = new AbortController();
+        this.controller = controller;
         try {
-          const saved = await this.write(this.revision, draft);
+          const saved = await this.write(
+            this.revision,
+            draft,
+            controller.signal,
+          );
+          controller.signal.throwIfAborted();
           this.revision = saved.revision;
           this.signature = projectSignature(saved);
           this.onSaved(saved);
         } catch (error) {
-          if (!this.pending) this.pending = draft;
+          if (!this.disposed && !this.pending) this.pending = draft;
           throw error;
+        } finally {
+          this.controller = null;
         }
       }
     })();

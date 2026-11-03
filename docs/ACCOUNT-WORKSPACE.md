@@ -145,3 +145,35 @@ verified separately from local test results.
 Hosted email delivery, Auth redirect allowlisting and cloud authenticated CRUD are not
 claimed verified by these local results. Preview deployment verification is reported
 separately with its exact commit/deployment URL.
+
+## Cutter saving and exit reliability — 2026-11-03
+
+Project requests now have a 15-second deadline covering response headers and body
+reading. A stalled request fails visibly, releases the Saving state, and retains the
+local draft for retry. This is a failure deadline, not a promise of successful saving
+within 15 seconds. No automatic mutation retry is made. An interrupted request may
+already have committed on the server; cancellation is not a rollback. Check saved
+projects before retrying an uncertain write. Revision conflict protection remains.
+
+Autosave still debounces/coalesces edits and serializes revisions. Both manual and
+automatic saves show the same cancellable saving state. Cancel saving retains local
+edits. Leaving/unmounting cancels waiting requests and discards queued writes, and
+late responses cannot update the departed editor. Only title, source and editing
+content changes arm the departure warning; processing status alone (including
+Cancelled) does not. Accepting Leave without saving clears the warning and navigates
+without another prompt or waiting for cloud saves. Exit editor returns to the public
+landing page, including the guest editor hosted at the landing page's own URL.
+
+Verification: production build, TypeScript and scoped ESLint pass; all 97 unit tests
+and 8 native media tests pass. Five Chromium browser cases pass: real local Auth,
+project CRUD/autosave/reopening/CSRF/RLS isolation; stalled-save timeout/cancel/retry,
+Stay and accepted discard during a stalled PATCH; guest exit; real Precision/
+compression MP4 exports; Fast Cut/ZIP/cancellation with a 390px layout. The local
+save/exit test measured a normal save at 1,237ms and exit during a stalled save at
+94ms, with one accepted confirmation. These are local measurements, not cloud or
+Android latency guarantees. Two stale test expectations were aligned with the
+existing sidebar capitalization and FFmpeg deadline message; engine behavior was
+not changed. Repository-wide lint still has pre-existing errors in other features.
+
+No hosted schema, RLS policy, Supabase configuration or credentials were changed.
+Tests reused the disposable local Auth/PostgreSQL stack without applying migrations.

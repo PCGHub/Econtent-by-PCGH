@@ -263,3 +263,8 @@ export function fromRow(row: Record<string, unknown>): Project {
 export function projectSignature(draft: ProjectDraft): string {
   return JSON.stringify(toRow(draft));
 }
+
+/** Processing status is autosaved, but must not trap navigation after Cancel. */
+export function projectContentSignature(draft: ProjectDraft): string {
+  return projectSignature({ ...draft, status: "draft" });
+}

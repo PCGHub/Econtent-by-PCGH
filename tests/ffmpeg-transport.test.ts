@@ -59,7 +59,7 @@ test('worker handshake, download inactivity, compile and initialization have sep
 });
 test('advancing download bytes extend only inactivity, and total download deadline remains bounded',async()=>{
  const restore=environment();const ff=new FFmpegTransport(()=>{},{...STARTUP_LIMITS,downloadIdle:50,downloadTotal:150});
- try {const loading=ff.load(config);const rejection=assert.rejects(loading,/three-minute asset-read limit/);const worker=MockWorker.last;
+ try {const loading=ff.load(config);const rejection=assert.rejects(loading,/maximum load time/);const worker=MockWorker.last;
   worker.emit({type:'ECONTENT_STARTUP',data:{phase:'core',workerReady:true}});let bytes=0;
   const timer=setInterval(()=>worker.emit({type:'ECONTENT_STARTUP',data:{phase:'download',receivedBytes:++bytes,totalBytes:1000}}),10);
   try {await rejection;}finally{clearInterval(timer);}assert.equal(worker.terminated,true);
