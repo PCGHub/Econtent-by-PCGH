@@ -525,7 +525,9 @@ export class BackgroundRenderer {
           : "Preparing chroma frame"
         : this.stats?.valid
           ? "Body-aware checks passed. Review the cutout before export."
-          : this.stats?.maskValid && !this.stats?.valid\n           ? `Segmentation preview available, but export blocked: ${this.stats.reason}`\n           : this.stats?.reason || "Waiting for a fresh mask",
+          : this.stats?.maskValid && !this.stats?.valid
+           ? `Segmentation preview available, but export blocked: ${this.stats.reason}`
+           : this.stats?.reason || "Waiting for a fresh mask",
     );
   }
   private fail(e: unknown) {
