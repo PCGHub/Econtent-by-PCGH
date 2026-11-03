@@ -4,7 +4,7 @@ import type { BodyPoint } from "./quality";
 export type SegmentationResult = { segmentationMask?: CanvasImageSource; poseLandmarks?: BodyPoint[]; image: CanvasImageSource };
 type ConfidenceMask = { width: number; height: number; getAsFloat32Array(): Float32Array; close(): void };
 type Segmenter = { segmentForVideo(image: CanvasImageSource, timestampMs: number, callback: (result: { confidenceMasks?: ConfidenceMask[] }) => void): void; close(): void };
-const version = "0.10.22";
+const version = "0.10.21";
 const wasmPath = "/segmentation/tasks-vision-" + version + "/wasm";
 const modelUrl = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite";
 export function deadline<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
