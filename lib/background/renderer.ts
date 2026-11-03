@@ -1,8 +1,3 @@
-import {
-  assessPersonMask,
-  type BodyPoint,
-  type QualityHistory,
-} from "./quality";
 import { backgroundRect, outputSize, refineMask, type MaskStats } from "./mask";
 import {
   deadline,
@@ -35,9 +30,6 @@ const canvas = () => document.createElement("canvas");
 /** Owns all frame resources. Borrowed MediaPipe results NEVER escape onResults. */
 export class BackgroundRenderer {
   private model: PersonModel | null = null;
-  private points: BodyPoint[] | undefined;
-  private previousQuality: QualityHistory | undefined;
-  private lastModelTime: number | undefined;
   private stopped = false;
   private raf = 0;
   private epoch = 0;
@@ -125,7 +117,7 @@ export class BackgroundRenderer {
     }
     this.publish(
       "loading",
-      "Downloading / initializing the local person detection model…",
+      "Loading dedicated SelfieSegmenter person detection model…",
     );
     try {
       const model = await personModel();
@@ -267,35 +259,7 @@ export class BackgroundRenderer {
     }
     void deadline(
       (async () => {
-        if (
-          this.lastModelTime !== undefined &&
-          (time < this.lastModelTime || time - this.lastModelTime > 0.25)
-        ) {
-          await this.model!.reset();
-          this.previousQuality = undefined;
-        }
-        this.lastModelTime = time;
         await this.model!.send({ image: this.input });
-        if (
-          this.stopped ||
-          this.pending?.epoch !== this.epoch ||
-          this.failMessage
-        )
-          return;
-        if (this.stats && !this.stats.valid) {
-          // Reacquire once from this SAME frozen frame. A tracker can hallucinate
-          // an in-frame wrist on a cropped portrait. Never accept that first mask,
-          // average silhouettes or relax the final checks to rescue an export.
-          if (!this.exporting)
-            this.publish(
-              "preparing",
-              "Rechecking uncertain body detection on this frame…",
-            );
-          await this.model!.reset();
-          // Keep the prior accepted frame for the SAME temporal quality checks.
-          if (this.stopped || this.pending?.epoch !== this.epoch) return;
-          await this.model!.send({ image: this.input });
-        }
         if (
           this.stopped ||
           this.pending?.epoch !== this.epoch ||
@@ -330,12 +294,6 @@ export class BackgroundRenderer {
       return;
     try {
       const { width: w, height: h } = this.output;
-      // Own the landmarks alongside the paired image/mask snapshots.
-      this.points = result.poseLandmarks?.map(({ x, y, visibility }) => ({
-        x,
-        y,
-        visibility,
-      }));
       if (!result.segmentationMask) {
         this.pixels = null;
         this.stats = {
@@ -356,7 +314,7 @@ export class BackgroundRenderer {
         this.frames++;
         return;
       }
-      this.representation = result.segmentationMask.constructor.name;
+      this.representation = "SelfieSegmenter person confidence";
       const geometry = result.segmentationMask as {
         width: number;
         height: number;
@@ -394,24 +352,12 @@ export class BackgroundRenderer {
     );
     ctx.putImageData(this.refined, 0, 0);
     const time = this.pending?.time ?? this.stats?.time ?? this.submitted;
-    const quality = assessPersonMask(
-      this.refined.data,
-      w,
-      h,
-      this.points,
-      time,
-      stats.coverage,
-      this.previousQuality,
-      this.pixels.data,
-    );
-    if (quality.safe && quality.history) this.previousQuality = quality.history;
     this.stats = {
       ...stats,
       maskValid: stats.valid,
       maskAvailable: true,
-      quality,
-      valid: stats.valid && quality.safe,
-      reason: stats.valid ? (quality.safe ? "" : quality.reason) : stats.reason,
+      valid: stats.valid && stats.coverage >= 0.005 && stats.coverage <= 0.98,
+      reason: stats.reason || (stats.coverage < 0.005 ? "No person detected." : stats.coverage > 0.98 ? "Mask covers almost the entire frame." : ""),
       representation: this.representation,
       width: w,
       height: h,
