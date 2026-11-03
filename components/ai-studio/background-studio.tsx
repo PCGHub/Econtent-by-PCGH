@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { loadBackgroundDraft, saveBackgroundDraft, deleteBackgroundDraft, type BackgroundDraft } from "@/lib/background/draft";
 import {
   BackgroundRenderer,
   type BackgroundOptions,
@@ -47,6 +48,10 @@ export function BackgroundStudio() {
     [recording, setRecording] = useState(false),
     [seconds, setSeconds] = useState(0),
     [message, setMessage] = useState("");
+  const [draftStatus, setDraftStatus] = useState("No saved draft checked yet."),
+    [hasDraft, setHasDraft] = useState(false),
+    [replacementFile, setReplacementFile] = useState<File | null>(null),
+    [restoring, setRestoring] = useState(false);
   const [download, setDownload] = useState(""),
     [playable, setPlayable] = useState(false);
   const video = useRef<HTMLVideoElement>(null),
@@ -162,6 +167,52 @@ export function BackgroundStudio() {
     tolerance,
     view,
   ]);
+  useEffect(() => {
+    let mounted = true;
+    void loadBackgroundDraft().then(draft => {
+      if (!mounted) return;
+      setHasDraft(Boolean(draft));
+      setDraftStatus(draft ? `Saved draft found · ${new Date(draft.savedAt).toLocaleString()}` : "No local draft saved.");
+    }).catch(() => { if (mounted) setDraftStatus("Local storage is unavailable in this browser."); });
+    return () => { mounted = false; };
+  }, []);
+  useEffect(() => {
+    if (!sourceFile || restoring || recording) return;
+    const timer = setTimeout(() => {
+      const draft: BackgroundDraft = {
+        version: 1, savedAt: Date.now(), source: sourceFile, replacement: replacementFile,
+        settings: { color, mode, engine: engineChoice, fit, zoom, x, y, threshold, softness, edgeBlur, key, tolerance, includeAudio },
+      };
+      void saveBackgroundDraft(draft).then(() => {
+        setHasDraft(true); setDraftStatus(`Saved locally · ${new Date(draft.savedAt).toLocaleTimeString()}`);
+      }).catch((error: unknown) => setDraftStatus(`Auto-save failed: ${error instanceof Error ? error.message : "Storage full or blocked"}`));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [sourceFile, replacementFile, color, mode, engineChoice, fit, zoom, x, y, threshold, softness, edgeBlur, key, tolerance, includeAudio, restoring, recording]);
+  async function restoreDraft() {
+    setRestoring(true);
+    try {
+      const draft = await loadBackgroundDraft();
+      if (!draft || draft.version !== 1 || !(draft.source instanceof Blob)) throw Error("No usable saved draft found.");
+      const settings = draft.settings;
+      setSourceFile(draft.source);
+      setSourceName(draft.source.name);
+      setLoaded(false);
+      setSource(URL.createObjectURL(draft.source));
+      setReplacementFile(draft.replacement);
+      setImageError("");
+      if (draft.replacement) {
+        setImageReady(false); setBackground(null); setImageUrl(URL.createObjectURL(draft.replacement));
+      } else { setImageUrl(""); setBackground(null); setImageReady(true); }
+      setColor(settings.color); setMode(settings.mode); setEngineChoice(settings.engine);
+      setFit(settings.fit); setZoom(settings.zoom); setX(settings.x); setY(settings.y);
+      setThreshold(settings.threshold); setSoftness(settings.softness); setEdgeBlur(settings.edgeBlur);
+      setKey(settings.key); setTolerance(settings.tolerance); setIncludeAudio(settings.includeAudio);
+      setStatus(initial); setRetry(n => n + 1);
+      setDraftStatus("Draft restored. Check the preview before exporting.");
+    } catch (error) { setDraftStatus(error instanceof Error ? error.message : "Restore failed"); }
+    finally { setRestoring(false); }
+  }
   function change(action: () => void) {
     setDownload("");
     setPlayable(false);
@@ -254,6 +305,15 @@ export function BackgroundStudio() {
         Export is blocked when the person mask is invalid. Source videos and
         images are never uploaded.
       </p>
+      <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+        <h2 className="font-semibold">Project recovery · This browser</h2>
+        <p className="mt-1 text-sm">Automatically saves the current source video, replacement image and background settings after changes. This is a local draft, not cloud sync. Do not clear site data or switch devices. Large videos may exceed browser storage.</p>
+        <p role="status" className="mt-2 text-sm">{draftStatus}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" disabled={!hasDraft || recording || restoring} onClick={() => void restoreDraft()} className="rounded bg-blue-700 px-3 py-2 text-sm text-white disabled:opacity-50">Restore saved draft</button>
+          <button type="button" disabled={!hasDraft || recording} onClick={() => void deleteBackgroundDraft().then(() => { setHasDraft(false); setDraftStatus("Local draft deleted."); }).catch(() => setDraftStatus("Could not delete local draft."))} className="rounded border px-3 py-2 text-sm">Delete local draft</button>
+        </div>
+      </section>
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
         <fieldset disabled={recording} className="min-w-0 disabled:opacity-70">
           <legend className="sr-only">Source and replacement settings</legend>
@@ -434,6 +494,7 @@ export function BackgroundStudio() {
                     if (f)
                       change(() => {
                         setBackground(null);
+                        setReplacementFile(f);
                         setImageReady(false);
                         setImageError("");
                         setImageUrl(URL.createObjectURL(f));
