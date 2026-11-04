@@ -1,6 +1,11 @@
 'use client'
 
-import {useEffect,useRef,useState,useCallback} from 'react'
+import Link from 'next/link'
+import type {Project} from '@/lib/projects/model'
+import {CloudMediaPanel,StorageMeter} from '@/components/account/cloud-storage'
+import {useSavedTimeline} from './use-saved-timeline'
+import {fingerprint} from '@/lib/projects/fingerprint'
+import {useEffect,useRef,useState} from 'react'
 import {FFmpegTransport} from '@/lib/video/ffmpeg-transport'
 import {consumeVoiceover} from '@/lib/ai/voiceover-transfer'
 import {consumeHighlights} from '@/lib/ai/highlights-transfer'
@@ -18,18 +23,18 @@ async function durationOf(file:File,kind:Kind,url:string):Promise<number>{
   if(kind==='image')return 5
   return new Promise(resolve=>{const el=document.createElement(kind==='audio'?'audio':'video');const timer=setTimeout(()=>resolve(10),8000);el.preload='metadata';el.onloadedmetadata=()=>{clearTimeout(timer);resolve(Number.isFinite(el.duration)?Math.max(.1,el.duration):10)};el.onerror=()=>{clearTimeout(timer);resolve(10)};el.src=url})
 }
-export function MultitrackEditor(){
+export function MultitrackEditor({savedProject}:{savedProject?:Project}){
   const [clips,setClips]=useState<Clip[]>([])
   const [selected,setSelected]=useState<string|null>(null)
-  const [title,setTitle]=useState('')
+  const [title,setTitle]=useState(savedProject?.title??'')
   const [status,setStatus]=useState('')
   const [busy,setBusy]=useState(false)
   const [download,setDownload]=useState<string|null>(null)
   const [progress,setProgress]=useState(0)
-  const [playhead,setPlayhead]=useState(0)
+  const [rawPlayhead,setPlayhead]=useState(0)
   const [playing,setPlaying]=useState(false)
   const [zoom,setZoom]=useState(22)
-  const [hooks,setHooks]=useState<Hook[]>([])
+  const [hooks,setHooks]=useState<Hook[]>(savedProject?.multitrack?.hooks??[])
   const [hookText,setHookText]=useState('')
   const [selectedHook,setSelectedHook]=useState<string|null>(null)
   const [textEditing,setTextEditing]=useState(false)
@@ -41,10 +46,10 @@ export function MultitrackEditor(){
   const [libraryPreview,setLibraryPreview]=useState<string|null>(null)
   const previewBox=useRef<HTMLDivElement>(null)
   const hookDrag=useRef<{id:string;pointerX:number;pointerY:number;x:number;y:number;mode:'move'|'resize';size:number}|null>(null)
-  const [videoVolume,setVideoVolume]=useState(1)
-  const [musicVolume,setMusicVolume]=useState(.65)
-  const [videoMuted,setVideoMuted]=useState(false)
-  const [musicMuted,setMusicMuted]=useState(false)
+  const [videoVolume,setVideoVolume]=useState(savedProject?.multitrack?.audio.videoVolume??1)
+  const [musicVolume,setMusicVolume]=useState(savedProject?.multitrack?.audio.musicVolume??.65)
+  const [videoMuted,setVideoMuted]=useState(savedProject?.multitrack?.audio.videoMuted??false)
+  const [musicMuted,setMusicMuted]=useState(savedProject?.multitrack?.audio.musicMuted??false)
   const audioPreview=useRef<HTMLAudioElement>(null)
   const libraryMedia=useRef<HTMLMediaElement|null>(null)
   const libraryReady=useRef(false)
@@ -66,21 +71,33 @@ export function MultitrackEditor(){
   const current=clips.find(c=>c.id===selected)
   const libraryItem=clips.find(c=>c.id===libraryPreview)||originals.find(c=>c.id===libraryPreview)
   const isOriginalPreview=!!libraryItem&&originals.some(c=>c.id===libraryItem.id)
-  let elapsed=0
-  const active=visuals.find(c=>{const inside=playhead>=elapsed&&playhead<elapsed+clipLength(c);elapsed+=clipLength(c);return inside})||visuals.at(-1)
+  const playhead=Math.min(rawPlayhead,total)
+  const active=visuals.find((c,index)=>{const start=visuals.slice(0,index).reduce((sum,item)=>sum+clipLength(item),0);return playhead>=start&&playhead<start+clipLength(c)})||visuals.at(-1)
   const activeStart=visuals.slice(0,Math.max(0,visuals.findIndex(c=>c.id===active?.id))).reduce((n,c)=>n+clipLength(c),0)
   const localTime=active?Math.min(active.end,active.start+Math.max(0,playhead-activeStart)*active.speed):0
   const music=audio.find((c,i)=>playhead<audio.slice(0,i+1).reduce((n,x)=>n+x.end-x.start,0))||audio.at(-1)
   const musicOffset=audio.slice(0,Math.max(0,audio.findIndex(c=>c.id===music?.id))).reduce((n,c)=>n+c.end-c.start,0)
-  const seek=useCallback((time:number)=>{setPlayhead(Math.max(0,Math.min(total,time)))},[total])
+  const seek=(time:number)=>{setPlayhead(Math.max(0,Math.min(total,time)))}
   useEffect(()=>{if(!playing)return;clock.current=performance.now();const tick=(now:number)=>{const delta=Math.min((now-clock.current)/1000,.25);clock.current=now;setPlayhead(t=>{const next=t+delta;if(next>=total){setPlaying(false);return total}return next});frame.current=requestAnimationFrame(tick)};frame.current=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame.current)},[playing,total])
   useEffect(()=>{const el=preview.current;if(!el||!active||active.kind!=='video'||libraryItem)return;el.muted=videoMuted;el.volume=videoVolume;el.playbackRate=active.speed;if(Math.abs(el.currentTime-localTime)>(playing?.3:.035))el.currentTime=localTime;if(playing){void el.play().catch(()=>setPlaying(false))}else el.pause()},[active,localTime,playing,videoMuted,videoVolume,libraryItem])
   useEffect(()=>{const el=audioPreview.current;if(!el||!music||libraryItem)return;el.muted=musicMuted;el.volume=musicVolume;const time=music.start+Math.max(0,Math.min(music.end-music.start,playhead-musicOffset));if(Math.abs(el.currentTime-time)>.3)el.currentTime=time;if(playing){void el.play().catch(()=>{})}else el.pause()},[music,musicOffset,playhead,playing,musicMuted,musicVolume,libraryItem])
-  useEffect(()=>{if(playhead>total)setPlayhead(total)},[playhead,total])
+  const cloud=useSavedTimeline(savedProject,{title,originals,clips:clips.map(c=>({id:c.id,sourceId:originals.find(o=>o.file===c.file)?.id??'',start:c.start,end:c.end,speed:c.speed})),hooks,audio:{videoVolume,musicVolume,videoMuted,musicMuted},status:busy?'processing':download?'completed':'draft'});
+  async function restoreSource(file:File,sha:string,signal:AbortSignal){
+    for(const source of savedProject?.multitrack?.sources??[]){
+      if(source.sha256!==sha||originalsRef.current.some(o=>o.id===source.id))continue;
+      signal.throwIfAborted();const original:Clip={id:source.id,file,kind:source.kind,url:URL.createObjectURL(file),duration:source.duration,start:0,end:source.duration,speed:1};
+      originalsRef.current=[...originalsRef.current,original];setOriginals(originalsRef.current);
+      setClips(savedProject!.multitrack!.clips.flatMap(c=>{const o=originalsRef.current.find(o=>o.id===c.sourceId);return o?[{...o,id:c.id,start:c.start,end:c.end,speed:c.speed}]:[];}));
+    }
+  }
   async function add(files:FileList|null){
     if(!files)return
     const additions:Clip[]=[]
     for(const file of Array.from(files)){
+      if(savedProject?.multitrack?.sources.some(s=>s.sizeBytes===file.size&&!originalsRef.current.some(o=>o.id===s.id))){
+        const controller=new AbortController();const sha=await fingerprint(file,controller.signal);
+        if(savedProject.multitrack.sources.some(s=>s.sha256===sha)){await restoreSource(file,sha,controller.signal);continue;}
+      }
       const kind=classify(file)
       if(!kind){setStatus('Unsupported file: '+file.name);continue}
       const url=URL.createObjectURL(file)
@@ -196,7 +213,7 @@ export function MultitrackEditor(){
     finally{ff.terminate();worker.current=null;setBusy(false)}
   }
   return <main className="min-h-screen bg-[#0b1220] p-3 text-slate-100 sm:p-5">
-    <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Video Editor <span className="text-sm font-normal text-blue-400">Beta</span></h1><p className="text-sm text-slate-400">Arrange video, images and music into an MP4.</p></div><div className="flex gap-2"><button className="rounded-lg bg-slate-700 px-3 py-2" onClick={()=>input.current?.click()}><Plus className="mr-1 inline size-4"/>Import media</button><button disabled={busy||!visuals.length} onClick={()=>void exportMp4()} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold disabled:opacity-40"><Download className="mr-1 inline size-4"/>Export MP4</button></div></header>
+    <section className="mb-4 rounded-xl border border-slate-600 bg-slate-900 p-4"><button disabled={busy||cloud.saving} onClick={cloud.save} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold disabled:opacity-50">{cloud.saving?'Saving project…':'Save project and source files'}</button>{cloud.savedId&&<Link className="ml-3 text-sm underline" href={'/projects/'+cloud.savedId}>Open saved project</Link>}<p className="mt-2 text-xs">Save uploads your source files to your private workspace. Timeline edits then save automatically. Free: 3 days / 500 MB. Premium: 30 days / 5 GB. Download exports to keep your own copy.</p><p role="status" className="mt-2 text-sm">{cloud.message}</p><StorageMeter/><CloudMediaPanel projectId={cloud.savedId} files={originals.map(o=>o.file)} onRestore={restoreSource}/></section><header className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Video Editor <span className="text-sm font-normal text-blue-400">Beta</span></h1><p className="text-sm text-slate-400">Arrange video, images and music into an MP4.</p></div><div className="flex gap-2"><button className="rounded-lg bg-slate-700 px-3 py-2" onClick={()=>input.current?.click()}><Plus className="mr-1 inline size-4"/>Import media</button><button disabled={busy||!visuals.length} onClick={()=>void exportMp4()} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold disabled:opacity-40"><Download className="mr-1 inline size-4"/>Export MP4</button></div></header>
     <input ref={input} className="hidden" type="file" accept="video/*,audio/*,image/*" multiple onChange={e=>{void add(e.target.files);e.target.value=''}}/>
     <div className="grid gap-3 lg:grid-cols-[160px_minmax(0,1fr)_280px]">
       <section className="min-w-0 rounded-xl border border-slate-700 bg-slate-900 p-3"><button aria-expanded={libraryOpen} aria-controls="media-library-folder" onClick={()=>setLibraryOpen(v=>!v)} className="flex w-full items-center justify-between gap-2 rounded-lg bg-slate-800 p-2 text-left text-sm font-semibold"><span>📁 Media Library</span><span className="text-xs text-slate-400">{clips.length} items {libraryOpen?'▴':'▾'}</span></button>{libraryOpen&&<div id="media-library-folder" className="mt-2 max-h-80 space-y-1 overflow-y-auto">{clips.length===0?<p className="p-2 text-xs text-slate-400">Import media to populate your library.</p>:clips.map(c=><button key={c.id} onClick={()=>previewLibrary(c.id)} className={`flex w-full items-center gap-2 rounded-lg p-2 text-left text-xs ${libraryPreview===c.id?'bg-blue-800 ring-1 ring-blue-400':'bg-slate-800 hover:bg-slate-700'}`}>{c.kind==='video'?<Film size={17}/>:c.kind==='audio'?<Music size={17}/>:<ImageIcon size={17}/>}<span className="min-w-0 flex-1 truncate">{c.file.name}</span></button>)}</div>}<p className="mt-2 text-xs text-slate-400">Choose a file to inspect it in Preview. Timeline editing stays unchanged.</p><div className="mt-3 border-t border-slate-700 pt-3"><button aria-expanded={originalsOpen} aria-controls="original-uploads-folder" onClick={()=>setOriginalsOpen(v=>!v)} className="flex w-full items-center justify-between gap-2 rounded-lg bg-slate-800 p-2 text-left text-sm font-semibold"><span>📁 Original Uploads</span><span className="text-xs text-slate-400">{originals.length} files {originalsOpen?'▴':'▾'}</span></button>{originalsOpen&&<div id="original-uploads-folder" className="mt-2 max-h-80 space-y-2 overflow-y-auto">{originals.length===0?<p className="text-xs text-slate-400">Uploaded originals appear here.</p>:originals.map(c=><div key={c.id} className="rounded-lg bg-slate-800 p-2"><button onClick={()=>previewOriginal(c.id)} className="flex w-full items-center gap-2 text-left text-xs"><span className="min-w-0 flex-1 truncate">{c.file.name}</span><span className="text-slate-400">{fmt(c.duration)}</span></button><button onClick={()=>insertOriginal(c.id)} className="mt-2 w-full rounded bg-blue-700 px-2 py-1 text-xs font-semibold">+ Add full copy to timeline</button></div>)}</div>}<p className="mt-2 text-xs text-slate-400">Original files stay untrimmed during this editing session.</p></div></section>

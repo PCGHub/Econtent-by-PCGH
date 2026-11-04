@@ -45,6 +45,7 @@ export async function projectRequest(path: string, init?: RequestInit) {
         }
         if (!response.ok)
           throw new Error(result.error ?? "Project request failed");
+        if(init?.method==="DELETE")window.dispatchEvent(new Event("econtent-storage-changed"));
         return result;
       })(),
     ]);

@@ -1,4 +1,5 @@
 'use client';
+import {CloudMediaPanel,StorageMeter} from '@/components/account/cloud-storage';
 import {WorkspaceShell} from '@/components/workspace-shell';
 import {restoreSpatial,spatialSignature} from '@/lib/composition/spatial';
 import {StudioTimeline} from './overlay/timeline';
@@ -115,7 +116,14 @@ export function OverlayStudio({project}:{project?:Project}){
       {error&&<p role="alert" className="my-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {importing&&<div role="status" className="my-3 flex items-center justify-between rounded-lg bg-blue-50 p-3 text-sm">Reading local media… <Button variant="outline" size="sm" onClick={()=>{imports.current.main?.abort();imports.current.secondary?.abort();audioAbort.current?.abort();setImporting(false);}}>Cancel import</Button></div>}
       <div className="mt-4 flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1 text-xs font-semibold text-slate-600">Project title<input aria-label="Composition project title" maxLength={120} className={inputClass} value={title} onChange={e=>setTitle(e.target.value)}/></label><Button variant="outline" disabled={busy||importing||cloud.saving||cloud.account.loading||!main||!secondary} onClick={cloud.save}>Save draft</Button>{!cloud.account.user&&<Link href="/login?next=%2Foverlay-studio" className="text-sm text-blue-600">Sign in for cloud drafts</Link>}{cloud.savedId&&<Link href={'/projects/'+cloud.savedId} className="text-sm text-blue-600 underline">Open saved project</Link>}</div>
-      {project?.composition&&<p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Reconnect both original local files to resume. Only metadata was saved; media and exports are not stored in your account.</p>}
+      <StorageMeter />
+      <CloudMediaPanel projectId={cloud.savedId} files={[main?.file,secondary?.file,...music.map(m=>m.file)].filter((f):f is File=>!!f)} onRestore={async(file,sha,signal)=>{
+        signal.throwIfAborted();
+        if(sha===project?.source?.sha256&&!connected.current.main)await upload(file,'main','video');
+        if(sha===project?.composition?.layer.sha256&&!connected.current.secondary)await upload(file,'secondary',project.composition.layer.kind);
+        for(const a of project?.studioTracks?.sources??[])if(a.sha256===sha&&!musicRef.current.some(m=>m.id===a.id))await uploadAudio(file,a.id);
+      }} />
+      {project?.composition&&<p className="mt-3 text-sm text-slate-600">Saved cloud files restore automatically until expiry. Reconnect any original files that were not uploaded or have expired.</p>}
       {cloud.message&&<p role="status" className="mt-2 text-sm text-slate-600">{cloud.message}</p>}{cloud.error&&<p role="alert" className="mt-2 text-sm text-red-700">{cloud.error}</p>}
       {progress.status!=='idle'&&(busy||validOutput||['failed','cancelled'].includes(progress.status))&&<div className={busy?'sticky top-[var(--workspace-sticky-offset,0.5rem)] z-30 mt-4':'mt-4'}><ProcessingStatus progress={progress} active={busy} onCancel={()=>renderAbort.current?.abort()}/></div>}
       <div className="mt-4 flex gap-2"><Button size="sm" variant="outline" disabled={busy||!past.length} onClick={undo}>Undo layout change</Button><Button size="sm" variant="outline" disabled={busy||!future.length} onClick={redo}>Redo layout change</Button></div>

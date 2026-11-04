@@ -10,7 +10,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "apikey,authorization,content-type,x-client-info,x-supabase-api-version",
+      "apikey,authorization,content-type,x-client-info,x-supabase-api-version,x-upsert,cache-control",
     );
     res.setHeader(
       "Access-Control-Allow-Methods",
@@ -24,8 +24,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   const auth = req.url.startsWith("/auth/v1/"),
-    rest = req.url.startsWith("/rest/v1/");
-  if (!auth && !rest) {
+    rest = req.url.startsWith("/rest/v1/"),
+    storage = req.url.startsWith("/storage/v1/");
+  if (!auth && !rest && !storage) {
     res.writeHead(404);
     res.end();
     return;
@@ -35,8 +36,8 @@ const server = http.createServer(async (req, res) => {
     delete headers.host;
     const upstream = await fetch(
       "http://127.0.0.1:" +
-        (auth ? "55325" : "55326") +
-        req.url.slice(auth ? 8 : 8),
+        (auth ? "55325" : storage ? "55327" : "55326") +
+        req.url.slice(storage ? 11 : 8),
       {
         method: req.method,
         headers,

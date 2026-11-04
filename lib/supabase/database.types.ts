@@ -14,8 +14,13 @@ export type Database = {
   }
   public: {
     Tables: {
+      project_media: {
+        Row: {id:string;project_id:string;owner_id:string;sha256:string;name:string;mime_type:string;size_bytes:number;object_path:string;state:string;expires_at:string;upload_until:string;created_at:string};
+        Insert: never; Update: never; Relationships: [];
+      };
       projects: {
         Row: {
+          multitrack_draft: Json | null
           titles_draft: Json | null
           studio_tracks: Json | null
           composition: Json | null
@@ -36,6 +41,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          multitrack_draft?: Json | null
           titles_draft?: Json | null
           studio_tracks?: Json | null
           composition?: Json | null
@@ -56,6 +62,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          multitrack_draft?: Json | null
           titles_draft?: Json | null
           studio_tracks?: Json | null
           composition?: Json | null
@@ -82,6 +89,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      project_media_action: { Args: {action: string; payload?: Json}; Returns: Json };
       reserve_ai_voiceover: {
         Args: { p_characters: number }
         Returns: number

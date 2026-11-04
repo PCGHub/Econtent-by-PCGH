@@ -1,3 +1,4 @@
+import {deleteProjectMedia} from "@/lib/storage/server";
 import { NextRequest } from "next/server";
 import {
   account,
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     if (
       Object.keys(input).some(
         (key) =>
-          !["revision", "title", "settings", "source", "status", "composition", "studioTracks", "titles"].includes(key),
+          !["revision", "title", "settings", "source", "status", "composition", "studioTracks", "titles", "multitrack"].includes(key),
       )
     )
       throw new ApiError(400, "Unexpected project fields");
@@ -61,6 +62,7 @@ export async function PATCH(request: NextRequest, context: Context) {
         composition: input.composition === undefined ? project.composition : input.composition,
         studioTracks: input.studioTracks === undefined ? project.studioTracks : input.studioTracks,
         titles: input.titles === undefined ? project.titles : input.titles,
+        multitrack: input.multitrack === undefined ? project.multitrack : input.multitrack,
       }),
     );
     const { data, error } = await client
@@ -88,6 +90,7 @@ export async function DELETE(request: NextRequest, context: Context) {
     const input = await body(request);
     if (input.revision !== project.revision)
       throw new ApiError(409, "Project changed. Refresh before deleting.");
+    await deleteProjectMedia(client,project.id);
     const { data, error } = await client
       .from("projects")
       .delete()

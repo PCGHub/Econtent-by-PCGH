@@ -20,6 +20,7 @@ import {
   Download,
   Layers,
 } from "lucide-react";
+import {CloudMediaPanel,StorageMeter} from "@/components/account/cloud-storage";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { Button } from "@/components/ui/button";
 import { readLocalMedia } from "@/lib/composition/media";
@@ -479,6 +480,14 @@ export function TitlesStudio({ savedProject }: { savedProject?: Project }) {
               Sign in for cloud drafts
             </Link>
           )}
+          <StorageMeter />
+          <CloudMediaPanel projectId={draft.savedId} files={Object.values(assets).map(m=>m.file)} onRestore={async(file,sha,signal)=>{
+            for(const source of savedProject?.titles?.sources??[]){
+              if(source.sha256!==sha||assetsRef.current[source.id])continue;
+              const media=await readLocalMedia(file,source.kind,signal);signal.throwIfAborted();
+              assetsRef.current={...assetsRef.current,[source.id]:media};setAssets(assetsRef.current);
+            }
+          }} />
           {draft.savedId && (
             <Link className="text-blue-600" href={"/projects/" + draft.savedId}>
               Saved project

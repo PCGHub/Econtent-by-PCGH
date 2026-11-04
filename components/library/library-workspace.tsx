@@ -1,108 +1,213 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { StorageMeter } from "@/components/account/cloud-storage";
 import { browserSupabase } from "@/lib/supabase/browser";
-
-type Item = { id: string; name: string; file_path: string; mime_type: string; size_bytes: number; status: "pending" | "completed"; created_at: string; updated_at: string };
-const BUCKET = "econtent-library";
-const MAX = 100 * 1024 * 1024;
-function db() { return browserSupabase() as unknown as SupabaseClient | null; }
+import { projectRequest } from "@/lib/projects/client";
+import { EMPTY_DRAFT } from "@/lib/projects/model";
+import { downloadMedia, removeMedia, uploadMedia } from "@/lib/storage/client";
+import {
+  expiryMessage,
+  storageBytes,
+  type CloudAsset,
+} from "@/lib/storage/model";
+import { downloadBlob } from "@/lib/video/download";
 export function LibraryWorkspace() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [uploadStatus, setUploadStatus] = useState<"pending" | "completed">("pending");
-  const [file, setFile] = useState<File | null>(null);
+  const [items, setItems] = useState<CloudAsset[]>([]),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false),
+    [file, setFile] = useState<File | null>(null),
+    [status, setStatus] = useState<"draft" | "completed">("draft");
+  const [now] = useState(() => Date.now());
+  const pendingProject = useRef<string | null>(null),
+    operation = useRef<AbortController | null>(null);
   const load = useCallback(async () => {
-    const client = db();
-    if (!client) { setMessage("Cloud storage is not configured."); return; }
-    const { data, error } = await client.from("library_items").select("*").order("updated_at", { ascending: false }).limit(100);
-    if (error) { setMessage(error.message); return; }
-    setItems((data ?? []) as Item[]);
+    const client = browserSupabase();
+    if (!client) return;
+    const { data, error } = await client
+      .from("project_media")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) {
+      setMessage(
+        "Cloud library is unavailable. Your project settings remain saved.",
+      );
+      return;
+    }
+    setItems(data as unknown as CloudAsset[]);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    queueMicrotask(() => void load());
+    return () => operation.current?.abort();
+  }, [load]);
   async function upload() {
     if (!file || busy) return;
-    const client = db();
-    if (!client) return setMessage("Cloud storage is not configured.");
-    if (file.size > MAX) return setMessage("Maximum file size is 100 MB.");
-    setBusy(true); setMessage("Uploading file securely…");
-    let path = "";
+    setBusy(true);
+    const controller = new AbortController();
+    operation.current = controller;
+    setMessage("Saving file to your private workspace…");
     try {
-      const { data: user, error: authError } = await client.auth.getUser();
-      if (authError || !user.user) throw Error("Sign in before saving to Library.");
-      path = `${user.user.id}/${crypto.randomUUID()}/${file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0,100)}`;
-      const uploaded = await client.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
-      if (uploaded.error) throw uploaded.error;
-      const saved = await client.from("library_items").insert({
-        owner_id: user.user.id, name: file.name.slice(0,180), file_path: path,
-        mime_type: file.type || "application/octet-stream", size_bytes: file.size, status: uploadStatus,
-      });
-      if (saved.error) throw saved.error;
-      setFile(null); setMessage("File saved to Library."); await load();
+      if (!pendingProject.current) {
+        const result = await projectRequest("", {
+          method: "POST",
+          body: JSON.stringify({
+            ...EMPTY_DRAFT,
+            title: file.name.slice(0, 120),
+            status,
+          }),
+        });
+        pendingProject.current = result.project.id;
+      }
+      await uploadMedia(pendingProject.current!, file, controller.signal);
+      pendingProject.current = null;
+      setFile(null);
+      await load();
+      window.dispatchEvent(new Event("econtent-storage-changed"));
+      setMessage(
+        "File saved. Deleting it or automatic expiry restores its storage space.",
+      );
     } catch (e) {
-      if (path) await client.storage.from(BUCKET).remove([path]);
-      setMessage(`Save failed; file was not added to Library. ${e instanceof Error ? e.message : "Unknown error"}`);
-    } finally { setBusy(false); }
+      setMessage(
+        e instanceof Error ? e.message : "Upload failed. Retry to resume.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
-  async function download(item: Item) {
-    const client = db(); if (!client) return;
-    const { data, error } = await client.storage.from(BUCKET).createSignedUrl(item.file_path, 60);
-    if (error || !data) return setMessage(error?.message || "Could not open file.");
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-  }
-  async function changeStatus(item: Item) {
-    const client = db(); if (!client) return;
-    setBusy(true);
-    const status = item.status === "pending" ? "completed" : "pending";
-    const { error } = await client.from("library_items").update({ status, updated_at: new Date().toISOString() }).eq("id", item.id);
-    setBusy(false);
-    if (error) setMessage(error.message); else await load();
-  }
-  async function remove(item: Item) {
-    if (!window.confirm(`Permanently delete ${item.name} from your Library?`)) return;
-    const client = db(); if (!client) return;
-    setBusy(true);
-    const deleted = await client.storage.from(BUCKET).remove([item.file_path]);
-    if (deleted.error) { setMessage(deleted.error.message); setBusy(false); return; }
-    const result = await client.from("library_items").delete().eq("id", item.id);
-    setBusy(false);
-    if (result.error) setMessage(result.error.message); else await load();
-  }
-  const visible = items.filter(item => filter === "all" || item.status === filter);
-  return <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Econtent by PCGH</p>
-    <h1 className="mt-2 text-3xl font-bold">My Library</h1>
-    <p className="mt-2 text-sm text-slate-600">Private cloud files for your pending and completed work. Failed uploads and failed processing attempts are not saved as Library items.</p>
-    <section className="mt-6 rounded-2xl border bg-white p-5">
-      <h2 className="font-semibold">Save a file</h2>
-      <p className="mt-1 text-xs text-slate-500">Upload up to 100 MB. Only completed uploads appear in Library. Files are private to your account.</p>
-      <input aria-label="Choose file to save" type="file" className="mt-3 block w-full text-sm" onChange={e => setFile(e.target.files?.[0] ?? null)}/>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <select aria-label="File status" className="rounded-lg border p-2 text-sm" value={uploadStatus} onChange={e => setUploadStatus(e.target.value as "pending" | "completed")}>
-          <option value="pending">Pending work</option><option value="completed">Completed work</option>
+  return (
+    <div className="mx-auto max-w-6xl p-5">
+      <h1 className="text-2xl font-bold">My Library</h1>
+      <p className="mt-2 text-sm text-slate-600">
+        Your private cloud project files and saved exports. Editing settings
+        remain in My Projects after files expire.
+      </p>
+      <StorageMeter />
+      <section className="mt-5 rounded-xl border bg-white p-4">
+        <h2 className="font-semibold">Save a file or finished export</h2>
+        <p className="mt-2 text-xs text-slate-500">
+          Uploading uses your storage allowance. Preview limit: 50 MB per file.
+          Free files expire after 3 days; Premium after 30 days.
+        </p>
+        <input
+          aria-label="Choose file to save"
+          type="file"
+          disabled={busy}
+          className="mt-3 block w-full text-sm"
+          onChange={(e) => {
+            pendingProject.current = null;
+            setFile(e.target.files?.[0] ?? null);
+          }}
+        />
+        <select
+          aria-label="File status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as "draft" | "completed")}
+          className="mt-3 rounded-lg border p-2 text-sm"
+        >
+          <option value="draft">Pending work</option>
+          <option value="completed">Completed work</option>
         </select>
-        <button type="button" disabled={!file || busy} onClick={() => void upload()} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Working…" : "Save to Library"}</button>
-      </div>
-      {message && <p role="status" className="mt-3 text-sm text-slate-700">{message}</p>}
-    </section>
-    <div className="mt-6 flex flex-wrap gap-2">
-      {(["all","pending","completed"] as const).map(value => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${filter===value ? "bg-blue-700 text-white" : "border bg-white text-slate-700"}`}>{value === "all" ? "All files" : value === "pending" ? "In progress" : "Completed"} ({value==="all" ? items.length : items.filter(item=>item.status===value).length})</button>)}
+        <button
+          disabled={busy || !file}
+          onClick={() => void upload()}
+          className="ml-3 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? "Working…" : "Save to Library"}
+        </button>
+        {busy && (
+          <button
+            className="ml-3 text-sm underline"
+            onClick={() => operation.current?.abort()}
+          >
+            Cancel upload
+          </button>
+        )}
+      </section>
+      {message && (
+        <p role="status" className="mt-4 text-sm">
+          {message}
+        </p>
+      )}
+      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => (
+          <article key={item.id} className="rounded-xl border bg-white p-4">
+            <h2 className="truncate font-semibold">{item.name}</h2>
+            <p className="mt-2 text-xs">
+              {storageBytes(item.size_bytes)} ·{" "}
+              {item.state === "ready"
+                ? expiryMessage(item.expires_at)
+                : item.state === "pending"
+                  ? "Incomplete upload"
+                  : "Deletion pending"}
+            </p>
+            <time
+              dateTime={item.expires_at}
+              className="mt-2 block text-xs text-slate-500"
+            >
+              Expires {new Date(item.expires_at).toLocaleString()}
+            </time>
+            <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold text-blue-700">
+              <Link href={"/projects/" + item.project_id}>Open project</Link>
+              <button
+                disabled={
+                  busy ||
+                  item.state !== "ready" ||
+                  Date.parse(item.expires_at) <= now
+                }
+                onClick={async () => {
+                  const c = new AbortController();
+                  operation.current = c;
+                  setBusy(true);
+                  try {
+                    downloadBlob(
+                      await downloadMedia(item, c.signal),
+                      item.name,
+                    );
+                  } catch (e) {
+                    setMessage(
+                      e instanceof Error ? e.message : "Download failed",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Download
+              </button>
+              <button
+                disabled={busy}
+                className="text-red-700"
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      "Delete this cloud file? Your saved editing settings will remain.",
+                    )
+                  )
+                    return;
+                  setBusy(true);
+                  try {
+                    await removeMedia(item.project_id, item.id);
+                    await load();
+                    setMessage("File removed. Space is available again.");
+                  } catch (e) {
+                    setMessage(
+                      e instanceof Error ? e.message : "Deletion failed",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Delete file
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
+      {!items.length && (
+        <p className="mt-5 text-sm text-slate-500">No cloud files saved yet.</p>
+      )}
     </div>
-    <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {visible.map(item => <article key={item.id} className="min-w-0 rounded-xl border bg-white p-4">
-        <div className="flex h-24 items-center justify-center rounded-lg bg-blue-50 text-3xl">{item.mime_type.startsWith("video/") ? "🎞️" : item.mime_type.startsWith("image/") ? "🖼️" : "📄"}</div>
-        <h2 className="mt-3 truncate font-semibold" title={item.name}>{item.name}</h2>
-        <p className="mt-1 text-xs text-slate-500">{(item.size_bytes/1024/1024).toFixed(1)} MB · {new Date(item.updated_at).toLocaleString()}</p>
-        <p className="mt-2 text-xs font-semibold">{item.status === "completed" ? "Completed" : "In progress"}</p>
-        <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold text-blue-700">
-          <button onClick={() => void download(item)}>Open / Download</button>
-          <button disabled={busy} onClick={() => void changeStatus(item)}>Mark {item.status === "pending" ? "completed" : "pending"}</button>
-          <button disabled={busy} onClick={() => void remove(item)} className="text-red-700">Delete</button>
-        </div>
-      </article>)}
-    </section>
-    {!visible.length && <p className="mt-8 text-sm text-slate-500">No files in this category yet.</p>}
-  </div>;
+  );
 }

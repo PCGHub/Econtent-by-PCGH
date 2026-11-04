@@ -62,3 +62,24 @@ services:
       PGRST_JWT_SECRET: local-econtent-test-secret-at-least-32-characters
     ports: ["127.0.0.1:55326:3000"]
     mem_limit: 128m
+
+  storage:
+    image: ${ECONTENT_TEST_STORAGE_IMAGE:-supabase/storage-api:v1.81.0}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AUTH_JWT_SECRET: local-econtent-test-secret-at-least-32-characters
+      DATABASE_URL: postgres://postgres:local-test-only@db:5432/postgres
+      POSTGREST_URL: http://rest:3000
+      ANON_KEY: ${ECONTENT_LOCAL_ANON_KEY:-local-fixture-unused}
+      SERVICE_KEY: ${ECONTENT_LOCAL_SERVICE_KEY:-local-fixture-unused}
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      FILE_SIZE_LIMIT: 50000000
+      TENANT_ID: econtent-local
+      REGION: local
+      GLOBAL_S3_BUCKET: local
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    ports: ["127.0.0.1:55327:5000"]
+    mem_limit: 256m

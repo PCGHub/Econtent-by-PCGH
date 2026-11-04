@@ -1,3 +1,4 @@
+import {parseMultitrack,type MultitrackDraft} from "../multitrack/draft";
 import {parseTitlesDraft,type TitlesDraft} from "../titles/document";
 import {parseStudioDraft,type StudioDraft} from "../composition/studio-draft";
 import type {Json} from "../supabase/database.types";
@@ -29,6 +30,7 @@ export type ProjectStatus =
   | "failed";
 export interface ProjectDraft {
   title: string;
+  multitrack?: MultitrackDraft | null;
   titles?: TitlesDraft | null;
   composition?: CompositionDraft | null;
   studioTracks?: StudioDraft | null;
@@ -37,6 +39,7 @@ export interface ProjectDraft {
   status: ProjectStatus;
 }
 export interface Project extends ProjectDraft {
+  cloudMedia?: {count:number;expiresAt:string|null};
   id: string;
   revision: number;
   createdAt: string;
@@ -108,7 +111,7 @@ function choice<T extends string>(
 }
 export function parseProjectDraft(input: unknown): ProjectDraft {
   const data = object(input, "Project");
-  keys(data, ["title", "settings", "source", "status", "composition", "studioTracks", "titles"]);
+  keys(data, ["title", "settings", "source", "status", "composition", "studioTracks", "titles", "multitrack"]);
   const cfg = object(data.settings, "Settings");
   keys(cfg, [
     "mode",
@@ -198,7 +201,10 @@ export function parseProjectDraft(input: unknown): ProjectDraft {
   if(composition?.settings.tracks)throw new Error("Persist timed tracks in studioTracks, not composition settings");
   const titles=data.titles==null?undefined:parseTitlesDraft(data.titles);
   if(titles&&(source||composition||studioTracks))throw new Error("Titles drafts cannot also contain cutter or overlay sources");
+  const multitrack=data.multitrack==null?undefined:parseMultitrack(data.multitrack);
+  if(multitrack&&(source||titles||composition||studioTracks))throw Error("Timeline drafts must use their own source registry");
   return {
+    ...(multitrack?{multitrack}:{}),
     ...(titles?{titles}:{}),
     ...(studioTracks?{studioTracks}:{}),
     ...(composition?{composition}:{}),
@@ -214,6 +220,7 @@ export function parseProjectDraft(input: unknown): ProjectDraft {
 }
 export function toRow(draft: ProjectDraft) {
   return {
+    ...(draft.multitrack?{multitrack_draft:JSON.parse(JSON.stringify(draft.multitrack)) as Json}:{}),
     ...(draft.titles?{titles_draft:JSON.parse(JSON.stringify(draft.titles)) as Json}:{}),
     title: draft.title,
     edit_mode: draft.settings.mode,
@@ -244,6 +251,7 @@ export function fromRow(row: Record<string, unknown>): Project {
     composition: row.composition,
     studioTracks: row.studio_tracks,
     titles: row.titles_draft,
+    multitrack: row.multitrack_draft,
     status: row.status,
   });
   if (

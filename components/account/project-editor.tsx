@@ -19,11 +19,15 @@ import {
 import { fingerprint } from "@/lib/projects/fingerprint";
 import { projectRequest, saveProject } from "@/lib/projects/client";
 import { VIDEO_FILE_ACCEPT } from "@/lib/video/types";
+import {uploadMedia} from "@/lib/storage/client";
+import {CloudMediaPanel,StorageMeter} from "./cloud-storage";
 import { useLocalVideo } from "./use-local-video";
 import { SaveQueue } from "@/lib/projects/autosave";
 const leaveMessage =
-  "This project has unsaved edits. Leave without saving? Your last saved version will remain available.";
-export default function ProjectEditor({ project }: { project?: Project }) {
+  "This project has unsaved edits or an unfinished media upload. Leave without saving? Your last saved version will remain available.";
+export default function ProjectEditor({ project: initialProject }: { project?: Project }) {
+  const [project,setProject]=useState(initialProject);
+  const [saveMedia,setSaveMedia]=useState(true);
   const router = useRouter();
   const { user, loading } = useAccount();
   useEffect(() => {
@@ -51,6 +55,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mediaSaving,setMediaSaving]=useState(false);
   const [connected, setConnected] = useState(!project?.source);
   const [file, setFile] = useState<File>();
   const [activeFile, setActiveFile] = useState<File>();
@@ -58,6 +63,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   const [checking, setChecking] = useState(false);
   const draftRef = useRef(draft);
   const dirtyRef = useRef(false);
+  const mediaSavingRef=useRef(false);
   const queue = useRef<SaveQueue | null>(null);
   const abort = useRef<AbortController | null>(null);
   const createAbort = useRef<AbortController | null>(null);
@@ -69,6 +75,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   const discardPending = useCallback(() => {
     leaving.current = true;
     dirtyRef.current = false;
+    mediaSavingRef.current=false;
     clearTimeout(autosaveTimer.current);
     queue.current?.dispose();
     createAbort.current?.abort();
@@ -142,7 +149,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   }, [dirty, signature, flush]);
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {
-      if (dirtyRef.current) {
+      if (dirtyRef.current||mediaSavingRef.current) {
         event.preventDefault();
         event.returnValue = "";
       }
@@ -172,7 +179,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
       // prompt or wait for an unavailable cloud request before navigating.
       event.preventDefault();
       event.stopPropagation();
-      if (dirtyRef.current && !window.confirm(leaveMessage)) return;
+      if ((dirtyRef.current||mediaSavingRef.current) && !window.confirm(leaveMessage)) return;
       discardPending();
       router.push(link.pathname + link.search + link.hash);
     };
@@ -292,11 +299,14 @@ export default function ProjectEditor({ project }: { project?: Project }) {
     }
   }
   async function save() {
-    if (busy || leaving.current) return;
+    if (busy || mediaSaving || leaving.current) return;
     setBusy(true);
     setError("");
     try {
-      if (project) await flush();
+      if (project) {
+        await flush();
+        if(saveMedia && activeFile){setMediaSaving(true);mediaSavingRef.current=true;const controller=new AbortController();createAbort.current=controller;setMessage('Saving source video to workspace…');await uploadMedia(project.id,activeFile,controller.signal);setMessage('Settings and source video saved to workspace.');}
+      }
       else {
         const controller = new AbortController();
         createAbort.current = controller;
@@ -306,13 +316,18 @@ export default function ProjectEditor({ project }: { project?: Project }) {
           body: JSON.stringify(valid(draftRef.current)),
         });
         if (!alive.current || leaving.current) return;
+        setProject(created);
+        setSaved(projectSignature(created));setSavedContent(projectContentSignature(created));
+        if(saveMedia && activeFile){setMediaSaving(true);mediaSavingRef.current=true;setMessage('Settings saved. Uploading source video…');await uploadMedia(created.id,activeFile,controller.signal);}
+        if (!alive.current || leaving.current) return;
         router.push("/projects/" + created.id);
       }
     } catch (cause) {
       if (alive.current && !leaving.current)
         setError(cause instanceof Error ? cause.message : "Save failed");
     } finally {
-      if (alive.current && !leaving.current) setBusy(false);
+      mediaSavingRef.current=false;
+      if (alive.current && !leaving.current){setBusy(false);setMediaSaving(false);}
     }
   }
   function cancelSaving() {
@@ -321,7 +336,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
     queue.current?.cancel();
   }
   function exitEditor() {
-    if (dirtyRef.current && !window.confirm(leaveMessage)) return;
+    if ((dirtyRef.current||mediaSavingRef.current) && !window.confirm(leaveMessage)) return;
     discardPending();
     // The landing page can host the guest editor at the same URL. Reloading
     // there actually exits its local editor state instead of a same-route no-op.
@@ -349,14 +364,14 @@ export default function ProjectEditor({ project }: { project?: Project }) {
           >
             Exit editor
           </button>
-          {busy && (
+          {(busy||mediaSaving) && (
             <Button variant="outline" onClick={cancelSaving}>
               Cancel saving
             </Button>
           )}
           {user && (
-            <Button disabled={busy || checking || (!project && localVideo.phase === "writing")} onClick={() => void save()}>
-              {busy ? "Saving…" : project ? "Save project" : "Save to account"}
+            <Button disabled={busy || mediaSaving || checking || (!project && localVideo.phase === "writing")} onClick={() => void save()}>
+              {busy||mediaSaving ? "Saving…" : project ? "Save project" : "Save to account"}
             </Button>
           )}
         </div>
@@ -389,11 +404,10 @@ export default function ProjectEditor({ project }: { project?: Project }) {
                   : message || "Saved settings restored"
                 : "Guest edit · Save settings to your account after signing in."}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Cloud projects save editing settings and source metadata. A video is
-            remembered in this browser only if you choose it below. Exports stay
-            local.
-          </p>
+          {user&&<label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={saveMedia} onChange={e=>setSaveMedia(e.target.checked)} className="mt-1"/><span>Include source video when I press Save. Uploads it to my private cloud workspace until the displayed expiry. Editing settings also save automatically.</span></label>}
+          <StorageMeter />
+          <CloudMediaPanel projectId={project?.id} files={activeFile?[activeFile]:[]} onRestore={async (next,sha,signal)=>{if(sha===project?.source?.sha256&&!activeFile)await restoreLocal(next,signal);}} />
+          <p className="mt-2 text-xs text-slate-500">Editing settings save automatically. Save the source video above to reopen across devices. Browser storage below is optional.</p>
           {user && (project?.source || activeFile) && (
             <div
               aria-label="Local video storage"
@@ -459,8 +473,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
               <h1 className="text-2xl font-bold">Reconnect original video</h1>
               <p className="mt-3 text-sm text-slate-500">
                 Choose {project?.source?.name}. We verify its size and SHA-256
-                fingerprint locally before restoring your editing settings. No
-                video is uploaded.
+                fingerprint locally before restoring your editing settings. You can save it to cloud storage after reconnecting.
               </p>
               <input
                 aria-label="Reconnect video"

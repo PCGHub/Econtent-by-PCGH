@@ -72,7 +72,7 @@ export function dashboardProjects(
     );
 }
 export function projectKind(p: Project) {
-  return p.titles
+  return p.multitrack ? "Video Editor" : p.titles
     ? "Cinematic Titles"
     : p.composition
       ? "Overlay Studio"
@@ -80,7 +80,7 @@ export function projectKind(p: Project) {
 }
 export function projectSeconds(p: Project) {
   const selected = p.settings.range.end - p.settings.range.start;
-  return p.titles
+  return p.multitrack ? p.multitrack.clips.reduce((sum,c)=>sum+(c.end-c.start)/c.speed,0) : p.titles
     ? p.titles.document.scenes.reduce((sum, s) => sum + s.duration, 0)
     : selected > 0
       ? selected
