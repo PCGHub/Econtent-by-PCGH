@@ -19,6 +19,7 @@ import {
 import { fingerprint } from "@/lib/projects/fingerprint";
 import { projectRequest, saveProject } from "@/lib/projects/client";
 import { VIDEO_FILE_ACCEPT } from "@/lib/video/types";
+import { useLocalVideo } from "./use-local-video";
 import { SaveQueue } from "@/lib/projects/autosave";
 const leaveMessage =
   "This project has unsaved edits. Leave without saving? Your last saved version will remain available.";
@@ -52,6 +53,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(!project?.source);
   const [file, setFile] = useState<File>();
+  const [activeFile, setActiveFile] = useState<File>();
   const [digest, setDigest] = useState("");
   const [checking, setChecking] = useState(false);
   const draftRef = useRef(draft);
@@ -201,16 +203,36 @@ export default function ProjectEditor({ project }: { project?: Project }) {
         throw new Error(
           "This is a different video. Select the exact original file; saved cuts have not been applied.",
         );
+      signal.throwIfAborted();
       digestRef.current = hash;
       setDigest(hash);
     },
     [project],
   );
+  const restoreLocal = useCallback(
+    async (next: File, signal: AbortSignal) => {
+      await verify(next, signal);
+      signal.throwIfAborted();
+      if (leaving.current) return;
+      setFile(next);
+      setActiveFile(next);
+      setConnected(true);
+    },
+    [verify],
+  );
+  const localVideo = useLocalVideo({
+    ownerId: user?.id,
+    source: project?.source,
+    file: activeFile,
+    digest,
+    onRestore: restoreLocal,
+  });
   const snapshot = useCallback(
     (value: EditorSnapshot) => {
       if (!value.file || !value.metadata.duration) return;
       const hash = digestRef.current;
       if (!hash) return;
+      setActiveFile(value.file);
       const changedFile = snapshotFile.current !== value.file;
       snapshotFile.current = value.file;
       const initial = firstSnapshot.current;
@@ -258,6 +280,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
       await verify(next, controller.signal);
       controller.signal.throwIfAborted();
       setFile(next);
+      setActiveFile(next);
       setConnected(true);
     } catch (cause) {
       if (!controller.signal.aborted)
@@ -332,7 +355,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
             </Button>
           )}
           {user && (
-            <Button disabled={busy || checking} onClick={() => void save()}>
+            <Button disabled={busy || checking || (!project && localVideo.phase === "writing")} onClick={() => void save()}>
               {busy ? "Saving…" : project ? "Save project" : "Save to account"}
             </Button>
           )}
@@ -354,19 +377,73 @@ export default function ProjectEditor({ project }: { project?: Project }) {
             />
           </label>
           <p role="status" className="mt-3 text-sm text-slate-500">
-            {project
-              ? dirty
-                ? message === "Saving…"
-                  ? message
-                  : "Unsaved changes"
-                : message || "Saved settings restored"
-              : "Guest edit · Save settings to your account after signing in."}
+            {project && !connected
+              ? localVideo.busy
+                ? "Project loaded — checking local video…"
+                : "Project loaded — reconnect your video to continue."
+              : project
+                ? dirty
+                  ? message === "Saving…"
+                    ? message
+                    : "Unsaved changes"
+                  : message || "Saved settings restored"
+                : "Guest edit · Save settings to your account after signing in."}
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            Only editing settings and source metadata are saved. Original videos
-            and exports stay on this device and must be reconnected after
-            reopening.
+            Cloud projects save editing settings and source metadata. A video is
+            remembered in this browser only if you choose it below. Exports stay
+            local.
           </p>
+          {user && (project?.source || activeFile) && (
+            <div
+              aria-label="Local video storage"
+              className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-sm"
+            >
+              <p role="status" data-testid="editor-local-video-status">
+                {localVideo.message || "No local copy stored."}
+              </p>
+              {localVideo.canRemember &&
+                !localVideo.busy &&
+                localVideo.phase !== "available" && (
+                  <Button
+                    variant="outline"
+                    className="mt-3"
+                    disabled={busy && !project}
+                    onClick={() => void localVideo.remember()}
+                  >
+                    Remember this video on this device
+                  </Button>
+                )}
+              {localVideo.phase === "available" && (
+                <Button
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => void localVideo.remove()}
+                >
+                  Remove local copy
+                </Button>
+              )}
+              {localVideo.busy && (
+                <Button
+                  variant="outline"
+                  className="mt-3"
+                  onClick={localVideo.cancel}
+                >
+                  {localVideo.phase === "writing"
+                    ? "Cancel local storage"
+                    : "Cancel local video check"}
+                </Button>
+              )}
+              <p className="mt-3 text-xs leading-5 text-slate-600">
+                No video upload. Uses browser storage and extra disk space.
+                Clearing site data, private browsing or browser cleanup may
+                remove it. It does not travel across devices or Preview URLs.
+                Others using this browser profile may access stored media.
+                Removing a copy affects all projects using that video here;
+                original files and cloud drafts are unchanged.
+              </p>
+            </div>
+          )}
           {error && (
             <p
               role="alert"
@@ -389,7 +466,7 @@ export default function ProjectEditor({ project }: { project?: Project }) {
                 aria-label="Reconnect video"
                 type="file"
                 accept={VIDEO_FILE_ACCEPT}
-                disabled={checking || loading}
+                disabled={checking || loading || localVideo.busy}
                 className="mt-6 block w-full"
                 onChange={(event) => {
                   const chosen = event.target.files?.[0];

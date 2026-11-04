@@ -177,3 +177,53 @@ not changed. Repository-wide lint still has pre-existing errors in other feature
 
 No hosted schema, RLS policy, Supabase configuration or credentials were changed.
 Tests reused the disposable local Auth/PostgreSQL stack without applying migrations.
+
+## Opt-in remembered Cutter videos
+
+Cutter projects can now remember their original video in IndexedDB. This is an
+explicit **Remember this video on this device** action after connecting a verified
+file. It neither uploads media nor changes the cloud draft schema. Cloud projects
+still contain settings and source identity only. This phase covers Cutter source
+videos, not rendered exports or Overlay/Titles media collections.
+
+The versioned `econtent-local-videos-v1` database stores Blob/File bytes separately
+from small metadata. Keys contain the signed-in account ID and SHA-256 fingerprint;
+matching media can serve multiple Cutter projects in that account. Cards read only
+metadata, not all stored videos. Reopening reads the selected copy, checks byte size
+and hashes its actual bytes in the existing chunked fingerprint worker before
+attaching it and applying saved ranges/settings. Missing, unsupported or corrupt
+storage returns to the original reconnect workflow. Proven mismatches remove the
+invalid cached copy, never the original file or saved project.
+
+Preflight requires a measurable StorageManager estimate and headroom of the file
+size plus max(16 MiB, 10%). The per-file limit matches Cutter's 256 MiB input guard.
+Estimates are advisory; actual quota/write errors are caught. Blob and metadata
+writes/removals are atomic; failed writes cannot advertise a half-written copy.
+Database opening, capacity estimation and transactions have bounded waits and
+cancellation; no whole-file ArrayBuffer/base64 encoding is introduced. Hashing is
+chunked and cancellable. No other saved videos are silently evicted to make room.
+
+**Remove local copy** leaves current editing and cloud drafts intact. Shared copies
+may serve several projects; removing one requires reattachment on their next open.
+Projects also provides **Clear remembered videos from this browser**, restricted to
+the current account's keys, including orphaned copies. Original filesystem files
+are never deleted. Sign-out does not erase an explicitly remembered copy; the UI
+warns that others using the same browser profile can access local media. Account
+partitioning in the app is not encryption or protection against browser developer
+tools/XSS. Use a private profile and remove copies on shared devices.
+
+Availability is browser-profile/origin scoped. A new device, private browsing,
+cleared site data, automatic browser cleanup or another Preview hostname can require
+reconnection. Persistence is best effort, not a durable backup. Use the stable Git
+branch Preview alias to retain the same origin across Preview deployments. No cloud
+backup, paid infrastructure, service-role key, migration or Auth change is introduced.
+
+Verified with actual Chromium IndexedDB and the disposable real Auth/PostgreSQL
+stack: opt-in only, reload/reattachment, exact settings restoration, H.264/AAC MP4
+playback/decode, per-account reuse/removal, quota preflight and transaction failures,
+cancellation, corrupted same-size bytes and unavailable IndexedDB. A 390px touch
+workflow remembers media before cloud project creation and restores after reload.
+All 99 unit tests, 8 native media tests and 8 selected browser cases pass. Build,
+TypeScript and scoped ESLint pass; repository-wide lint retains unrelated failures.
+Android hardware and large-file cache performance were not measured; these tests
+use short generated footage. Fast Cut retains its source-keyframe boundary limits.

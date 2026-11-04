@@ -1,4 +1,5 @@
 "use client";
+import { LocalVideoBadge } from "../local-video-status";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -124,6 +125,9 @@ export function ProjectCard({
                 {project.title}
               </Link>
             </h3>
+            {!project.composition && !project.titles && (
+              <LocalVideoBadge source={project.source} />
+            )}
           </div>
           <span
             className={cn(

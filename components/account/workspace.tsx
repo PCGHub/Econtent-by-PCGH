@@ -12,6 +12,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
+import { LocalVideoBadge, ClearLocalVideos } from "./local-video-status";
 import { Button } from "@/components/ui/button";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useAccount } from "./provider";
@@ -86,6 +87,7 @@ function ProjectCard({
             ? project.source.durationSeconds.toFixed(1) + "s"
             : project.titles?"Local media reattachment may be needed":"No video connected"}
         </p>
+        {!project.composition && !project.titles && <LocalVideoBadge source={project.source} />}
         <div className="mt-4 flex items-center justify-between">
           <span
             className={cn(
@@ -308,8 +310,9 @@ function ProjectWorkspace({ dashboard = false }: { dashboard?: boolean }) {
           </p>
         </div>
       )}
+      <ClearLocalVideos />
       <p className="mt-8 text-center text-xs text-slate-500">
-        Only project metadata is saved. Reconnect the original video on another
+        Only project metadata is saved to your account. Reconnect the original video on another
         device. Showing up to 200 matching projects.
       </p>
     </Shell>
