@@ -1,4 +1,5 @@
 "use client";
+import {expiryMessage} from "@/lib/storage/model";
 import { LocalVideoBadge } from "../local-video-status";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -125,7 +126,8 @@ export function ProjectCard({
                 {project.title}
               </Link>
             </h3>
-            {!project.composition && !project.titles && (
+            {!!project.cloudMedia?.count&&<p className="mt-2 text-xs font-medium text-blue-700">Cloud files saved · {expiryMessage(project.cloudMedia.expiresAt!)}</p>}
+            {!project.cloudMedia?.count && !project.composition && !project.titles && !project.multitrack && (
               <LocalVideoBadge source={project.source} />
             )}
           </div>

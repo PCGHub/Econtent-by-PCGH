@@ -1,4 +1,5 @@
 "use client";
+import {StorageMeter} from "./cloud-storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import localFont from "next/font/local";
@@ -259,6 +260,7 @@ export function CreatorDashboard() {
           tabIndex={-1}
           className="mx-auto max-w-[1440px] px-4 pb-8 pt-7 outline-none sm:px-6 lg:px-8"
         >
+          <StorageMeter />
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[.13em] text-slate-500">

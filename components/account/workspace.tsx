@@ -1,4 +1,5 @@
 "use client";
+import {StorageMeter} from "./cloud-storage";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -232,6 +233,7 @@ function ProjectWorkspace({ dashboard = false }: { dashboard?: boolean }) {
           </Button>
         </Link>
       </div>
+      <StorageMeter />
       <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 size-4 text-slate-400" />
@@ -312,8 +314,7 @@ function ProjectWorkspace({ dashboard = false }: { dashboard?: boolean }) {
       )}
       <ClearLocalVideos />
       <p className="mt-8 text-center text-xs text-slate-500">
-        Only project metadata is saved to your account. Reconnect the original video on another
-        device. Showing up to 200 matching projects.
+        Editing settings stay saved. Save source files inside a project to resume across devices until expiry. Showing up to 200 matching projects.
       </p>
     </Shell>
   );

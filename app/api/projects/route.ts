@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
         : query.order("updated_at", { ascending: sort === "oldest" });
     const { data, error } = await query.order("id").limit(200);
     if (error) throw error;
-    return json({ projects: data.map((row) => fromRow(row)) });
+    const {data:media}=data.length?await client.from("project_media").select("project_id,state,expires_at").in("project_id",data.map(p=>p.id)):{data:[]};
+    return json({ projects: data.map((row) => {
+      const assets=(media??[]).filter(a=>a.project_id===row.id&&a.state==='ready'&&Date.parse(a.expires_at)>Date.now());
+      return {...fromRow(row),cloudMedia:{count:assets.length,expiresAt:assets.map(a=>a.expires_at).sort()[0]??null}};
+    }) });
   } catch (error) {
     return apiError(error);
   }

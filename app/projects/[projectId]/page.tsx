@@ -1,3 +1,5 @@
+import {MultitrackEditor} from "@/components/video-editor/multitrack-editor";
+import {WorkspaceShell} from "@/components/workspace-shell";
 import { TitlesStudio } from "@/components/titles/studio";
 import { notFound } from "next/navigation";
 import { requireAccount } from "@/lib/supabase/server";
@@ -21,7 +23,7 @@ export default async function Page({
   if (error) throw new Error("Unable to load this project. Please try again.");
   if (!data) notFound();
   const project=fromRow(data);
-  return project.titles ? <TitlesStudio savedProject={project}/> : project.composition ? <OverlayStudio project={project}/> : <ProjectEditor project={project} />;
+  return project.multitrack ? <WorkspaceShell><MultitrackEditor key={project.id} savedProject={project}/></WorkspaceShell> : project.titles ? <TitlesStudio key={project.id} savedProject={project}/> : project.composition ? <OverlayStudio key={project.id} project={project}/> : <ProjectEditor key={project.id} project={project} />;
 }
 
 export const dynamic = "force-dynamic";

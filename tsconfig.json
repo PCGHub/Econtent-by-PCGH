@@ -39,6 +39,7 @@
     "node_modules",
     "public/ffmpeg",
     "test-results",
-    "playwright-report"
+    "playwright-report",
+    "supabase/functions"
   ]
 }

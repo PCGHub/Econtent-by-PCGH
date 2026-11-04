@@ -232,3 +232,10 @@ implements scene templates, timed animated text, local backgrounds and real brow
 H.264/AAC MP4 previews/downloads. Authenticated Titles drafts save metadata using the
 approved additive development migration; source backgrounds stay local and must be
 reattached on reopening. Existing Cutter/Overlay drafts are unchanged.
+
+## Cloud project storage (Preview implementation)
+
+See [cloud storage behavior, limits, security and activation status](docs/CLOUD-STORAGE.md).
+The implementation adds occupied-space quotas, retention, private source uploads,
+restoration and multitrack project persistence. Hosted activation is blocked by the
+declined development migration; no production release or merge is included.
