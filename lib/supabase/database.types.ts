@@ -89,6 +89,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      credit_wallet_snapshot: { Args: Record<PropertyKey, never>; Returns: Json };
+      quote_export_credits: {
+        Args: { duration_seconds: number; feature_keys?: string[] };
+        Returns: Json;
+      };
+      reserve_export_credits: {
+        Args: {
+          client_request_id: string;
+          duration_seconds: number;
+          feature_keys?: string[];
+          project_id?: string | null;
+        };
+        Returns: Json;
+      };
+      submit_export_candidate: {
+        Args: { export_id: string; sha256: string; size_bytes: number; duration_ms: number };
+        Returns: Json;
+      };
+      request_export_cancellation: {
+        Args: { export_id: string };
+        Returns: Json;
+      };
       project_media_action: { Args: {action: string; payload?: Json}; Returns: Json };
       reserve_ai_voiceover: {
         Args: { p_characters: number }
