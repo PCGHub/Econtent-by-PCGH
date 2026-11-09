@@ -1,18 +1,6 @@
-import { billingAccount, billingBody, billingError, BillingApiError } from "@/lib/billing/api";
-import { configuredPaymentProvider } from "@/lib/billing/payment-provider";
-import { paymentCollectionEnabled } from "@/lib/billing/server";
-import { TOP_UPS_KOBO } from "@/lib/billing/model";
-
-export async function POST(request: Request) {
-  try {
-    await billingAccount();
-    await billingBody(request);
-    if (!paymentCollectionEnabled() || !configuredPaymentProvider())
-      throw new BillingApiError(503, "Credit purchases are prepared but not activated");
-    // A reviewed gateway adapter will create a pending payment server-side here.
-    // No browser callback may credit the wallet.
-    void TOP_UPS_KOBO;
-    throw new BillingApiError(503, "Payment provider is not configured");
-  } catch (error) { return billingError(error); }
-}
-
+import {billingAccount,billingBody,billingError,BillingApiError} from "@/lib/billing/api";
+import {configuredPaymentProvider} from "@/lib/billing/payment-provider";
+import {billingAdmin,paymentCollectionEnabled} from "@/lib/billing/server";
+import {TOP_UPS_KOBO} from "@/lib/billing/model";
+function callbackUrl(){const raw=process.env.ECONTENT_APP_URL?.trim();if(!raw)throw new BillingApiError(503,"Preview application URL is not configured");const url=new URL(raw),local=["localhost","127.0.0.1"].includes(url.hostname);if((url.protocol!=="https:"&&!(local&&url.protocol==="http:"))||url.username||url.password)throw new BillingApiError(503,"Preview application URL is invalid");return new URL("/wallet?payment=processing",url.origin).toString()}
+export async function POST(request:Request){try{const{user}=await billingAccount();const body=await billingBody(request),amountKobo=Number(body.amountKobo);if(!TOP_UPS_KOBO.includes(amountKobo as typeof TOP_UPS_KOBO[number]))throw new BillingApiError(400,"Choose an available top-up amount");const provider=configuredPaymentProvider(),admin=billingAdmin();if(!paymentCollectionEnabled()||!provider||!admin)throw new BillingApiError(503,"Flutterwave Test Mode is not configured");const reference=`ect_test_${crypto.randomUUID()}`;const{error}=await admin.rpc("create_flutterwave_test_payment",{p_owner_id:user.id,p_reference:reference,p_amount_kobo:amountKobo});if(error)throw new BillingApiError(503,"Could not prepare the payment record");const checkout=await provider.createCheckout({reference,amountKobo,email:user.email!,name:typeof user.user_metadata?.full_name==="string"?user.user_metadata.full_name:"Econtent user",callbackUrl:callbackUrl()});return Response.json({checkoutUrl:checkout.checkoutUrl,reference,mode:"test"})}catch(error){return billingError(error)}}

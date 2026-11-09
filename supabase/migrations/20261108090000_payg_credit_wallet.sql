@@ -416,6 +416,12 @@ begin
     if existing.owner_id<>p_owner_id or existing.amount_kobo<>p_amount_kobo or existing.currency<>upper(p_currency) then
       raise exception 'Payment replay does not match the original payment';
     end if;
+    if existing.provider_transaction_id is not null and existing.provider_transaction_id<>p_provider_transaction_id then
+      raise exception 'Payment reference is already linked to another transaction';
+    end if;
+    update public.payment_records set provider_transaction_id=p_provider_transaction_id,status='verified',
+      verified_at=p_paid_at,provider_payload_hash=lower(p_payload_hash),updated_at=clock_timestamp()
+      where id=existing.id;
     perform billing_private.credit_verified_payment(existing.id);
     return existing.id;
   end if;
@@ -452,4 +458,37 @@ begin
 end $$;
 revoke all on function billing_private.credit_verified_payment(uuid) from public,anon,authenticated;
 grant execute on function billing_private.credit_verified_payment(uuid) to service_role;
+
+create function public.create_flutterwave_test_payment(p_owner_id uuid,p_reference text,p_amount_kobo integer) returns uuid
+language plpgsql security definer set search_path='' as $$
+declare payment_id uuid;
+begin
+  perform billing_private.require_service_role();
+  if p_owner_id is null or p_reference!~'^ect_test_[0-9a-f-]{36}$' or p_amount_kobo not in(50000,100000,200000,500000) then
+    raise exception 'Invalid Flutterwave Test Mode payment request';
+  end if;
+  insert into public.payment_records(owner_id,gateway,payment_reference,amount_kobo,credits,status)
+    values(p_owner_id,'flutterwave',p_reference,p_amount_kobo,p_amount_kobo/1000,'pending')
+    on conflict(gateway,payment_reference) do update set updated_at=public.payment_records.updated_at
+    returning id into payment_id;
+  return payment_id;
+end $$;
+revoke all on function public.create_flutterwave_test_payment(uuid,text,integer) from public,anon,authenticated;
+grant execute on function public.create_flutterwave_test_payment(uuid,text,integer) to service_role;
+
+create function public.finalize_flutterwave_test_payment(p_reference text,p_provider_transaction_id text,
+  p_amount_kobo bigint,p_currency text,p_paid_at timestamptz,p_payload_hash text) returns uuid
+language plpgsql security definer set search_path='' as $$
+declare owner_id uuid; payment_id uuid;
+begin
+  perform billing_private.require_service_role();
+  select p.owner_id into owner_id from public.payment_records p
+    where p.gateway='flutterwave' and p.payment_reference=p_reference for update;
+  if not found then raise exception 'Unknown Econtent payment reference'; end if;
+  payment_id:=billing_private.record_verified_payment(owner_id,'flutterwave',p_reference,p_provider_transaction_id,
+    p_amount_kobo,p_currency,p_paid_at,p_payload_hash);
+  return payment_id;
+end $$;
+revoke all on function public.finalize_flutterwave_test_payment(text,text,bigint,text,timestamptz,text) from public,anon,authenticated;
+grant execute on function public.finalize_flutterwave_test_payment(text,text,bigint,text,timestamptz,text) to service_role;
 

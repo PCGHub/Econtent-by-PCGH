@@ -111,6 +111,8 @@ export type Database = {
         Args: { export_id: string };
         Returns: Json;
       };
+      create_flutterwave_test_payment: { Args: { p_owner_id: string; p_reference: string; p_amount_kobo: number }; Returns: string };
+      finalize_flutterwave_test_payment: { Args: { p_reference: string; p_provider_transaction_id: string; p_amount_kobo: number; p_currency: string; p_paid_at: string; p_payload_hash: string }; Returns: string };
       project_media_action: { Args: {action: string; payload?: Json}; Returns: Json };
       reserve_ai_voiceover: {
         Args: { p_characters: number }

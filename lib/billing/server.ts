@@ -13,7 +13,7 @@ export function billingAdmin() {
 }
 
 export function paymentCollectionEnabled() {
-  return process.env.ECONTENT_PAYMENT_COLLECTION_ENABLED === "approved-live";
+  return process.env.ECONTENT_PAYMENT_COLLECTION_ENABLED === "flutterwave-test" && process.env.FLUTTERWAVE_MODE === "test";
 }
 
 export function exportBillingEnabled() {

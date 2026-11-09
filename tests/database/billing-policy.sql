@@ -115,5 +115,25 @@ do $$ begin
     exception when object_not_in_prerequisite_state then null; end;
 end $$;
 
-select 'PASS: quotes, ownership, insufficient balance, idempotent reservation/payment/settlement, untrusted candidate and immutable ledger' as result;
+set role service_role;
+set request.jwt.claims='{"role":"service_role"}';
+do $$ declare payment_id uuid; replay_id uuid; begin
+  payment_id:=public.create_flutterwave_test_payment((select user_one from billing_test_ids),
+    'ect_test_33333333-3333-4333-8333-333333333333',100000);
+  replay_id:=public.create_flutterwave_test_payment((select user_one from billing_test_ids),
+    'ect_test_33333333-3333-4333-8333-333333333333',100000);
+  if payment_id<>replay_id then raise exception 'pending payment replay differs'; end if;
+  perform public.finalize_flutterwave_test_payment('ect_test_33333333-3333-4333-8333-333333333333','flw-test-333',100000,
+    'NGN',clock_timestamp(),repeat('c',64));
+  perform public.finalize_flutterwave_test_payment('ect_test_33333333-3333-4333-8333-333333333333','flw-test-333',100000,
+    'NGN',clock_timestamp(),repeat('c',64));
+end $$;
+reset role;
+do $$ begin
+  if (select available_credits<>155 or lifetime_funded_credits<>150 from public.credit_wallets
+      where owner_id=(select user_one from billing_test_ids)) then raise exception 'Flutterwave idempotent credit differs'; end if;
+  if (select count(*)<>2 from public.credit_ledger where entry_type='payment_credit') then raise exception 'Flutterwave duplicate credit'; end if;
+end $$;
+
+select 'PASS: quotes, ownership, insufficient balance, idempotent reservation/payment/settlement/Flutterwave, untrusted candidate and immutable ledger' as result;
 

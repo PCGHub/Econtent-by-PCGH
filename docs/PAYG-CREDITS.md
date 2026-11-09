@@ -27,13 +27,19 @@ Deploy a server-controlled worker with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE
 
 Supabase Free projects may not have `pg_cron`. In that case, schedule the worker from the Preview host or an approved external scheduler and protect its route with a dedicated random secret. The route must reject browser sessions, must not accept an owner or export ID from its caller, and must invoke only the bounded cleanup RPC. Cleanup deployment is a separate activation step; no worker is deployed by this branch.
 
-## Payment activation requirements
+## Flutterwave Test Mode
 
-The payment provider interface is deliberately unconfigured. A selected Nigerian gateway adapter must create checkout references on the server, verify webhook signatures, confirm the reference directly with the gateway, compare integer amount/currency/owner, store a payload hash, and atomically record and credit the verified payment. Browser callbacks may show status but may never credit a wallet.
+Econtent uses Flutterwave Standard checkout. The authenticated server creates an `ect_test_…` reference and pending record, sends only an approved top-up amount to Flutterwave, and returns the hosted HTTPS checkout URL. The webhook validates the `flutterwave-signature` HMAC over the exact raw request body and then independently calls Flutterwave transaction verification. The verified reference, exact NGN amount, provider transaction ID, payment time, and payload hash are passed to one atomic service-role RPC. Browser redirects never credit a wallet.
+
+The implementation was informed by the existing `PCGHub/PCGH` checkout and verification flow. Its credentials and database writes were not copied. Econtent uses separate environment names, references, tables, webhook configuration, and atomic wallet accounting.
+
+For a Preview test, configure these server variables: `FLUTTERWAVE_MODE=test`, an Econtent-specific `FLUTTERWAVE_SECRET_KEY` beginning with `FLWSECK_TEST-`, an Econtent-specific `FLUTTERWAVE_SECRET_HASH` of at least 16 characters, `ECONTENT_APP_URL` set to the Preview origin, `SUPABASE_SERVICE_ROLE_KEY`, and `ECONTENT_PAYMENT_COLLECTION_ENABLED=flutterwave-test`. Set `NEXT_PUBLIC_FLUTTERWAVE_TEST_ENABLED=true` only in that Preview. Configure Flutterwave's Test Mode webhook URL as `https://<preview-origin>/api/billing/payments/webhook` and use the exact same secret hash. Never place either Flutterwave secret or the Supabase service-role key in a `NEXT_PUBLIC_` variable.
+
+Live keys are rejected by code. Real collection remains disabled. Before live activation, add scheduled reconciliation for pending records using `verifyReference`, operational alerts, a reviewed refund workflow, key rotation instructions, and a separate explicit live-mode change.
 
 Before activation, configure server-only gateway secrets, webhook replay protection, reconciliation for pending/verified/refunded records, an administrative refund process, and alerts for amount or identity mismatches. Real collection requires explicit approval.
 
-Three closed-by-default environment flags guard activation. `ECONTENT_EXPORT_BILLING_ENABLED`, `NEXT_PUBLIC_EXPORT_BILLING_ENABLED`, and `ECONTENT_PAYMENT_COLLECTION_ENABLED` must remain `disabled`. Code recognizes only the exact value `approved-live`; setting it is an activation action requiring review and approval.
+Export billing remains closed behind the exact `approved-live` value for `ECONTENT_EXPORT_BILLING_ENABLED` and `NEXT_PUBLIC_EXPORT_BILLING_ENABLED`. Test payments use the distinct `flutterwave-test` value and accept only a Flutterwave Test Mode secret. No code path currently accepts a live Flutterwave key.
 
 ## Review and rollout
 

@@ -1,14 +1,3 @@
-import { NextResponse } from "next/server";
-import { configuredPaymentProvider } from "@/lib/billing/payment-provider";
-import { paymentCollectionEnabled } from "@/lib/billing/server";
-
-export async function POST(request: Request) {
-  const provider = configuredPaymentProvider();
-  if (!paymentCollectionEnabled() || !provider)
-    return NextResponse.json({ error: "Payment collection is not activated" }, { status: 503 });
-  // The future adapter must verify the raw signed webhook and then independently
-  // confirm its reference with the gateway before an idempotent service-role RPC.
-  await provider.verifyWebhook(request);
-  return NextResponse.json({ error: "Gateway persistence is not activated" }, { status: 503 });
-}
-
+import {configuredPaymentProvider,FlutterwaveError} from "@/lib/billing/payment-provider";
+import {billingAdmin,paymentCollectionEnabled} from "@/lib/billing/server";
+export async function POST(request:Request){const provider=configuredPaymentProvider(),admin=billingAdmin();if(!paymentCollectionEnabled()||!provider||!admin)return Response.json({error:"Flutterwave Test Mode is not configured"},{status:503});try{const payment=await provider.verifyWebhook(request);const{error}=await admin.rpc("finalize_flutterwave_test_payment",{p_reference:payment.reference,p_provider_transaction_id:payment.providerTransactionId,p_amount_kobo:payment.amountKobo,p_currency:payment.currency,p_paid_at:payment.paidAt,p_payload_hash:payment.payloadHash});if(error)return Response.json({error:"Payment verification could not be recorded"},{status:500});return Response.json({received:true})}catch(error){const signature=error instanceof FlutterwaveError&&error.message.includes("signature");return Response.json({error:signature?"Invalid webhook signature":"Payment verification failed"},{status:signature?401:502})}}

@@ -16,9 +16,11 @@ const stateStyle: Record<string, string> = {
 };
 
 export function CreditWallet() {
+  const testPayments = process.env.NEXT_PUBLIC_FLUTTERWAVE_TEST_ENABLED === "true";
   const [data, setData] = useState<WalletSnapshot>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [checkoutAmount,setCheckoutAmount]=useState<number>();
   const load = () => {
     setLoading(true); setError("");
     void billingClient.wallet().then(setData).catch((cause) =>
@@ -37,14 +39,15 @@ export function CreditWallet() {
     const pricing = metadata?.pricing as { features?: Array<{ key?: string }> } | undefined;
     return pricing?.features?.some((feature) => feature.key && feature.key !== "basic_export");
   }).reduce((sum, entry) => sum + Math.max(0, -Number(entry.available_delta ?? 0)), 0) ?? 0;
+  const buy=async(amountKobo:number)=>{setCheckoutAmount(amountKobo);setError("");try{const result=await billingClient.createTopUp(amountKobo);window.location.assign(result.checkoutUrl)}catch(cause){setError(cause instanceof Error?cause.message:"Could not start Test Mode checkout");setCheckoutAmount(undefined)}};
   return <main className="mx-auto min-h-[calc(100dvh-72px)] max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-blue-600">Pay as you go</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">Credit wallet</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">One credit is ₦10. Editing, trimming, uploading and previewing remain free. Charges require a verified successful export.</p></div>
-      <button type="button" disabled className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-55">Buy Credits</button>
+      <a href="#top-up-options" className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Buy Credits</a>
     </div>
-    <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><strong>Payments are not active.</strong> The provider is intentionally unconfigured, so no real money can be collected.</p>
+    <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><strong>{testPayments?"Flutterwave Test Mode":"Payments are not active"}.</strong> {testPayments?"Only Flutterwave test cards are accepted. No real money is collected.":"Configure Preview Test Mode to exercise checkout without real money."}</p>
     {error && <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800" role="alert">{error}<button onClick={load} className="ml-3 underline">Retry</button></div>}
     <section aria-label="Wallet balance" className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {[{label:"Available credits",value:loading?"—":String(data?.availableCredits ?? 0),note:formatNairaFromKobo((data?.availableCredits ?? 0)*1000),icon:WalletCards},
@@ -52,9 +55,9 @@ export function CreditWallet() {
         {label:"AI credits spent",value:loading?"—":String(aiSpent),note:"Estimated AI usage",icon:CircleDollarSign},
         {label:"Ledger security",value:"Server",note:"Atomic and auditable",icon:ShieldCheck}].map(({label,value,note,icon:Icon})=><article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><Icon className="size-5 text-blue-600"/><p className="mt-4 text-xs font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p><p className="mt-2 text-xs text-slate-500">{note}</p></article>)}
     </section>
-    <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
-      <h2 className="font-bold">Top-up options</h2><p className="mt-1 text-xs text-slate-500">No promotional bonuses. Checkout remains disabled until a Nigerian gateway is selected and approved.</p>
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{TOP_UPS_KOBO.map(kobo=><button key={kobo} disabled className="rounded-xl border border-slate-200 p-4 text-left disabled:opacity-60"><strong className="block">{formatNairaFromKobo(kobo)}</strong><span className="mt-1 block text-xs text-slate-500">{kobo/1000} credits</span></button>)}</div>
+    <section id="top-up-options" className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="font-bold">Top-up options</h2><p className="mt-1 text-xs text-slate-500">No promotional bonuses. {testPayments?"Checkout opens Flutterwave Test Mode.":"Test checkout is disabled in this environment."}</p>
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{TOP_UPS_KOBO.map(kobo=><button key={kobo} disabled={!testPayments||checkoutAmount!==undefined} onClick={()=>void buy(kobo)} className="rounded-xl border border-slate-200 p-4 text-left disabled:opacity-60"><strong className="block">{formatNairaFromKobo(kobo)}</strong><span className="mt-1 block text-xs text-slate-500">{checkoutAmount===kobo?"Opening test checkout…":`${kobo/1000} credits`}</span></button>)}</div>
     </section>
     <section className="mt-8 grid gap-6 xl:grid-cols-2">
       <History title="Transactions" rows={data?.payments ?? []} empty="No payment transactions yet." />

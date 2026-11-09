@@ -13,6 +13,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const billingClient = {
   wallet: () => request<WalletSnapshot>("/api/billing/wallet"),
+  createTopUp: (amountKobo: number) => request<{ checkoutUrl: string; reference: string; mode: "test" }>(
+    "/api/billing/payments/intent", { method: "POST", body: JSON.stringify({ amountKobo }) },
+  ),
   quote: (durationSeconds: number, featureKeys = ["basic_export"]) =>
     request<ExportQuote>("/api/billing/quote", {
       method: "POST",
