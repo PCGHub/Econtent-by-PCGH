@@ -23,15 +23,18 @@ import type {
   ProcessedClip,
   JobProgress,
 } from "@/lib/video/types";
+import {useExportBilling} from "@/components/billing/use-export-billing";
 
 const ClipCard = memo(function ClipCard({
   clip,
   selected,
   onToggle,
+  onDownload,
 }: {
   clip: ProcessedClip;
   selected: boolean;
   onToggle: (id: string) => void;
+  onDownload: (clip: ProcessedClip) => void;
 }) {
   const [url, setUrl] = useState("");
   useEffect(() => {
@@ -80,7 +83,7 @@ const ClipCard = memo(function ClipCard({
       )}
       <button
         className="mt-3 font-semibold text-blue-600"
-        onClick={() => downloadBlob(clip.blob, clip.name)}
+        onClick={() => onDownload(clip)}
       >
         Download MP4
       </button>
@@ -106,6 +109,7 @@ export default function VideoEditor({
   onSnapshot?: (snapshot: EditorSnapshot) => void;
   onStatus?: (status: ProjectStatus) => void;
 }) {
+  const billing=useExportBilling();
   const [source, setSource] = useState<File | undefined>(initialSource);
   const [url, setUrl] = useState("");
   const [metadata, setMetadata] = useState({
@@ -128,6 +132,7 @@ export default function VideoEditor({
   );
   const [clips, setClips] = useState<ProcessedClip[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const downloadClip=async(clip:ProcessedClip)=>{const duration=clip.outputDuration??Math.max(.001,clip.range.end-clip.range.start);const reservation=await billing.request(duration);if(!reservation)return;try{if(!reservation.active){downloadBlob(clip.blob,clip.name);return}const result=await billing.candidate(reservation,clip.blob,duration);if(!('downloadUrl' in result))throw Error('Verified download was not issued');window.location.assign(result.downloadUrl)}catch(cause){await billing.cancel(reservation);setError(cause instanceof Error?cause.message:'Export billing failed')}};
   const toggleSelection = useCallback(
     (id: string) =>
       setSelected((previous) =>
@@ -554,6 +559,7 @@ export default function VideoEditor({
     "rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50";
   return (
     <section className="mx-auto max-w-6xl space-y-6 px-5 py-8 text-slate-900">
+      {billing.dialog}
       <div>
         <h1 className="text-3xl font-bold">Your local video workspace</h1>
         <p className="mt-2 text-slate-500">
@@ -1105,14 +1111,14 @@ export default function VideoEditor({
           <div className="flex flex-wrap gap-3">
             <button
               className={action}
-              disabled={busy || zipping || !selected.length}
+              disabled={billing.active || busy || zipping || !selected.length}
               onClick={() => void downloadZip(false)}
             >
               Download selected ZIP ({selected.length})
             </button>
             <button
               className={action}
-              disabled={busy || zipping}
+              disabled={billing.active || busy || zipping}
               onClick={() => void downloadZip(true)}
             >
               Download all ZIP
@@ -1128,6 +1134,7 @@ export default function VideoEditor({
               Clear outputs
             </button>
           </div>
+          {billing.active&&<p className="text-sm text-amber-700">ZIP export is disabled during paid verification. Verify and download each MP4 separately so every charge has one artifact.</p>}
           <div className="grid gap-4 md:grid-cols-2">
             {clips.map((clip) => (
               <ClipCard
@@ -1135,6 +1142,7 @@ export default function VideoEditor({
                 clip={clip}
                 selected={selected.includes(clip.id)}
                 onToggle={toggleSelection}
+                onDownload={(item)=>void downloadClip(item)}
               />
             ))}
           </div>

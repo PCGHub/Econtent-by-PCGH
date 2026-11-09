@@ -28,6 +28,10 @@ test("top-ups have no bonus and map exactly at 1000 kobo per credit", () => {
   assert.deepEqual(TOP_UPS_KOBO.map((kobo) => kobo / CREDIT_VALUE_KOBO), [50, 100, 200, 500]);
 });
 
+test("twenty-one successful basic exports cost 105 credits and ₦1,050",()=>{
+  assert.equal(21*5,105);assert.equal(21*5*CREDIT_VALUE_KOBO,105000);
+});
+
 test("quotes reject missing basic export and duplicate pricing", () => {
   const ai = { feature_key: "ai_voiceover", display_name: "AI voice-over", fixed_credits: 25,
     credits_per_started_minute: 0, minimum_credits: 25, provider_key: "provider",

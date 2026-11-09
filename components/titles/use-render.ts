@@ -1,13 +1,17 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { TitleProject, TitleRenderProgress } from "@/lib/titles/model";
+import { durationOf, type TitleProject, type TitleRenderProgress } from "@/lib/titles/model";
 import type { LocalMedia } from "@/lib/composition/model";
 import { BrowserTitlesRenderer } from "@/lib/titles/renderer";
 import { downloadBlob } from "@/lib/video/download";
+import {useExportBilling} from "@/components/billing/use-export-billing";
+import {billingClient} from "@/lib/billing/client";
 export function useTitlesRender(
   project: TitleProject,
   assets: Record<string, LocalMedia>,
 ) {
+  const billing=useExportBilling();
+  const paid=useRef<{signature:string;exportId:string}|undefined>(undefined);
   const signature =
     JSON.stringify(project) +
     Object.entries(assets)
@@ -64,10 +68,15 @@ export function useTitlesRender(
     if (operation.current) return;
     const snapshot = current.current;
     if (resultRef.current?.signature === snapshot.signature) {
-      if (download)
-        downloadBlob(resultRef.current.blob, snapshot.project.title + ".mp4");
+      if (download){
+        if(!billing.active)downloadBlob(resultRef.current.blob,snapshot.project.title+".mp4");
+        else if(paid.current?.signature===snapshot.signature){const verified=await billingClient.verifyArtifact(paid.current.exportId);window.location.assign(verified.downloadUrl)}
+        else{const reservation=await billing.request(durationOf(snapshot.project));if(!reservation)return;try{const verified=await billing.candidate(reservation,resultRef.current.blob,durationOf(snapshot.project));if(!('downloadUrl' in verified)||!reservation.exportId)throw Error('Verified download was not issued');paid.current={signature:snapshot.signature,exportId:reservation.exportId};window.location.assign(verified.downloadUrl)}catch(cause){await billing.cancel(reservation);setError(cause instanceof Error?cause.message:'Export billing failed')}}
+      }
       return;
     }
+    const reserved=download&&billing.active?await billing.request(durationOf(snapshot.project)):null;
+    if(download&&billing.active&&!reserved)return;
     const controller = new AbortController();
     operation.current = controller;
     started.current = performance.now();
@@ -97,8 +106,9 @@ export function useTitlesRender(
       resultRef.current = next;
       setResult(next);
       setState("completed");
-      if (download) downloadBlob(blob, snapshot.project.title + ".mp4");
+      if(download){if(!billing.active)downloadBlob(blob,snapshot.project.title+".mp4");else if(reserved){try{const verified=await billing.candidate(reserved,blob,durationOf(snapshot.project));if(!('downloadUrl' in verified)||!reserved.exportId)throw Error('Verified download was not issued');paid.current={signature:snapshot.signature,exportId:reserved.exportId};window.location.assign(verified.downloadUrl)}catch(cause){await billing.cancel(reserved);throw cause}}}
     } catch (cause) {
+      if(reserved)await billing.cancel(reserved);
       if (alive.current) {
         if (controller.signal.aborted) setState("cancelled");
         else {
@@ -115,6 +125,7 @@ export function useTitlesRender(
     }
   };
   return {
+    dialog: billing.dialog,
     result: result?.signature === signature ? result : undefined,
     progress,
     state,

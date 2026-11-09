@@ -95,6 +95,9 @@ create table public.export_billing (
   candidate_sha256 text check (candidate_sha256 is null or candidate_sha256 ~ '^[a-f0-9]{64}$'),
   candidate_size_bytes bigint check (candidate_size_bytes is null or candidate_size_bytes > 0),
   candidate_duration_ms integer check (candidate_duration_ms is null or candidate_duration_ms > 0),
+  artifact_path text unique,
+  artifact_mime_type text check (artifact_mime_type is null or artifact_mime_type='video/mp4'),
+  artifact_verified_at timestamptz,
   verifier text,
   verifier_receipt text,
   reserved_until timestamptz not null default clock_timestamp() + interval '45 minutes',
@@ -108,6 +111,10 @@ create table public.export_billing (
 create index export_billing_owner_created_idx on public.export_billing(owner_id,created_at desc,id);
 create index export_billing_reconcile_idx on public.export_billing(state,reserved_until,id)
   where state in ('reserved','verification_pending','cancel_requested');
+
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values('econtent-export-artifacts','econtent-export-artifacts',false,50000000,array['video/mp4'])
+on conflict(id) do update set public=false,file_size_limit=50000000,allowed_mime_types=array['video/mp4'];
 
 create table billing_private.billing_audit (
   id bigint generated always as identity primary key,
@@ -278,6 +285,36 @@ end $$;
 revoke all on function public.submit_export_candidate(uuid,text,bigint,integer) from public,anon;
 grant execute on function public.submit_export_candidate(uuid,text,bigint,integer) to authenticated;
 
+create function public.prepare_export_artifact(export_id uuid,sha256 text,size_bytes bigint,mime_type text) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare uid uuid:=billing_private.verified_user(); charge public.export_billing; path text;
+begin
+  if sha256!~'^[a-f0-9]{64}$' or size_bytes not between 1000 and 50000000 or mime_type<>'video/mp4' then
+    raise exception 'Invalid export artifact';
+  end if;
+  select * into charge from public.export_billing where id=export_id and owner_id=uid for update;
+  if not found or charge.state<>'verification_pending' or charge.candidate_sha256<>sha256 or charge.candidate_size_bytes<>size_bytes then
+    raise exception 'Export candidate is not ready for artifact upload' using errcode='42501';
+  end if;
+  path:=uid::text||'/'||charge.id::text||'/output.mp4';
+  update public.export_billing set artifact_path=path,artifact_mime_type=mime_type,updated_at=clock_timestamp() where id=charge.id;
+  return jsonb_build_object('path',path,'bucket','econtent-export-artifacts');
+end $$;
+revoke all on function public.prepare_export_artifact(uuid,text,bigint,text) from public,anon;
+grant execute on function public.prepare_export_artifact(uuid,text,bigint,text) to authenticated;
+
+create function public.owned_export_artifact(export_id uuid) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare uid uuid:=billing_private.verified_user(); charge public.export_billing;
+begin
+  select * into charge from public.export_billing where id=export_id and owner_id=uid
+    and state in('verification_pending','settled');
+  if not found or charge.artifact_path is null then raise exception 'Export artifact is unavailable' using errcode='42501'; end if;
+  return jsonb_build_object('bucket','econtent-export-artifacts','path',charge.artifact_path,'state',charge.state);
+end $$;
+revoke all on function public.owned_export_artifact(uuid) from public,anon;
+grant execute on function public.owned_export_artifact(uuid) to authenticated;
+
 create function public.request_export_cancellation(export_id uuid) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare uid uuid:=billing_private.verified_user(); charge public.export_billing;
@@ -323,6 +360,35 @@ begin
 end $$;
 revoke all on function billing_private.settle_export(uuid,text,text) from public,anon,authenticated;
 grant execute on function billing_private.settle_export(uuid,text,text) to service_role;
+
+create function public.settle_verified_export_artifact(p_export_id uuid,p_sha256 text,p_size_bytes bigint,
+  p_duration_ms integer,p_receipt text) returns boolean
+language plpgsql security definer set search_path='' as $$
+declare charge public.export_billing;
+begin
+  perform billing_private.require_service_role();
+  select * into charge from public.export_billing where id=p_export_id for update;
+  if not found then return false; end if;
+  if charge.state='settled' then return true; end if;
+  if charge.state<>'verification_pending' or charge.artifact_path is null or charge.candidate_sha256<>p_sha256
+    or charge.candidate_size_bytes<>p_size_bytes or abs(charge.candidate_duration_ms-p_duration_ms)>greatest(2000,charge.candidate_duration_ms/20)
+    or p_receipt!~'^[a-f0-9]{64}$' then raise exception 'Verified artifact differs from reserved export'; end if;
+  update public.export_billing set artifact_verified_at=clock_timestamp(),updated_at=clock_timestamp() where id=charge.id;
+  return billing_private.settle_export(charge.id,'server-artifact-v1',p_receipt);
+end $$;
+revoke all on function public.settle_verified_export_artifact(uuid,text,bigint,integer,text) from public,anon,authenticated;
+grant execute on function public.settle_verified_export_artifact(uuid,text,bigint,integer,text) to service_role;
+
+create function public.settled_export_artifact(export_id uuid) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare uid uuid:=billing_private.verified_user(); charge public.export_billing;
+begin
+  select * into charge from public.export_billing where id=export_id and owner_id=uid and state='settled';
+  if not found or charge.artifact_path is null or charge.artifact_verified_at is null then raise exception 'Verified export is unavailable' using errcode='42501'; end if;
+  return jsonb_build_object('bucket','econtent-export-artifacts','path',charge.artifact_path);
+end $$;
+revoke all on function public.settled_export_artifact(uuid) from public,anon;
+grant execute on function public.settled_export_artifact(uuid) to authenticated;
 
 create function billing_private.release_export(p_export_id uuid,p_reason text) returns boolean
 language plpgsql security definer set search_path='' as $$
@@ -467,10 +533,17 @@ begin
   if p_owner_id is null or p_reference!~'^ect_test_[0-9a-f-]{36}$' or p_amount_kobo not in(50000,100000,200000,500000) then
     raise exception 'Invalid Flutterwave Test Mode payment request';
   end if;
+  if (select count(*) from public.payment_records where owner_id=p_owner_id and gateway='flutterwave'
+      and created_at>clock_timestamp()-interval '10 minutes')>=5 then
+    raise exception 'Payment initialization rate limit reached';
+  end if;
   insert into public.payment_records(owner_id,gateway,payment_reference,amount_kobo,credits,status)
     values(p_owner_id,'flutterwave',p_reference,p_amount_kobo,p_amount_kobo/1000,'pending')
     on conflict(gateway,payment_reference) do update set updated_at=public.payment_records.updated_at
     returning id into payment_id;
+  insert into billing_private.billing_audit(owner_id,event_type,target_type,target_id,request_id,details)
+    values(p_owner_id,'payment_initialized','payment',payment_id,p_reference,
+      jsonb_build_object('gateway','flutterwave','mode','test','amountKobo',p_amount_kobo));
   return payment_id;
 end $$;
 revoke all on function public.create_flutterwave_test_payment(uuid,text,integer) from public,anon,authenticated;
@@ -491,4 +564,29 @@ begin
 end $$;
 revoke all on function public.finalize_flutterwave_test_payment(text,text,bigint,text,timestamptz,text) from public,anon,authenticated;
 grant execute on function public.finalize_flutterwave_test_payment(text,text,bigint,text,timestamptz,text) to service_role;
+
+create function public.pending_flutterwave_test_payments(p_limit integer default 50) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+begin
+  perform billing_private.require_service_role();
+  if p_limit not between 1 and 100 then raise exception 'Invalid reconciliation limit'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('reference',p.payment_reference,'createdAt',p.created_at)
+    order by p.created_at) from (select payment_reference,created_at from public.payment_records
+      where gateway='flutterwave' and status='pending' and created_at<clock_timestamp()-interval '2 minutes'
+        and created_at>clock_timestamp()-interval '24 hours' order by created_at limit p_limit) p),'[]'::jsonb);
+end $$;
+revoke all on function public.pending_flutterwave_test_payments(integer) from public,anon,authenticated;
+grant execute on function public.pending_flutterwave_test_payments(integer) to service_role;
+
+create function public.billing_audit_snapshot(p_limit integer default 100) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+begin
+  perform billing_private.require_service_role();
+  if p_limit not between 1 and 500 then raise exception 'Invalid audit limit'; end if;
+  return coalesce((select jsonb_agg(to_jsonb(a) order by a.occurred_at desc,a.id desc) from
+    (select id,owner_id,actor_id,event_type,target_type,target_id,request_id,details,occurred_at
+      from billing_private.billing_audit order by occurred_at desc,id desc limit p_limit) a),'[]'::jsonb);
+end $$;
+revoke all on function public.billing_audit_snapshot(integer) from public,anon,authenticated;
+grant execute on function public.billing_audit_snapshot(integer) to service_role;
 

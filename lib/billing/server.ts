@@ -17,6 +17,6 @@ export function paymentCollectionEnabled() {
 }
 
 export function exportBillingEnabled() {
-  return process.env.ECONTENT_EXPORT_BILLING_ENABLED === "approved-live";
+  return process.env.ECONTENT_EXPORT_BILLING_ENABLED === "artifact-test";
 }
 

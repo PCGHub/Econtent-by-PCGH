@@ -24,8 +24,10 @@ import {fingerprint} from '@/lib/projects/fingerprint';
 import type {Project} from '@/lib/projects/model';
 import {parseComposition} from '@/lib/composition/model';
 import {VIDEO_FILE_ACCEPT} from '@/lib/video/types';
+import {useExportBilling} from '@/components/billing/use-export-billing';
 const inputClass='mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm';
 export function OverlayStudio({project}:{project?:Project}){
+  const billing=useExportBilling();
   const [main,setMain]=useState<LocalMedia>(),[secondary,setSecondary]=useState<LocalMedia>();
   const [settings,setSettings]=useState<Composition>(project?.composition?{...project.composition.settings,...(project.studioTracks?{tracks:project.studioTracks.settings}:{})}:{...DEFAULT_COMPOSITION});
   const [past,setPast]=useState<{before:Composition;after:Composition}[]>([]),[future,setFuture]=useState<{before:Composition;after:Composition}[]>([]);
@@ -85,6 +87,7 @@ export function OverlayStudio({project}:{project?:Project}){
     }catch(error){if(!controller.signal.aborted)setError(error instanceof Error?error.message:'Audio import failed');}finally{if(audioAbort.current===controller)setImporting(false);}
   };
   const validOutput=!!output&&output.signature===JSON.stringify(settings)&&output.main===main?.file&&output.secondary===secondary?.file&&output.music.length===music.length&&output.music.every((file,i)=>file===music[i].file);
+  const downloadVerified=async()=>{if(!output||!validOutput)return;const duration=Math.max(.001,settings.trimEnd-settings.trimStart),reservation=await billing.request(duration,['basic_export'],project?.id);if(!reservation)return;try{if(!reservation.active){downloadBlob(output.blob,'econtent-composition.mp4');return}const result=await billing.candidate(reservation,output.blob,duration);if(!('downloadUrl' in result))throw Error('Verified download was not issued');window.location.assign(result.downloadUrl)}catch(cause){await billing.cancel(reservation);setError(cause instanceof Error?cause.message:'Export billing failed')}};
   const exportVideo=async()=>{
     if(!main||!secondary||busy)return;
     if(validOutput)return;
@@ -109,7 +112,7 @@ export function OverlayStudio({project}:{project?:Project}){
     const value=Number(e.target.value);const next={...settings,[key]:value};if(key==='x'||key==='width'){next.x=Math.min(next.x,1-next.width);}if(key==='y'||key==='height'){next.y=Math.min(next.y,1-next.height);}record(next);
   }}/></label>;
   const mediaCard=(title:string,role:'main'|'secondary',kind:'video'|'image',Icon:typeof Video)=><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 p-3 text-sm font-semibold hover:border-blue-400 hover:bg-blue-50"><Icon className="size-6 shrink-0 text-blue-600"/><span>{title}<input type="file" aria-label={title} className="mt-2 block w-full text-xs font-normal" disabled={importing||busy} accept={kind==='image'?'.jpg,.jpeg,.png,.webp':VIDEO_FILE_ACCEPT} onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void upload(file,role,kind);}}/></span><Upload className="ml-auto size-4 shrink-0 text-slate-400"/></label>;
-  return <WorkspaceShell><main className="min-h-screen bg-slate-50 text-slate-900">
+  return <WorkspaceShell><main className="min-h-screen bg-slate-50 text-slate-900">{billing.dialog}
     {busy&&<Button className="fixed bottom-4 right-4 z-50 shadow-lg" onClick={()=>renderAbort.current?.abort()}>Cancel composition export</Button>}
     <div className="mx-auto max-w-[1500px] px-4 py-5 md:px-6"><h1 className="text-2xl font-bold md:text-3xl">Video Overlay Studio</h1><p className="mt-2 text-sm text-slate-500">Combine one main video and one photo or video layer. Source files stay on your device.</p>
       {configurationError&&<p role="alert" className="my-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{configurationError}</p>}
@@ -156,7 +159,7 @@ export function OverlayStudio({project}:{project?:Project}){
       <div id="studio-timeline"><StudioTimeline tracks={tracks} duration={Math.max(0,settings.trimEnd-settings.trimStart)} sourceDurations={Object.fromEntries([...tracks.audio.map(a=>[a.id,music.find(m=>m.id===a.sourceId)?.duration??31536000]),...(secondary?.kind==='video'?[['layer',secondary.duration]]:[])])} overlay={{start:settings.overlayStart,end:settings.overlayEnd,...(secondary?.kind==='video'?{sourceStart:settings.secondaryStart}:{})}} onOverlay={(start,end,sourceStart)=>setSettings(s=>({...s,overlayStart:start,overlayEnd:end,...(sourceStart===undefined?{}:{secondaryStart:sourceStart})}))} onChange={updateTracks} onSeek={time=>setSeekTo({time,serial:performance.now()})} disabled={busy}/><p className="mt-2 text-xs text-slate-500">Playhead {timelineTime.toFixed(2)} s</p></div>
       {output&&<section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4"><h2 className="font-bold">{validOutput?'Rendered preview ready':'Rendered preview outdated'}</h2><video aria-label="Exported composition preview" src={output.url} playsInline controls className="mt-3 max-h-[530px] w-full bg-black"/>
         {!validOutput&&<p className="mt-2 text-sm text-amber-700">Settings changed. This download is the previous render; export again to apply edits.</p>}
-        <Button className="mt-3" disabled={!validOutput} onClick={()=>downloadBlob(output.blob,'econtent-composition.mp4')}>Download composition MP4</Button><p className="mt-2 text-xs text-slate-500">{(output.blob.size/1048576).toFixed(2)} MiB · H.264 video{settings.audio==='none'?'':' with selected AAC audio where present'}</p></section>}
+        <Button className="mt-3" disabled={!validOutput} onClick={()=>void downloadVerified()}>Download composition MP4</Button><p className="mt-2 text-xs text-slate-500">{(output.blob.size/1048576).toFixed(2)} MiB · H.264 video{settings.audio==='none'?'':' with selected AAC audio where present'}</p></section>}
     </div>
   </main></WorkspaceShell>;
 }

@@ -35,6 +35,11 @@ export const billingClient = {
       "/api/billing/exports/candidate",
       { method: "POST", body: JSON.stringify(input) },
     ),
+  artifactTicket: (input: { exportId: string; sha256: string; sizeBytes: number; mimeType: string }) =>
+    request<{ path: string; token: string }>("/api/billing/exports/upload-ticket", { method: "POST", body: JSON.stringify(input) }),
+  verifyArtifact: (exportId: string) => request<{ exportId: string; state: string; settled: true; downloadUrl: string }>(
+    "/api/billing/exports/verify", { method: "POST", body: JSON.stringify({ exportId }) },
+  ),
   cancel: (exportId: string) => request<{ exportId: string; state: string; message: string }>(
     "/api/billing/exports/cancel",
     { method: "POST", body: JSON.stringify({ exportId }) },

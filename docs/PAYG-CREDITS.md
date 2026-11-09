@@ -12,7 +12,9 @@ The export states are `reserved`, `processing`, `verification_pending`, `settled
 
 ## Trusted completion requirement
 
-The current editor renders entirely in the browser. JavaScript running on a user's device cannot provide trustworthy proof that a paid export completed, and withholding a locally rendered blob cannot prevent a modified client from accessing it. The prepared paid path therefore locks the normal download after rendering, records only an untrusted candidate, and leaves the charge reserved.
+The editor renders in the browser, then uploads the resulting MP4 through a one-export signed upload into the private `econtent-export-artifacts` bucket. The server downloads the stored object and independently verifies its SHA-256, byte count, MP4 structure, and movie duration against the reservation before settling. It then issues a ten-minute signed download. Repeated downloads reuse the settled export and do not reserve or charge again.
+
+JavaScript running on a user's device cannot prevent a modified client from saving the in-memory browser render. The protocol proves that a matching completed artifact exists and keeps the official download and wallet settlement server-controlled; it cannot provide DRM. Paid exports remain Preview-only behind `artifact-test` until end-to-end validation passes.
 
 Paid exports must remain disabled until one of these reviewed protocols exists:
 
@@ -39,7 +41,7 @@ Live keys are rejected by code. Real collection remains disabled. Before live ac
 
 Before activation, configure server-only gateway secrets, webhook replay protection, reconciliation for pending/verified/refunded records, an administrative refund process, and alerts for amount or identity mismatches. Real collection requires explicit approval.
 
-Export billing remains closed behind the exact `approved-live` value for `ECONTENT_EXPORT_BILLING_ENABLED` and `NEXT_PUBLIC_EXPORT_BILLING_ENABLED`. Test payments use the distinct `flutterwave-test` value and accept only a Flutterwave Test Mode secret. No code path currently accepts a live Flutterwave key.
+Export billing remains closed unless both `ECONTENT_EXPORT_BILLING_ENABLED` and `NEXT_PUBLIC_EXPORT_BILLING_ENABLED` use the exact Preview-only value `artifact-test`. Test payments use the distinct `flutterwave-test` value and accept only a Flutterwave Test Mode secret. No code path currently accepts a live Flutterwave key or a production export-billing value.
 
 ## Review and rollout
 

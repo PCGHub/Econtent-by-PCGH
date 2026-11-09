@@ -2,6 +2,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { billingClient } from "@/lib/billing/client";
 import { formatNairaFromKobo, type ExportQuote } from "@/lib/billing/model";
+import { browserSupabase } from "@/lib/supabase/browser";
 
 type Reservation = { exportId: string | null; active: boolean };
 type Pending = {
@@ -12,7 +13,7 @@ type Pending = {
 };
 
 export function useExportBilling() {
-  const active = process.env.NEXT_PUBLIC_EXPORT_BILLING_ENABLED === "approved-live";
+  const active = process.env.NEXT_PUBLIC_EXPORT_BILLING_ENABLED === "artifact-test";
   const [pending, setPending] = useState<Pending>();
   const [quote, setQuote] = useState<ExportQuote>();
   const [error, setError] = useState("");
@@ -47,8 +48,14 @@ export function useExportBilling() {
     const bytes = await blob.arrayBuffer();
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const sha256 = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
-    return billingClient.candidate({ exportId: reservation.exportId, sha256, sizeBytes: blob.size,
+    await billingClient.candidate({ exportId: reservation.exportId, sha256, sizeBytes: blob.size,
       durationMs: Math.max(1, Math.round(durationSeconds * 1000)) });
+    const ticket=await billingClient.artifactTicket({exportId:reservation.exportId,sha256,sizeBytes:blob.size,mimeType:"video/mp4"});
+    const client=browserSupabase();if(!client)throw Error("Artifact upload is unavailable");
+    const uploaded=await client.storage.from("econtent-export-artifacts").uploadToSignedUrl(ticket.path,ticket.token,blob,{contentType:"video/mp4"});
+    if(uploaded.error&&!uploaded.error.message.toLowerCase().includes("already exists"))throw Error("Verified artifact upload failed");
+    const verified=await billingClient.verifyArtifact(reservation.exportId);
+    return {...verified,message:"Artifact verified and 5-credit export charge settled."};
   };
   const cancel = async (reservation: Reservation | null) => {
     if (reservation?.exportId) await billingClient.cancel(reservation.exportId).catch(() => undefined);

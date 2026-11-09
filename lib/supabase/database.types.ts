@@ -113,6 +113,12 @@ export type Database = {
       };
       create_flutterwave_test_payment: { Args: { p_owner_id: string; p_reference: string; p_amount_kobo: number }; Returns: string };
       finalize_flutterwave_test_payment: { Args: { p_reference: string; p_provider_transaction_id: string; p_amount_kobo: number; p_currency: string; p_paid_at: string; p_payload_hash: string }; Returns: string };
+      pending_flutterwave_test_payments: { Args: { p_limit?: number }; Returns: Json };
+      billing_audit_snapshot: { Args: { p_limit?: number }; Returns: Json };
+      prepare_export_artifact: { Args: { export_id: string; sha256: string; size_bytes: number; mime_type: string }; Returns: Json };
+      owned_export_artifact: { Args: { export_id: string }; Returns: Json };
+      settled_export_artifact: { Args: { export_id: string }; Returns: Json };
+      settle_verified_export_artifact: { Args: { p_export_id: string; p_sha256: string; p_size_bytes: number; p_duration_ms: number; p_receipt: string }; Returns: boolean };
       project_media_action: { Args: {action: string; payload?: Json}; Returns: Json };
       reserve_ai_voiceover: {
         Args: { p_characters: number }
