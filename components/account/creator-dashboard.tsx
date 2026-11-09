@@ -38,6 +38,7 @@ import {
   DASHBOARD_TOOLS,
 } from "./dashboard/navigation";
 import { ProjectCard } from "./dashboard/project-card";
+import {DashboardWalletCard} from "./dashboard/wallet-card";
 import styles from "./creator-dashboard.module.css";
 const inter = localFont({
   src: "../../public/fonts/inter-latin.woff2",
@@ -293,6 +294,7 @@ export function CreatorDashboard() {
               {accountError}
             </p>
           )}
+          <DashboardWalletCard />
           <section
             aria-label="Workspace overview"
             className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4"
