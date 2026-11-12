@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { Clapperboard, ShieldCheck } from "lucide-react";
 export { AuthForm } from "./account/auth-form";
 export { DashboardPage, ProjectsPage, SettingsPage } from "./account/workspace";
@@ -35,12 +36,16 @@ export function AuthLayout({
   return (
     <main className="grid min-h-screen bg-white lg:grid-cols-[.9fr_1.1fr]">
       <section className="hidden bg-[#0f172a] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-        <Logo />
+        <div className="h-10" />
         <div className="max-w-md">
+          <div className="mb-8 flex flex-col items-start gap-3">
+            <Image src="/pcgh-logo.webp" alt="Econtent by PCGH logo" width={170} height={170} className="h-auto w-36 object-contain drop-shadow-xl" priority />
+            <div className="text-3xl font-black tracking-tight text-white">ECONTENT <span className="text-blue-300">BY PCGH</span></div>
+          </div>
           <p className="text-sm font-semibold uppercase tracking-[.18em] text-blue-300">
             {eyebrow}
           </p>
-          <h1 className="mt-5 text-5xl font-bold leading-tight tracking-[-.04em]">
+          <h1 className="mt-3 text-5xl font-bold leading-tight tracking-[-.04em]">
             {title}
           </h1>
           <p className="mt-5 text-lg leading-8 text-slate-300">{copy}</p>
